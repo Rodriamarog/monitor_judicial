@@ -55,7 +55,7 @@ function cleanJuzgadoName(name: string): string {
 /**
  * Parse case entries from an HTML table
  */
-function parseTableCases($: cheerio.CheerioAPI, table: cheerio.Cheerio<cheerio.Element>, juzgado: string): CaseEntry[] {
+function parseTableCases($: cheerio.CheerioAPI, table: cheerio.Cheerio<any>, juzgado: string): CaseEntry[] {
   const cases: CaseEntry[] = [];
 
   table.find('tr').each((i, row) => {
@@ -79,7 +79,7 @@ function parseTableCases($: cheerio.CheerioAPI, table: cheerio.Cheerio<cheerio.E
     }
 
     // Validate case number format (e.g., "00696/2019")
-    if (!caseNumber || !/\d{4,5}\/\d{4}/.test(caseNumber)) {
+    if (!caseNumber || !details || !/\d{4,5}\/\d{4}/.test(caseNumber)) {
       return;
     }
 
@@ -103,11 +103,11 @@ function parseTableCases($: cheerio.CheerioAPI, table: cheerio.Cheerio<cheerio.E
  * Parse a bulletin HTML and extract all case entries
  */
 function parseBulletin(html: string): CaseEntry[] {
-  const $ = cheerio.load(html, { decodeEntities: false });
+  const $ = cheerio.load(html);
   const entries: CaseEntry[] = [];
 
   // Find all juzgado headers
-  const juzgadoHeaders: Array<{ element: cheerio.Element; name: string; index: number }> = [];
+  const juzgadoHeaders: Array<{ element: any; name: string; index: number }> = [];
 
   $('p').each((i, elem) => {
     const text = $(elem).text().replace(/\s+/g, ' ').trim();
