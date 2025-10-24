@@ -60,7 +60,7 @@ export default function SignupPage() {
           {
             id: authData.user.id,
             email: email,
-            phone_number: phone || null,
+            phone: phone || null,
             subscription_tier: 'free',
           },
         ])
