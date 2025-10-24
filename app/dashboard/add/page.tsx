@@ -64,8 +64,8 @@ export default function AddCasePage() {
       .select('*', { count: 'exact', head: true })
       .eq('user_id', user.id)
 
-    const tier = profile?.subscription_tier || 'free'
-    const maxCases = tier === 'free' ? 10 : tier === 'basic' ? 100 : 500
+    const tier = profile?.subscription_tier || 'basico'
+    const maxCases = tier === 'basico' ? 10 : tier === 'profesional' ? 100 : 500
 
     if ((count || 0) >= maxCases) {
       setError(`Ha alcanzado el límite de ${maxCases} casos para su plan ${tier}`)

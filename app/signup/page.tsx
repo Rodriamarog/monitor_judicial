@@ -61,7 +61,7 @@ export default function SignupPage() {
             id: authData.user.id,
             email: email,
             phone: phone || null,
-            subscription_tier: 'free',
+            subscription_tier: 'basico',
           },
         ])
 
