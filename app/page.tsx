@@ -1,65 +1,151 @@
-import Image from "next/image";
+import { createClient } from '@/lib/supabase/server'
+import { redirect } from 'next/navigation'
+import Link from 'next/link'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Scale, Bell, Search, Shield } from 'lucide-react'
 
-export default function Home() {
+export default async function Home() {
+  const supabase = await createClient()
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  // Redirect to dashboard if logged in
+  if (user) {
+    redirect('/dashboard')
+  }
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
+    <div className="min-h-screen bg-background">
+      {/* Hero Section */}
+      <div className="container mx-auto px-4 py-16">
+        <div className="max-w-4xl mx-auto text-center space-y-8">
+          <div className="flex justify-center">
+            <Scale className="h-16 w-16 text-primary" />
+          </div>
+
+          <h1 className="text-4xl md:text-6xl font-bold tracking-tight">
+            Monitor Judicial PJBC
           </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
+
+          <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
+            Reciba notificaciones automáticas cuando sus casos aparezcan en los
+            boletines del Poder Judicial de Baja California
           </p>
+
+          <div className="flex gap-4 justify-center">
+            <Link href="/signup">
+              <Button size="lg" className="gap-2">
+                Comenzar Gratis
+              </Button>
+            </Link>
+            <Link href="/login">
+              <Button size="lg" variant="outline">
+                Iniciar Sesión
+              </Button>
+            </Link>
+          </div>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+
+        {/* Features */}
+        <div className="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto mt-20">
+          <Card>
+            <CardHeader>
+              <Search className="h-10 w-10 text-primary mb-2" />
+              <CardTitle>Monitoreo Automático</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <CardDescription>
+                Revisamos los boletines judiciales cada 30 minutos de 6am a 2pm,
+                todos los días laborales
+              </CardDescription>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <Bell className="h-10 w-10 text-primary mb-2" />
+              <CardTitle>Alertas por WhatsApp</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <CardDescription>
+                Reciba notificaciones instantáneas cuando encontremos sus casos
+                en los boletines oficiales
+              </CardDescription>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <Shield className="h-10 w-10 text-primary mb-2" />
+              <CardTitle>Datos Verificados</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <CardDescription>
+                Matching exacto con número de caso y juzgado para garantizar
+                precisión y evitar falsos positivos
+              </CardDescription>
+            </CardContent>
+          </Card>
         </div>
-      </main>
+
+        {/* How it Works */}
+        <div className="max-w-3xl mx-auto mt-20 space-y-8">
+          <h2 className="text-3xl font-bold text-center">¿Cómo funciona?</h2>
+
+          <div className="space-y-6">
+            <div className="flex gap-4">
+              <div className="flex-shrink-0 w-10 h-10 rounded-full bg-primary text-primary-foreground flex items-center justify-center font-bold">
+                1
+              </div>
+              <div>
+                <h3 className="font-semibold mb-1">Regístrese gratuitamente</h3>
+                <p className="text-muted-foreground">
+                  Cree su cuenta en menos de 1 minuto. Plan gratuito incluye hasta 10 casos.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex gap-4">
+              <div className="flex-shrink-0 w-10 h-10 rounded-full bg-primary text-primary-foreground flex items-center justify-center font-bold">
+                2
+              </div>
+              <div>
+                <h3 className="font-semibold mb-1">Agregue sus casos</h3>
+                <p className="text-muted-foreground">
+                  Ingrese el número de caso y seleccione el juzgado de nuestra lista completa.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex gap-4">
+              <div className="flex-shrink-0 w-10 h-10 rounded-full bg-primary text-primary-foreground flex items-center justify-center font-bold">
+                3
+              </div>
+              <div>
+                <h3 className="font-semibold mb-1">Reciba alertas automáticas</h3>
+                <p className="text-muted-foreground">
+                  Cuando su caso aparezca en un boletín, recibirá una notificación inmediata.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* CTA */}
+        <div className="max-w-2xl mx-auto mt-20 text-center space-y-6">
+          <h2 className="text-3xl font-bold">
+            Comience a monitorear sus casos hoy
+          </h2>
+          <Link href="/signup">
+            <Button size="lg" className="gap-2">
+              Crear Cuenta Gratis
+            </Button>
+          </Link>
+        </div>
+      </div>
     </div>
-  );
+  )
 }
