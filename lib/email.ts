@@ -247,7 +247,7 @@ export async function sendBatchAlertEmail(data: BatchAlertEmailData): Promise<{ 
       padding: 20px;
     }
     .header {
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      background: #1e293b;
       color: white;
       padding: 30px;
       border-radius: 10px 10px 0 0;
@@ -256,9 +256,10 @@ export async function sendBatchAlertEmail(data: BatchAlertEmailData): Promise<{ 
     .header h1 {
       margin: 0;
       font-size: 24px;
+      font-weight: 600;
     }
     .badge {
-      background: rgba(255,255,255,0.2);
+      background: rgba(255,255,255,0.15);
       padding: 5px 15px;
       border-radius: 20px;
       display: inline-block;
@@ -266,21 +267,21 @@ export async function sendBatchAlertEmail(data: BatchAlertEmailData): Promise<{ 
       font-size: 14px;
     }
     .content {
-      background: #f9f9f9;
+      background: #f8fafc;
       padding: 30px;
       border-radius: 0 0 10px 10px;
     }
     .alert-box {
       background: white;
-      border-left: 4px solid #667eea;
+      border-left: 4px solid #475569;
       padding: 20px;
       margin: 15px 0;
       border-radius: 4px;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      box-shadow: 0 2px 4px rgba(0,0,0,0.08);
     }
     .case-header {
-      font-weight: bold;
-      color: #667eea;
+      font-weight: 600;
+      color: #334155;
       font-size: 16px;
       margin-bottom: 10px;
     }
@@ -304,7 +305,7 @@ export async function sendBatchAlertEmail(data: BatchAlertEmailData): Promise<{ 
     }
     .button {
       display: inline-block;
-      background: #667eea;
+      background: #334155;
       color: white;
       padding: 12px 30px;
       text-decoration: none;
@@ -316,16 +317,17 @@ export async function sendBatchAlertEmail(data: BatchAlertEmailData): Promise<{ 
       text-align: center;
       margin-top: 30px;
       padding-top: 20px;
-      border-top: 1px solid #ddd;
-      color: #999;
+      border-top: 1px solid #e2e8f0;
+      color: #64748b;
       font-size: 12px;
     }
     .summary {
-      background: #e8eaf6;
+      background: #f1f5f9;
       padding: 15px;
       border-radius: 8px;
       margin: 20px 0;
       text-align: center;
+      color: #334155;
     }
   </style>
 </head>
