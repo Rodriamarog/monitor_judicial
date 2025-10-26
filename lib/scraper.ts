@@ -290,6 +290,28 @@ export async function scrapeAllBulletins(date: string, supabaseUrl: string, supa
         bulletin_url: scraped.bulletin_url,
       }));
 
+      // Detect duplicates within the scraped data
+      const seen = new Map<string, typeof entriesToInsert[0]>();
+      const duplicates: Array<{ first: typeof entriesToInsert[0], duplicate: typeof entriesToInsert[0] }> = [];
+
+      for (const entry of entriesToInsert) {
+        const key = `${entry.juzgado}|${entry.case_number}`;
+        const existing = seen.get(key);
+        if (existing) {
+          duplicates.push({ first: existing, duplicate: entry });
+          console.warn(`  ⚠ Duplicate found in ${source.label}:`);
+          console.warn(`    Case: ${entry.case_number} in ${entry.juzgado}`);
+          console.warn(`    First text: ${existing.raw_text.substring(0, 100)}...`);
+          console.warn(`    Duplicate text: ${entry.raw_text.substring(0, 100)}...`);
+        } else {
+          seen.set(key, entry);
+        }
+      }
+
+      if (duplicates.length > 0) {
+        console.warn(`  ⚠ Found ${duplicates.length} duplicates within ${source.label} bulletin`);
+      }
+
       const { error } = await supabase
         .from('bulletin_entries')
         .upsert(entriesToInsert, {
