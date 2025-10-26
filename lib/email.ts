@@ -331,7 +331,7 @@ export async function sendBatchAlertEmail(data: BatchAlertEmailData): Promise<{ 
 </head>
 <body>
   <div class="header">
-    <h1>⚖️ ${alertCount} ${alertCount === 1 ? 'Actualización' : 'Actualizaciones'} en Boletín Judicial</h1>
+    <h1>${alertCount === 1 ? 'Actualización' : 'Actualizaciones'} en Boletín Judicial</h1>
     <div class="badge">${new Date(bulletinDate).toLocaleDateString('es-MX', {
       weekday: 'long',
       year: 'numeric',
@@ -341,38 +341,35 @@ export async function sendBatchAlertEmail(data: BatchAlertEmailData): Promise<{ 
   </div>
 
   <div class="content">
-    <p>Hola${userName ? ' ' + userName : ''},</p>
+    <p>Estimado${userName ? ' ' + userName : ''} usuario,</p>
 
     <div class="summary">
-      <strong>Se ${alertCount === 1 ? 'ha encontrado' : 'han encontrado'} ${alertCount} ${alertCount === 1 ? 'actualización' : 'actualizaciones'} para tus casos monitoreados</strong>
+      Se ${alertCount === 1 ? 'ha detectado' : 'han detectado'} <strong>${alertCount} ${alertCount === 1 ? 'actualización' : 'actualizaciones'}</strong> en los boletines judiciales del Poder Judicial de Baja California.
     </div>
 
     ${alerts.map((alert, index) => `
     <div class="alert-box">
       <div class="case-header">
-        📋 Caso ${index + 1} de ${alertCount}
+        Caso ${index + 1} de ${alertCount}
       </div>
       <div class="detail-row">
-        <span class="label">Número de Caso:</span> ${alert.caseNumber}
+        <span class="label">Número de Expediente:</span> ${alert.caseNumber}
       </div>
-      ${alert.caseName ? `<div class="detail-row"><span class="label">Nombre:</span> ${alert.caseName}</div>` : ''}
+      ${alert.caseName ? `<div class="detail-row"><span class="label">Referencia:</span> ${alert.caseName}</div>` : ''}
       <div class="detail-row">
         <span class="label">Juzgado:</span> ${alert.juzgado}
       </div>
       <div class="case-details">${alert.rawText}</div>
       ${alert.bulletinUrl ? `
-      <div style="text-align: center;">
-        <a href="${alert.bulletinUrl}" class="button">Ver Boletín Original</a>
+      <div style="text-align: center; margin-top: 15px;">
+        <a href="${alert.bulletinUrl}" class="button">Consultar Boletín Oficial</a>
       </div>
       ` : ''}
     </div>
     `).join('')}
 
-    <p style="margin-top: 30px;">
-      <small>
-        <strong>💡 Consejo:</strong> Guarda este correo para tus registros.
-        También puedes ver todas tus alertas en tu panel de control.
-      </small>
+    <p style="margin-top: 30px; color: #666; font-size: 14px;">
+      Puede consultar el detalle completo de estas actualizaciones en su panel de control.
     </p>
   </div>
 
@@ -387,34 +384,45 @@ export async function sendBatchAlertEmail(data: BatchAlertEmailData): Promise<{ 
     `;
 
     const emailText = `
-Monitor Judicial PJBC - ${alertCount} ${alertCount === 1 ? 'Actualización' : 'Actualizaciones'}
+MONITOR JUDICIAL PJBC
+${alertCount} ${alertCount === 1 ? 'Actualización' : 'Actualizaciones'} en Boletín Judicial
 
-Hola${userName ? ' ' + userName : ''},
+Fecha: ${new Date(bulletinDate).toLocaleDateString('es-MX', {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    })}
 
-Se ${alertCount === 1 ? 'ha encontrado' : 'han encontrado'} ${alertCount} ${alertCount === 1 ? 'actualización' : 'actualizaciones'} para tus casos monitoreados el ${bulletinDate}:
+Estimado${userName ? ' ' + userName : ''} usuario,
+
+Se ${alertCount === 1 ? 'ha detectado' : 'han detectado'} ${alertCount} ${alertCount === 1 ? 'actualización' : 'actualizaciones'} en los boletines judiciales del Poder Judicial de Baja California.
 
 ${alerts.map((alert, index) => `
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+────────────────────────────────────────────────
 CASO ${index + 1} de ${alertCount}
 
-Número de Caso: ${alert.caseNumber}
-${alert.caseName ? `Nombre: ${alert.caseName}\n` : ''}Juzgado: ${alert.juzgado}
+Número de Expediente: ${alert.caseNumber}
+${alert.caseName ? `Referencia: ${alert.caseName}\n` : ''}Juzgado: ${alert.juzgado}
 
 Detalles:
 ${alert.rawText}
 
-${alert.bulletinUrl ? `Ver boletín: ${alert.bulletinUrl}\n` : ''}
+${alert.bulletinUrl ? `Consultar boletín oficial: ${alert.bulletinUrl}\n` : ''}
 `).join('\n')}
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+────────────────────────────────────────────────
 
-Monitor Judicial PJBC
+Puede consultar el detalle completo de estas actualizaciones en su panel de control.
+
+Este es un correo automático del sistema Monitor Judicial PJBC.
+No responda a este correo.
     `;
 
     const result = await resend.emails.send({
       from: 'Monitor Judicial PJBC <noreply@urbanedgetj.com>',
       to: userEmail,
-      subject: `⚖️ ${alertCount} ${alertCount === 1 ? 'Actualización' : 'Actualizaciones'} en Boletín Judicial`,
+      subject: `${alertCount === 1 ? 'Actualización' : 'Actualizaciones'} en Boletín Judicial - PJBC`,
       html: emailHtml,
       text: emailText,
     });
