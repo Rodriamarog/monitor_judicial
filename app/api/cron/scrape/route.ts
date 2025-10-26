@@ -7,7 +7,8 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { scrapeAllBulletins } from '@/lib/scraper';
-import { findAndCreateMatches } from '@/lib/matcher';
+import { findAndCreateMatches, getUnsentAlerts, markAlertAsSent } from '@/lib/matcher';
+import { sendAlertEmail } from '@/lib/email';
 
 export const runtime = 'nodejs';
 export const maxDuration = 300; // 5 minutes max execution time
@@ -54,9 +55,67 @@ export async function GET(request: NextRequest) {
       alerts_created: matchResults.alerts_created,
     });
 
-    // Step 3: Send WhatsApp notifications (placeholder for now)
-    // TODO: Implement WhatsApp sending in a separate endpoint
-    // This should be done asynchronously to avoid timeout
+    // Step 3: Send email notifications for new alerts
+    let emailResults = {
+      sent: 0,
+      failed: 0,
+      errors: [] as string[],
+    };
+
+    if (matchResults.alerts_created > 0) {
+      try {
+        const unsentAlerts = await getUnsentAlerts(supabaseUrl, supabaseKey);
+        console.log(`Found ${unsentAlerts.length} unsent alerts to process`);
+
+        for (const alert of unsentAlerts) {
+          const userProfile = alert.user_profiles as any;
+          const monitoredCase = alert.monitored_cases as any;
+          const bulletinEntry = alert.bulletin_entries as any;
+
+          if (!userProfile?.email) {
+            console.warn(`Skipping alert ${alert.id} - no user email`);
+            continue;
+          }
+
+          const emailResult = await sendAlertEmail({
+            userEmail: userProfile.email,
+            userName: userProfile.full_name,
+            caseNumber: monitoredCase.case_number,
+            juzgado: monitoredCase.juzgado,
+            caseName: monitoredCase.nombre,
+            bulletinDate: bulletinEntry.bulletin_date,
+            rawText: bulletinEntry.raw_text,
+            bulletinUrl: bulletinEntry.bulletin_url,
+          });
+
+          // Mark alert as sent (or failed)
+          await markAlertAsSent(
+            alert.id,
+            emailResult.success,
+            emailResult.error || null,
+            supabaseUrl,
+            supabaseKey
+          );
+
+          if (emailResult.success) {
+            emailResults.sent++;
+          } else {
+            emailResults.failed++;
+            if (emailResult.error) {
+              emailResults.errors.push(emailResult.error);
+            }
+          }
+
+          // Small delay to avoid rate limiting
+          await new Promise(resolve => setTimeout(resolve, 100));
+        }
+
+        console.log('Email results:', emailResults);
+      } catch (error) {
+        console.error('Error sending emails:', error);
+        emailResults.errors.push(error instanceof Error ? error.message : 'Unknown error');
+      }
+    }
 
     return NextResponse.json({
       success: true,
@@ -73,6 +132,11 @@ export async function GET(request: NextRequest) {
         matches_found: matchResults.matches_found,
         alerts_created: matchResults.alerts_created,
         sample_matches: matchResults.details.slice(0, 5),
+      },
+      notifications: {
+        emails_sent: emailResults.sent,
+        emails_failed: emailResults.failed,
+        errors: emailResults.errors.slice(0, 5),
       },
     });
   } catch (error) {
