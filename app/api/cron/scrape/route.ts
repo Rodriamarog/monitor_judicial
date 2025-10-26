@@ -8,7 +8,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { scrapeAllBulletins } from '@/lib/scraper';
 import { findAndCreateMatches, getUnsentAlerts, markAlertAsSent } from '@/lib/matcher';
-import { sendAlertEmail } from '@/lib/email';
+import { sendBatchAlertEmail } from '@/lib/email';
 
 export const runtime = 'nodejs';
 export const maxDuration = 300; // 5 minutes max execution time
@@ -67,43 +67,70 @@ export async function GET(request: NextRequest) {
         const unsentAlerts = await getUnsentAlerts(supabaseUrl, supabaseKey);
         console.log(`Found ${unsentAlerts.length} unsent alerts to process`);
 
+        // Group alerts by user_id
+        const alertsByUser = new Map<string, typeof unsentAlerts>();
         for (const alert of unsentAlerts) {
-          const userProfile = alert.user_profiles as any;
-          const monitoredCase = alert.monitored_cases as any;
-          const bulletinEntry = alert.bulletin_entries as any;
+          const userId = alert.user_id;
+          if (!alertsByUser.has(userId)) {
+            alertsByUser.set(userId, []);
+          }
+          alertsByUser.get(userId)!.push(alert);
+        }
+
+        console.log(`Grouped into ${alertsByUser.size} users`);
+
+        // Send one consolidated email per user
+        for (const [userId, userAlerts] of alertsByUser.entries()) {
+          const firstAlert = userAlerts[0];
+          const userProfile = firstAlert.user_profiles as any;
 
           if (!userProfile?.email) {
-            console.warn(`Skipping alert ${alert.id} - no user email`);
+            console.warn(`Skipping ${userAlerts.length} alerts for user ${userId} - no email`);
             continue;
           }
 
-          const emailResult = await sendAlertEmail({
-            userEmail: userProfile.email,
-            userName: userProfile.full_name,
-            caseNumber: monitoredCase.case_number,
-            juzgado: monitoredCase.juzgado,
-            caseName: monitoredCase.nombre,
-            bulletinDate: bulletinEntry.bulletin_date,
-            rawText: bulletinEntry.raw_text,
-            bulletinUrl: bulletinEntry.bulletin_url,
+          // Prepare consolidated alert data
+          const bulletinDate = (firstAlert.bulletin_entries as any).bulletin_date;
+          const alerts = userAlerts.map(alert => {
+            const monitoredCase = alert.monitored_cases as any;
+            const bulletinEntry = alert.bulletin_entries as any;
+            return {
+              caseNumber: monitoredCase.case_number,
+              juzgado: monitoredCase.juzgado,
+              caseName: monitoredCase.nombre,
+              rawText: bulletinEntry.raw_text,
+              bulletinUrl: bulletinEntry.bulletin_url,
+            };
           });
 
-          // Mark alert as sent (or failed)
-          await markAlertAsSent(
-            alert.id,
-            emailResult.success,
-            emailResult.error || null,
-            supabaseUrl,
-            supabaseKey
-          );
+          // Send consolidated email
+          const emailResult = await sendBatchAlertEmail({
+            userEmail: userProfile.email,
+            userName: userProfile.full_name,
+            bulletinDate: bulletinDate,
+            alerts: alerts,
+          });
+
+          // Mark all alerts for this user as sent (or failed)
+          for (const alert of userAlerts) {
+            await markAlertAsSent(
+              alert.id,
+              emailResult.success,
+              emailResult.error || null,
+              supabaseUrl,
+              supabaseKey
+            );
+          }
 
           if (emailResult.success) {
             emailResults.sent++;
+            console.log(`✓ Sent consolidated email to ${userProfile.email} with ${alerts.length} alerts`);
           } else {
             emailResults.failed++;
             if (emailResult.error) {
               emailResults.errors.push(emailResult.error);
             }
+            console.error(`✗ Failed to send to ${userProfile.email}: ${emailResult.error}`);
           }
 
           // Small delay to avoid rate limiting
