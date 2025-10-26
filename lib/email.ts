@@ -184,7 +184,7 @@ Monitor Judicial PJBC
     `;
 
     const result = await resend.emails.send({
-      from: 'Monitor Judicial PJBC <noreply@yourdomain.com>', // You'll need to update this
+      from: 'Monitor Judicial PJBC <onboarding@resend.dev>',
       to: userEmail,
       subject: `⚖️ Actualización: Caso ${caseNumber} - ${juzgado}`,
       html: emailHtml,
