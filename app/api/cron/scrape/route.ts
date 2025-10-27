@@ -31,15 +31,32 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    // Use today's date in Tijuana timezone
-    const today = new Date().toLocaleDateString('en-CA', {
-      timeZone: 'America/Tijuana',
-    });
+    // Get date parameter from query (?date=tomorrow or ?date=YYYY-MM-DD)
+    const { searchParams } = new URL(request.url);
+    const dateParam = searchParams.get('date');
 
-    console.log(`Starting scraper for ${today}`);
+    // Calculate target date
+    let targetDate: string;
+    if (dateParam === 'tomorrow') {
+      // Get tomorrow's date in Tijuana timezone
+      const now = new Date();
+      const tijuanaDate = new Date(now.toLocaleString('en-US', { timeZone: 'America/Tijuana' }));
+      tijuanaDate.setDate(tijuanaDate.getDate() + 1);
+      targetDate = tijuanaDate.toISOString().split('T')[0];
+    } else if (dateParam) {
+      // Use provided date (format: YYYY-MM-DD)
+      targetDate = dateParam;
+    } else {
+      // Default: today's date in Tijuana timezone
+      targetDate = new Date().toLocaleDateString('en-CA', {
+        timeZone: 'America/Tijuana',
+      });
+    }
+
+    console.log(`Starting scraper for ${targetDate}`);
 
     // Step 1: Scrape all bulletins
-    const scrapeResults = await scrapeAllBulletins(today, supabaseUrl, supabaseKey);
+    const scrapeResults = await scrapeAllBulletins(targetDate, supabaseUrl, supabaseKey);
 
     console.log('Scrape results:', {
       successful: scrapeResults.successful,
@@ -48,7 +65,7 @@ export async function GET(request: NextRequest) {
     });
 
     // Step 2: Find matches and create alerts
-    const matchResults = await findAndCreateMatches(today, supabaseUrl, supabaseKey);
+    const matchResults = await findAndCreateMatches(targetDate, supabaseUrl, supabaseKey);
 
     console.log('Match results:', {
       matches_found: matchResults.matches_found,
@@ -146,7 +163,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      date: today,
+      date: targetDate,
       scraping: {
         sources_scraped: scrapeResults.successful,
         sources_failed: scrapeResults.failed,

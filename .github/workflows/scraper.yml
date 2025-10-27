@@ -1,0 +1,42 @@
+name: Smart Bulletin Scraper
+
+on:
+  schedule:
+    # Morning check: 9am Tijuana (16:00 UTC) - Mon-Fri
+    - cron: '0 16 * * 1-5'
+
+    # Afternoon check: 2pm Tijuana (21:00 UTC) - Mon-Fri
+    - cron: '0 21 * * 1-5'
+
+    # Evening check: 8pm Tijuana (03:00 UTC next day) - Mon-Fri
+    # This catches bulletins published at night for next day
+    - cron: '0 3 * * 2-6'
+
+  # Allow manual trigger for testing
+  workflow_dispatch:
+    inputs:
+      check_tomorrow:
+        description: 'Also check tomorrow bulletin'
+        required: false
+        default: 'false'
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Trigger scraper (current day)
+        run: |
+          curl -X GET "${{ secrets.VERCEL_DEPLOYMENT_URL }}/api/cron/scrape" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            -f || echo "Current day scrape failed or returned no results"
+
+      - name: Trigger scraper (next day - evening check only)
+        if: github.event.schedule == '0 3 * * 2-6' || github.event.inputs.check_tomorrow == 'true'
+        run: |
+          curl -X GET "${{ secrets.VERCEL_DEPLOYMENT_URL }}/api/cron/scrape?date=tomorrow" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            -f || echo "Next day scrape failed or returned no results"
+
+      - name: Log completion
+        run: echo "Scraper workflow completed at $(date)"
