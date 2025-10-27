@@ -78,6 +78,11 @@ function parseTableCases($: cheerio.CheerioAPI, table: cheerio.Cheerio<any>, juz
       details = $(cells[1]).text().trim();
     }
 
+    // Normalize whitespace in case number (remove newlines, multiple spaces)
+    if (caseNumber) {
+      caseNumber = caseNumber.replace(/\s+/g, ' ').trim();
+    }
+
     // Validate case number format (e.g., "00696/2019")
     if (!caseNumber || !details || !/\d{4,5}\/\d{4}/.test(caseNumber)) {
       return;
