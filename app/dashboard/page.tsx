@@ -2,18 +2,10 @@ import { createClient } from '@/lib/supabase/server'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table'
-import { Badge } from '@/components/ui/badge'
-import { Plus, Trash2 } from 'lucide-react'
+import { Plus } from 'lucide-react'
 import { redirect } from 'next/navigation'
 import { revalidatePath } from 'next/cache'
+import { CasesTable } from '@/components/cases-table'
 
 export default async function DashboardPage() {
   const supabase = await createClient()
@@ -108,43 +100,7 @@ export default async function DashboardPage() {
               </Link>
             </div>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Número de Caso</TableHead>
-                  <TableHead>Juzgado</TableHead>
-                  <TableHead>Nombre</TableHead>
-                  <TableHead>Fecha de Registro</TableHead>
-                  <TableHead className="text-right">Acciones</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {cases.map((case_) => (
-                  <TableRow key={case_.id}>
-                    <TableCell className="font-mono">{case_.case_number}</TableCell>
-                    <TableCell>
-                      <div className="max-w-xs truncate">{case_.juzgado}</div>
-                    </TableCell>
-                    <TableCell>{case_.nombre || '-'}</TableCell>
-                    <TableCell>
-                      {new Date(case_.created_at).toLocaleDateString('es-MX')}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <form action={handleDelete.bind(null, case_.id)}>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="gap-2 text-destructive hover:text-destructive"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                          Eliminar
-                        </Button>
-                      </form>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+            <CasesTable cases={cases} onDelete={handleDelete} />
           )}
         </CardContent>
       </Card>
