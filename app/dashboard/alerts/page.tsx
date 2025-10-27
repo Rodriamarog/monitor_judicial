@@ -53,33 +53,31 @@ export default async function AlertsPage() {
         </p>
       </div>
 
-      {/* Stats Cards */}
-      <div className="grid gap-4 md:grid-cols-3">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardDescription>Total de Alertas</CardDescription>
-            <CardTitle className="text-3xl">{totalAlerts}</CardTitle>
-          </CardHeader>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardDescription className="flex items-center gap-2">
-              <Clock className="h-4 w-4" />
-              Pendientes de Envío
-            </CardDescription>
-            <CardTitle className="text-3xl">{unsentAlerts}</CardTitle>
-          </CardHeader>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardDescription className="flex items-center gap-2">
-              <CheckCircle2 className="h-4 w-4" />
-              Notificadas
-            </CardDescription>
-            <CardTitle className="text-3xl">{sentAlerts}</CardTitle>
-          </CardHeader>
-        </Card>
-      </div>
+      {/* Compact Stats Card */}
+      <Card>
+        <CardContent className="p-4">
+          <div className="grid grid-cols-3 gap-4 text-center">
+            <div>
+              <p className="text-xs text-muted-foreground mb-1">Total</p>
+              <p className="text-2xl font-bold">{totalAlerts}</p>
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground mb-1 flex items-center justify-center gap-1">
+                <Clock className="h-3 w-3" />
+                Pendientes
+              </p>
+              <p className="text-2xl font-bold">{unsentAlerts}</p>
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground mb-1 flex items-center justify-center gap-1">
+                <CheckCircle2 className="h-3 w-3" />
+                Notificadas
+              </p>
+              <p className="text-2xl font-bold">{sentAlerts}</p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Placeholder Notice */}
       {unsentAlerts > 0 && (
