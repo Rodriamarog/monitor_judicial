@@ -69,27 +69,25 @@ export default async function DashboardPage() {
         </Link>
       </div>
 
-      {/* Stats Card */}
-      <div className="grid gap-4 md:grid-cols-3">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardDescription>Casos Monitoreados</CardDescription>
-            <CardTitle className="text-3xl">{caseCount}</CardTitle>
-          </CardHeader>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardDescription>Plan Actual</CardDescription>
-            <CardTitle className="text-3xl capitalize">{tier}</CardTitle>
-          </CardHeader>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardDescription>Disponibles</CardDescription>
-            <CardTitle className="text-3xl">{maxCases - caseCount}</CardTitle>
-          </CardHeader>
-        </Card>
-      </div>
+      {/* Compact Stats Card */}
+      <Card>
+        <CardContent className="p-4">
+          <div className="grid grid-cols-3 gap-4 text-center">
+            <div>
+              <p className="text-xs text-muted-foreground mb-1">Monitoreados</p>
+              <p className="text-2xl font-bold">{caseCount}</p>
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground mb-1">Plan</p>
+              <p className="text-2xl font-bold capitalize">{tier}</p>
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground mb-1">Disponibles</p>
+              <p className="text-2xl font-bold">{maxCases - caseCount}</p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Cases Table */}
       <Card>
