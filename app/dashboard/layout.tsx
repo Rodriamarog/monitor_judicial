@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Scale, FileText, Bell, LogOut } from 'lucide-react'
 import { MobileNav } from '@/components/mobile-nav'
+import { SubscriptionButton } from '@/components/subscription-button'
 
 export default async function DashboardLayout({
   children,
@@ -37,7 +38,7 @@ export default async function DashboardLayout({
   return (
     <div className="min-h-screen bg-background">
       {/* Navigation Bar */}
-      <nav className="border-b bg-card">
+      <nav className="neuro-flat border-none">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center space-x-4">
             {/* Mobile Menu */}
@@ -78,6 +79,10 @@ export default async function DashboardLayout({
                 Plan: {profile?.subscription_tier || 'free'}
               </p>
             </div>
+            <SubscriptionButton
+              tier={profile?.subscription_tier || 'free'}
+              hasStripeCustomer={!!profile?.stripe_customer_id}
+            />
             <form action={handleSignOut}>
               <Button variant="outline" size="sm" className="gap-2">
                 <LogOut className="h-4 w-4" />

@@ -291,3 +291,100 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* Neumorphic Design Utilities */
+@layer components {
+  .neuro-raised {
+    background: var(--background);
+    box-shadow:
+      8px 8px 16px rgba(163, 177, 198, 0.6),
+      -8px -8px 16px rgba(255, 255, 255, 0.5);
+  }
+
+  .neuro-pressed {
+    background: var(--background);
+    box-shadow:
+      inset 8px 8px 16px rgba(163, 177, 198, 0.6),
+      inset -8px -8px 16px rgba(255, 255, 255, 0.5);
+  }
+
+  .neuro-flat {
+    background: var(--background);
+    box-shadow:
+      4px 4px 8px rgba(163, 177, 198, 0.4),
+      -4px -4px 8px rgba(255, 255, 255, 0.4);
+  }
+
+  .dark .neuro-raised {
+    box-shadow:
+      8px 8px 16px rgba(0, 0, 0, 0.4),
+      -8px -8px 16px rgba(255, 255, 255, 0.05);
+  }
+
+  .dark .neuro-pressed {
+    box-shadow:
+      inset 8px 8px 16px rgba(0, 0, 0, 0.4),
+      inset -8px -8px 16px rgba(255, 255, 255, 0.05);
+  }
+
+  .dark .neuro-flat {
+    box-shadow:
+      4px 4px 8px rgba(0, 0, 0, 0.3),
+      -4px -4px 8px rgba(255, 255, 255, 0.03);
+  }
+
+  /* Neumorphic Button Styles */
+  .neuro-btn {
+    @apply neuro-raised rounded-2xl px-6 py-3 font-medium transition-all duration-200;
+  }
+
+  .neuro-btn:hover {
+    box-shadow:
+      12px 12px 20px rgba(163, 177, 198, 0.7),
+      -12px -12px 20px rgba(255, 255, 255, 0.6);
+  }
+
+  .neuro-btn:active {
+    @apply neuro-pressed;
+  }
+
+  .dark .neuro-btn:hover {
+    box-shadow:
+      12px 12px 20px rgba(0, 0, 0, 0.5),
+      -12px -12px 20px rgba(255, 255, 255, 0.08);
+  }
+
+  /* Neumorphic Card Styles */
+  .neuro-card {
+    @apply neuro-raised rounded-3xl p-6 transition-all duration-300;
+  }
+
+  .neuro-card:hover {
+    box-shadow:
+      10px 10px 18px rgba(163, 177, 198, 0.65),
+      -10px -10px 18px rgba(255, 255, 255, 0.55);
+  }
+
+  .dark .neuro-card:hover {
+    box-shadow:
+      10px 10px 18px rgba(0, 0, 0, 0.45),
+      -10px -10px 18px rgba(255, 255, 255, 0.06);
+  }
+
+  /* Neumorphic Input Styles */
+  .neuro-input {
+    @apply neuro-pressed rounded-xl px-4 py-3 bg-transparent outline-none transition-all duration-200;
+  }
+
+  .neuro-input:focus {
+    box-shadow:
+      inset 6px 6px 12px rgba(163, 177, 198, 0.5),
+      inset -6px -6px 12px rgba(255, 255, 255, 0.4);
+  }
+
+  .dark .neuro-input:focus {
+    box-shadow:
+      inset 6px 6px 12px rgba(0, 0, 0, 0.35),
+      inset -6px -6px 12px rgba(255, 255, 255, 0.04);
+  }
+}

@@ -21,16 +21,39 @@ The scraper runs **Monday-Friday only** at:
 
 ### 1. Add GitHub Secrets
 
+You have two options for setting up secrets:
+
+#### Option A: Automated Setup (Recommended)
+
+Run the provided setup script:
+
+```bash
+# Install GitHub CLI (if not already installed)
+sudo apt install gh
+
+# Authenticate with GitHub
+gh auth login
+
+# Run the automated setup script
+./setup-github-secrets.sh
+```
+
+The script will automatically configure:
+- `VERCEL_DEPLOYMENT_URL` = `https://monitor-judicial.vercel.app`
+- `CRON_SECRET` = Your current cron secret from `.env.local`
+
+#### Option B: Manual Setup
+
 Go to your GitHub repository → **Settings** → **Secrets and variables** → **Actions**
 
 Click **"New repository secret"** and add these two secrets:
 
-#### Secret 1: `VERCEL_DEPLOYMENT_URL`
+**Secret 1: `VERCEL_DEPLOYMENT_URL`**
 - **Value:** Your production Vercel URL
 - **Example:** `https://monitor-judicial.vercel.app`
 - Find it in: Vercel Dashboard → Your Project → Domains → Production domain
 
-#### Secret 2: `CRON_SECRET`
+**Secret 2: `CRON_SECRET`**
 - **Value:** Same as your `CRON_SECRET` environment variable
 - **Example:** `dev-test-secret-12345` (use your actual secret!)
 - Find it in: `.env.local` file or Vercel → Settings → Environment Variables
@@ -52,7 +75,21 @@ git push
 2. Click the **Actions** tab
 3. If prompted, click **"I understand my workflows, go ahead and enable them"**
 
-### 4. Test the Workflow
+### 4. Verify Setup
+
+Run the verification script to check everything is configured correctly:
+
+```bash
+./verify-github-actions.sh
+```
+
+This will check:
+- ✅ Workflow file exists
+- ✅ GitHub CLI available (optional)
+- 📊 Workflow status
+- 📋 Recent workflow runs
+
+### 5. Test the Workflow
 
 **Manual Test:**
 1. Go to **Actions** tab
@@ -68,7 +105,7 @@ git push
 - Green checkmark = Success ✅
 - Red X = Failed ❌ (check logs for errors)
 
-### 5. Monitor Runs
+### 6. Monitor Runs
 
 **View Past Runs:**
 - Go to **Actions** tab
