@@ -9,6 +9,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { scrapeAllBulletins } from '@/lib/scraper';
 import { findAndCreateMatches, getUnsentAlerts, markAlertAsSent } from '@/lib/matcher';
 import { sendBatchAlertEmail } from '@/lib/email';
+import { sendWhatsAppAlert, formatToWhatsApp } from '@/lib/whatsapp';
 
 export const runtime = 'nodejs';
 export const maxDuration = 300; // 5 minutes max execution time
@@ -128,6 +129,32 @@ export async function GET(request: NextRequest) {
             alerts: alerts,
           });
 
+          // Send WhatsApp notification if user has it enabled and phone number
+          if (userProfile.whatsapp_enabled && userProfile.phone) {
+            try {
+              const whatsappNumber = formatToWhatsApp(userProfile.phone);
+              const whatsappResult = await sendWhatsAppAlert({
+                to: whatsappNumber,
+                userName: userProfile.full_name,
+                bulletinDate: bulletinDate,
+                alerts: alerts.map(a => ({
+                  caseNumber: a.caseNumber,
+                  juzgado: a.juzgado,
+                  caseName: a.caseName,
+                  rawText: a.rawText,
+                })),
+              });
+
+              if (whatsappResult.success) {
+                console.log(`✓ Sent WhatsApp to ${userProfile.phone} (${whatsappResult.messageId})`);
+              } else {
+                console.error(`✗ Failed WhatsApp to ${userProfile.phone}: ${whatsappResult.error}`);
+              }
+            } catch (whatsappError) {
+              console.error(`WhatsApp error for ${userProfile.phone}:`, whatsappError);
+            }
+          }
+
           // Mark all alerts for this user as sent (or failed)
           for (const alert of userAlerts) {
             await markAlertAsSent(
@@ -151,7 +178,7 @@ export async function GET(request: NextRequest) {
           }
 
           // Small delay to avoid rate limiting
-          await new Promise(resolve => setTimeout(resolve, 100));
+          await new Promise(resolve => setTimeout(resolve, 200));
         }
 
         console.log('Email results:', emailResults);

@@ -28,6 +28,8 @@ interface UserProfile {
   id: string;
   email: string;
   phone: string | null;
+  full_name: string | null;
+  whatsapp_enabled: boolean;
 }
 
 interface MatchResult {
