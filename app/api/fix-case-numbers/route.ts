@@ -1,8 +1,11 @@
 /**
- * Fix Case Numbers - Clean up newlines in existing case numbers
+ * Fix Case Numbers - Normalize case numbers in the database
  *
- * One-time cleanup script to normalize case numbers in the database
- * This fixes the bug where case numbers had embedded newlines like "EXP\n  00017/2025"
+ * One-time cleanup script to normalize case numbers by:
+ * 1. Removing embedded newlines and extra whitespace
+ * 2. Removing letter prefixes (EXP, CA-EVF, etc.)
+ *
+ * This ensures all case numbers are in the format: "00017/2025" (no prefixes)
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -28,11 +31,12 @@ export async function POST(request: NextRequest) {
   const supabase = createClient(supabaseUrl, supabaseKey);
 
   try {
-    // Get all bulletin entries with newlines in case numbers
+    // Get all bulletin entries that need normalization
+    // (those with newlines, prefixes, or extra whitespace)
     const { data: entries, error: fetchError } = await supabase
       .from('bulletin_entries')
       .select('id, case_number')
-      .like('case_number', '%\n%');
+      .or('case_number.like.%\n%,case_number.like.%  %,case_number.like.EXP %,case_number.like.CA-%');
 
     if (fetchError) {
       throw fetchError;
@@ -46,15 +50,18 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    console.log(`Found ${entries.length} case numbers with newlines`);
+    console.log(`Found ${entries.length} case numbers that need normalization`);
 
     // Fix each one
     let fixed = 0;
     let errors = 0;
 
     for (const entry of entries) {
-      // Normalize whitespace: replace all whitespace (including newlines) with single space
-      const cleanedCaseNumber = entry.case_number.replace(/\s+/g, ' ').trim();
+      // Normalize case number:
+      // 1. Replace all whitespace (including newlines) with single space
+      // 2. Remove letter prefixes (EXP, CA-EVF, etc.)
+      let cleanedCaseNumber = entry.case_number.replace(/\s+/g, ' ').trim();
+      cleanedCaseNumber = cleanedCaseNumber.replace(/^[A-Z\-\s]+/, '').trim();
 
       const { error: updateError } = await supabase
         .from('bulletin_entries')

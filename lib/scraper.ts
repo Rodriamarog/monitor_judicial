@@ -78,9 +78,14 @@ function parseTableCases($: cheerio.CheerioAPI, table: cheerio.Cheerio<any>, juz
       details = $(cells[1]).text().trim();
     }
 
-    // Normalize whitespace in case number (remove newlines, multiple spaces)
+    // Normalize case number:
+    // 1. Remove newlines and multiple spaces
+    // 2. Remove letter prefixes (EXP, CA-EVF, etc.)
     if (caseNumber) {
       caseNumber = caseNumber.replace(/\s+/g, ' ').trim();
+      // Remove any letter prefixes, dashes, and leading spaces
+      // E.g., "EXP 00017/2025" -> "00017/2025", "CA-EVF 00120/2025" -> "00120/2025"
+      caseNumber = caseNumber.replace(/^[A-Z\-\s]+/, '').trim();
     }
 
     // Validate case number format (e.g., "00696/2019")
