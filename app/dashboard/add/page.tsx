@@ -89,19 +89,54 @@ export default function AddCasePage() {
     }
 
     // Insert new case
-    const { error: insertError } = await supabase.from('monitored_cases').insert([
-      {
-        user_id: user.id,
-        case_number: caseNumber,
-        juzgado: juzgado,
-        nombre: nombre || null,
-      },
-    ])
+    const { data: insertedCase, error: insertError } = await supabase
+      .from('monitored_cases')
+      .insert([
+        {
+          user_id: user.id,
+          case_number: caseNumber,
+          juzgado: juzgado,
+          nombre: nombre || null,
+        },
+      ])
+      .select()
+      .single()
 
     if (insertError) {
       setError('Error al agregar caso: ' + insertError.message)
       setLoading(false)
       return
+    }
+
+    // Check historical bulletins for this case
+    try {
+      const historyResponse = await fetch('/api/check-history', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          monitored_case_id: insertedCase.id,
+          case_number: caseNumber,
+          juzgado: juzgado,
+        }),
+      })
+
+      const historyData = await historyResponse.json()
+
+      if (historyData.success && historyData.matchesFound > 0) {
+        setSuccess(true)
+        setError(
+          `Caso agregado exitosamente. Se encontraron ${historyData.matchesFound} apariciones en los últimos 30 días. Puedes verlas en la sección de Alertas.`
+        )
+        setLoading(false)
+        setTimeout(() => {
+          router.push('/dashboard/alerts')
+          router.refresh()
+        }, 3000)
+        return
+      }
+    } catch (historyError) {
+      console.error('Error checking history:', historyError)
+      // Continue anyway - historical check is optional
     }
 
     setSuccess(true)

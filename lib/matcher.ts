@@ -245,3 +245,96 @@ export async function markAlertAsSent(
     throw error;
   }
 }
+
+/**
+ * Check historical bulletins for a specific case (last 30 days)
+ * Creates alerts for any matches found
+ */
+export async function checkHistoricalMatches(
+  userId: string,
+  monitoredCaseId: string,
+  caseNumber: string,
+  juzgado: string,
+  supabaseUrl: string,
+  supabaseKey: string
+): Promise<{
+  matchesFound: number;
+  alertsCreated: number;
+  matches: Array<{
+    bulletin_date: string;
+    raw_text: string;
+    bulletin_url: string;
+  }>;
+}> {
+  const supabase = createClient(supabaseUrl, supabaseKey);
+
+  // Calculate date 30 days ago
+  const thirtyDaysAgo = new Date();
+  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+  const startDate = thirtyDaysAgo.toISOString().split('T')[0];
+
+  console.log(`Checking historical bulletins for ${caseNumber} in ${juzgado} since ${startDate}`);
+
+  // Search for matching bulletin entries in the last 30 days
+  const { data: bulletinEntries, error: searchError } = await supabase
+    .from('bulletin_entries')
+    .select('id, bulletin_date, raw_text, bulletin_url, source')
+    .eq('case_number', caseNumber)
+    .eq('juzgado', juzgado)
+    .gte('bulletin_date', startDate)
+    .order('bulletin_date', { ascending: false });
+
+  if (searchError) {
+    console.error('Error searching historical bulletins:', searchError);
+    throw searchError;
+  }
+
+  const matchesFound = bulletinEntries?.length || 0;
+
+  if (!bulletinEntries || bulletinEntries.length === 0) {
+    console.log('No historical matches found');
+    return {
+      matchesFound: 0,
+      alertsCreated: 0,
+      matches: [],
+    };
+  }
+
+  console.log(`Found ${matchesFound} historical matches`);
+
+  // Create alerts for each historical match
+  const alertsToCreate = bulletinEntries.map((entry) => ({
+    user_id: userId,
+    monitored_case_id: monitoredCaseId,
+    bulletin_entry_id: entry.id,
+    matched_on: 'case_number',
+    matched_value: caseNumber,
+  }));
+
+  const { data: createdAlerts, error: alertsError } = await supabase
+    .from('alerts')
+    .upsert(alertsToCreate, {
+      onConflict: 'user_id,bulletin_entry_id,monitored_case_id',
+      ignoreDuplicates: true,
+    })
+    .select();
+
+  if (alertsError) {
+    console.error('Error creating historical alerts:', alertsError);
+    throw alertsError;
+  }
+
+  const alertsCreated = createdAlerts?.length || 0;
+  console.log(`Created ${alertsCreated} alerts for historical matches`);
+
+  // Return summary
+  return {
+    matchesFound,
+    alertsCreated,
+    matches: bulletinEntries.map((entry) => ({
+      bulletin_date: entry.bulletin_date,
+      raw_text: entry.raw_text,
+      bulletin_url: entry.bulletin_url,
+    })),
+  };
+}
