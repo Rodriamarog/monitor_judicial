@@ -20,6 +20,7 @@ interface Case {
   juzgado: string
   nombre: string | null
   created_at: string
+  alert_count: number
 }
 
 interface CasesTableProps {
@@ -125,6 +126,7 @@ export function CasesTable({ cases, onDelete }: CasesTableProps) {
         <TableHeader>
           <TableRow>
             <TableHead>Número de Caso</TableHead>
+            <TableHead className="w-20">Alertas</TableHead>
             <TableHead>Juzgado</TableHead>
             <TableHead>Nombre</TableHead>
             <TableHead>
@@ -148,7 +150,7 @@ export function CasesTable({ cases, onDelete }: CasesTableProps) {
         <TableBody>
           {paginatedCases.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
+              <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
                 {searchQuery ? 'No se encontraron casos' : 'No tiene casos registrados'}
               </TableCell>
             </TableRow>
@@ -156,6 +158,23 @@ export function CasesTable({ cases, onDelete }: CasesTableProps) {
             paginatedCases.map((case_) => (
               <TableRow key={case_.id}>
                 <TableCell className="font-mono">{case_.case_number}</TableCell>
+                <TableCell>
+                  <div className="flex items-center gap-2">
+                    <div
+                      className={`w-3 h-3 rounded-full ${
+                        case_.alert_count > 0 ? 'bg-green-500' : 'bg-gray-300'
+                      }`}
+                      title={
+                        case_.alert_count > 0
+                          ? `${case_.alert_count} ${case_.alert_count === 1 ? 'alerta' : 'alertas'}`
+                          : 'Sin alertas'
+                      }
+                    />
+                    {case_.alert_count > 0 && (
+                      <span className="text-xs text-muted-foreground">{case_.alert_count}</span>
+                    )}
+                  </div>
+                </TableCell>
                 <TableCell>
                   <div className="max-w-xs truncate">{case_.juzgado}</div>
                 </TableCell>

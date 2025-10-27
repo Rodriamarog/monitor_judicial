@@ -32,6 +32,25 @@ export default async function DashboardPage() {
     .eq('id', user.id)
     .single()
 
+  // Get alert counts for each case
+  const { data: alerts } = await supabase
+    .from('alerts')
+    .select('monitored_case_id')
+    .eq('user_id', user.id)
+
+  // Create a map of case_id -> alert_count
+  const alertCounts = new Map<string, number>()
+  alerts?.forEach((alert) => {
+    const caseId = alert.monitored_case_id
+    alertCounts.set(caseId, (alertCounts.get(caseId) || 0) + 1)
+  })
+
+  // Add alert count to each case
+  const casesWithAlerts = cases?.map((case_) => ({
+    ...case_,
+    alert_count: alertCounts.get(case_.id) || 0,
+  }))
+
   const caseCount = cases?.length || 0
   const tier = profile?.subscription_tier || 'free'
   const maxCases = tier === 'free' ? 10 : tier === 'basic' ? 100 : 500
@@ -90,7 +109,7 @@ export default async function DashboardPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {!cases || cases.length === 0 ? (
+          {!casesWithAlerts || casesWithAlerts.length === 0 ? (
             <div className="text-center py-12">
               <p className="text-muted-foreground mb-4">
                 No tiene casos registrados aún
@@ -100,7 +119,7 @@ export default async function DashboardPage() {
               </Link>
             </div>
           ) : (
-            <CasesTable cases={cases} onDelete={handleDelete} />
+            <CasesTable cases={casesWithAlerts} onDelete={handleDelete} />
           )}
         </CardContent>
       </Card>
