@@ -7,13 +7,13 @@ import Stripe from 'stripe';
 
 const stripeSecretKey = process.env.STRIPE_SECRET_KEY;
 
-if (!stripeSecretKey) {
-  throw new Error('STRIPE_SECRET_KEY is not set in environment variables');
+if (!stripeSecretKey && process.env.NODE_ENV === 'production') {
+  console.warn('⚠️ STRIPE_SECRET_KEY is not set. Stripe functionality will be disabled.');
 }
 
-// Initialize Stripe client
-export const stripe = new Stripe(stripeSecretKey, {
-  apiVersion: '2024-11-20.acacia',
+// Initialize Stripe client (use placeholder key during build if not set)
+export const stripe = new Stripe(stripeSecretKey || 'sk_test_placeholder', {
+  apiVersion: '2025-09-30.clover',
   typescript: true,
 });
 

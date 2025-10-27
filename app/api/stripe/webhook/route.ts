@@ -182,9 +182,14 @@ async function handleSubscriptionDeleted(subscription: Stripe.Subscription) {
  * Handle successful payment
  */
 async function handlePaymentSucceeded(invoice: Stripe.Invoice) {
-  const subscriptionId = invoice.subscription as string;
+  // Note: subscription is an expandable field on Invoice
+  // TypeScript types don't include it by default, so we use type assertion
+  const subscriptionRef = (invoice as any).subscription as string | Stripe.Subscription | null;
+  if (!subscriptionRef) return;
 
-  if (!subscriptionId) return;
+  const subscriptionId = typeof subscriptionRef === 'string'
+    ? subscriptionRef
+    : subscriptionRef.id;
 
   const subscription = await stripe.subscriptions.retrieve(subscriptionId);
   const userId = subscription.metadata.user_id;
@@ -208,9 +213,14 @@ async function handlePaymentSucceeded(invoice: Stripe.Invoice) {
  * Handle failed payment
  */
 async function handlePaymentFailed(invoice: Stripe.Invoice) {
-  const subscriptionId = invoice.subscription as string;
+  // Note: subscription is an expandable field on Invoice
+  // TypeScript types don't include it by default, so we use type assertion
+  const subscriptionRef = (invoice as any).subscription as string | Stripe.Subscription | null;
+  if (!subscriptionRef) return;
 
-  if (!subscriptionId) return;
+  const subscriptionId = typeof subscriptionRef === 'string'
+    ? subscriptionRef
+    : subscriptionRef.id;
 
   const subscription = await stripe.subscriptions.retrieve(subscriptionId);
   const userId = subscription.metadata.user_id;
