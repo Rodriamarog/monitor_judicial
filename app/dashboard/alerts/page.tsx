@@ -20,7 +20,7 @@ export default async function AlertsPage() {
 
   // Get user's alerts with related case and bulletin data
   const { data: alerts, error } = await supabase
-    .from('user_alerts')
+    .from('alerts')
     .select(`
       *,
       monitored_cases (
