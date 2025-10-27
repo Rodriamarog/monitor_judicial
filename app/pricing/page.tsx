@@ -1,50 +1,7 @@
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
-import { PricingCard, PricingTier } from '@/components/pricing-card'
 import { createClient } from '@/lib/supabase/server'
-
-const PRICING_TIERS: PricingTier[] = [
-  {
-    name: 'Gratis',
-    price: 0,
-    description: 'Perfecto para comenzar',
-    maxCases: 10,
-    features: [
-      '10 casos monitoreados',
-      'Alertas por email',
-      'Acceso al dashboard',
-      'Historial de 30 días',
-    ],
-  },
-  {
-    name: 'Básico',
-    price: 299,
-    description: 'Para profesionales independientes',
-    maxCases: 100,
-    isPopular: true,
-    features: [
-      '100 casos monitoreados',
-      'Alertas por email',
-      'Alertas por WhatsApp',
-      'Historial de 30 días',
-      'Soporte por email',
-    ],
-  },
-  {
-    name: 'Profesional',
-    price: 999,
-    description: 'Para despachos y equipos',
-    maxCases: 500,
-    features: [
-      '500 casos monitoreados',
-      'Alertas por email',
-      'Alertas por WhatsApp',
-      'Historial ilimitado',
-      'Soporte prioritario',
-      'Exportación de datos',
-    ],
-  },
-]
+import { PricingSection } from './pricing-section'
 
 export default async function PricingPage() {
   const supabase = await createClient()
@@ -91,22 +48,7 @@ export default async function PricingPage() {
           </p>
         </div>
 
-        <div className="grid md:grid-cols-3 gap-8 mb-12">
-          {PRICING_TIERS.map((tier) => (
-            <PricingCard
-              key={tier.name}
-              tier={tier}
-              onSelect={() => {
-                // Redirect to signup or upgrade page
-                if (user) {
-                  window.location.href = '/upgrade'
-                } else {
-                  window.location.href = '/signup'
-                }
-              }}
-            />
-          ))}
-        </div>
+        <PricingSection isAuthenticated={!!user} />
 
         {/* FAQ Section */}
         <div className="mt-16 max-w-3xl mx-auto">
