@@ -125,8 +125,8 @@ export function CasesTable({ cases, onDelete }: CasesTableProps) {
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead>Número de Caso</TableHead>
             <TableHead className="w-20">Alertas</TableHead>
+            <TableHead>Número de Caso</TableHead>
             <TableHead>Juzgado</TableHead>
             <TableHead>Nombre</TableHead>
             <TableHead>
@@ -157,7 +157,6 @@ export function CasesTable({ cases, onDelete }: CasesTableProps) {
           ) : (
             paginatedCases.map((case_) => (
               <TableRow key={case_.id}>
-                <TableCell className="font-mono">{case_.case_number}</TableCell>
                 <TableCell>
                   <div className="flex items-center gap-2">
                     <div
@@ -175,6 +174,7 @@ export function CasesTable({ cases, onDelete }: CasesTableProps) {
                     )}
                   </div>
                 </TableCell>
+                <TableCell className="font-mono">{case_.case_number}</TableCell>
                 <TableCell>
                   <div className="max-w-xs truncate">{case_.juzgado}</div>
                 </TableCell>
