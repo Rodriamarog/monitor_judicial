@@ -11,7 +11,8 @@ import {
 } from '@/components/ui/table'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Trash2, Search, ChevronUp, ChevronDown } from 'lucide-react'
+import { Trash2, Search, ChevronUp, ChevronDown, Loader2 } from 'lucide-react'
+import { toast } from 'sonner'
 import { formatTijuanaDate } from '@/lib/date-utils'
 
 interface Case {
@@ -33,6 +34,7 @@ export function CasesTable({ cases, onDelete }: CasesTableProps) {
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
   const [page, setPage] = useState(0)
   const [rowsPerPage, setRowsPerPage] = useState(10)
+  const [deletingCaseId, setDeletingCaseId] = useState<string | null>(null)
 
   // Calculate rows per page based on window height
   useEffect(() => {
@@ -104,6 +106,17 @@ export function CasesTable({ cases, onDelete }: CasesTableProps) {
   const handleSearch = (value: string) => {
     setSearchQuery(value)
     setPage(0) // Reset to first page when searching
+  }
+
+  const handleDelete = async (caseId: string) => {
+    setDeletingCaseId(caseId)
+    try {
+      await onDelete(caseId)
+      toast.success('Caso eliminado exitosamente')
+    } catch (error) {
+      toast.error('Error al eliminar el caso')
+      setDeletingCaseId(null)
+    }
   }
 
   return (
@@ -181,14 +194,24 @@ export function CasesTable({ cases, onDelete }: CasesTableProps) {
                 <TableCell>{case_.nombre || '-'}</TableCell>
                 <TableCell>{formatTijuanaDate(case_.created_at)}</TableCell>
                 <TableCell className="text-right">
-                  <form action={() => onDelete(case_.id)}>
+                  <form action={() => handleDelete(case_.id)}>
                     <Button
                       variant="ghost"
                       size="sm"
                       className="gap-2 text-destructive hover:text-destructive"
+                      disabled={deletingCaseId === case_.id}
                     >
-                      <Trash2 className="h-4 w-4" />
-                      <span className="hidden sm:inline">Eliminar</span>
+                      {deletingCaseId === case_.id ? (
+                        <>
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                          <span className="hidden sm:inline">Eliminando...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Trash2 className="h-4 w-4" />
+                          <span className="hidden sm:inline">Eliminar</span>
+                        </>
+                      )}
                     </Button>
                   </form>
                 </TableCell>

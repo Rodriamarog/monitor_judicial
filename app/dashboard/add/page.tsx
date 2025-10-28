@@ -7,7 +7,6 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Alert, AlertDescription } from '@/components/ui/alert'
 import {
   Select,
   SelectContent,
@@ -16,27 +15,29 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { ALL_JUZGADOS, JUZGADOS_BY_REGION } from '@/lib/juzgados'
-import { ArrowLeft } from 'lucide-react'
+import { ArrowLeft, Loader2 } from 'lucide-react'
 import Link from 'next/link'
+import { toast } from 'sonner'
 
 export default function AddCasePage() {
   const [caseNumber, setCaseNumber] = useState('')
   const [juzgado, setJuzgado] = useState('')
   const [nombre, setNombre] = useState('')
-  const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
   const [loading, setLoading] = useState(false)
   const router = useRouter()
   const supabase = createClient()
 
+  console.log('AddCasePage render - loading:', loading)
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    setError(null)
+    console.log('Form submitted, setting loading to true')
     setLoading(true)
 
     // Validate case number format
     if (!/^\d{4,5}\/\d{4}$/.test(caseNumber)) {
-      setError('Formato de caso inválido. Use el formato: 12345/2024')
+      toast.error('Formato de caso inválido. Use el formato: 12345/2024')
       setLoading(false)
       return
     }
@@ -47,7 +48,7 @@ export default function AddCasePage() {
     } = await supabase.auth.getUser()
 
     if (!user) {
-      setError('Debe iniciar sesión')
+      toast.error('Debe iniciar sesión')
       setLoading(false)
       return
     }
@@ -68,7 +69,7 @@ export default function AddCasePage() {
     const maxCases = tier === 'basico' ? 10 : tier === 'profesional' ? 100 : 500
 
     if ((count || 0) >= maxCases) {
-      setError(`Ha alcanzado el límite de ${maxCases} casos para su plan ${tier}`)
+      toast.error(`Ha alcanzado el límite de ${maxCases} casos para su plan ${tier}`)
       setLoading(false)
       return
     }
@@ -83,7 +84,7 @@ export default function AddCasePage() {
       .single()
 
     if (existing) {
-      setError('Este caso ya está siendo monitoreado')
+      toast.error('Este caso ya está siendo monitoreado')
       setLoading(false)
       return
     }
@@ -103,7 +104,7 @@ export default function AddCasePage() {
       .single()
 
     if (insertError) {
-      setError('Error al agregar caso: ' + insertError.message)
+      toast.error('Error al agregar caso: ' + insertError.message)
       setLoading(false)
       return
     }
@@ -124,8 +125,9 @@ export default function AddCasePage() {
 
       if (historyData.success && historyData.matchesFound > 0) {
         setSuccess(true)
-        setError(
-          `Caso agregado exitosamente. Se encontraron ${historyData.matchesFound} apariciones en los últimos 30 días. Puedes verlas en la sección de Alertas.`
+        toast.success(
+          `¡Caso agregado! Se encontraron ${historyData.matchesFound} apariciones en los últimos 30 días`,
+          { duration: 3000 }
         )
         setLoading(false)
         setTimeout(() => {
@@ -140,6 +142,7 @@ export default function AddCasePage() {
     }
 
     setSuccess(true)
+    toast.success('¡Caso agregado exitosamente!', { duration: 2000 })
     setTimeout(() => {
       router.push('/dashboard')
       router.refresh()
@@ -167,20 +170,6 @@ export default function AddCasePage() {
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-6">
-            {error && (
-              <Alert variant="destructive">
-                <AlertDescription>{error}</AlertDescription>
-              </Alert>
-            )}
-
-            {success && (
-              <Alert>
-                <AlertDescription>
-                  ¡Caso agregado exitosamente! Redirigiendo...
-                </AlertDescription>
-              </Alert>
-            )}
-
             {/* Case Number */}
             <div className="space-y-2">
               <Label htmlFor="caseNumber">
@@ -246,11 +235,22 @@ export default function AddCasePage() {
 
             {/* Submit Button */}
             <div className="flex gap-4">
-              <Button type="submit" className="flex-1" disabled={loading || success}>
-                {loading ? 'Agregando...' : 'Agregar Caso'}
+              <Button
+                type="submit"
+                className="flex-1"
+                disabled={loading || success}
+              >
+                {loading ? (
+                  <span className="flex items-center justify-center gap-2">
+                    <Loader2 className="h-5 w-5 animate-spin" />
+                    <span>Agregando...</span>
+                  </span>
+                ) : (
+                  'Agregar Caso'
+                )}
               </Button>
               <Link href="/dashboard">
-                <Button type="button" variant="outline">
+                <Button type="button" variant="outline" disabled={loading}>
                   Cancelar
                 </Button>
               </Link>

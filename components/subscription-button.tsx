@@ -3,7 +3,8 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
-import { CreditCard, Sparkles } from 'lucide-react'
+import { CreditCard, Sparkles, Loader2 } from 'lucide-react'
+import { toast } from 'sonner'
 
 interface SubscriptionButtonProps {
   tier: string
@@ -41,7 +42,7 @@ export function SubscriptionButton({ tier, hasStripeCustomer }: SubscriptionButt
         }
       } catch (error) {
         console.error('Portal error:', error)
-        alert('Error al abrir el portal de suscripción')
+        toast.error('Error al abrir el portal de suscripción')
         setIsLoading(false)
       }
     } else {
@@ -59,7 +60,12 @@ export function SubscriptionButton({ tier, hasStripeCustomer }: SubscriptionButt
       onClick={handleClick}
       disabled={isLoading}
     >
-      {tier === 'free' ? (
+      {isLoading ? (
+        <>
+          <Loader2 className="h-4 w-4 animate-spin" />
+          <span className="hidden sm:inline">Cargando...</span>
+        </>
+      ) : tier === 'free' ? (
         <>
           <Sparkles className="h-4 w-4" />
           <span className="hidden sm:inline">Mejorar Plan</span>
