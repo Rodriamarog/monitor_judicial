@@ -132,10 +132,10 @@ export function CasesTable({ cases, onDelete }: CasesTableProps) {
         <TableHeader>
           <TableRow>
             <TableHead className="w-20">Alertas</TableHead>
-            <TableHead>Número de Caso</TableHead>
-            <TableHead>Juzgado</TableHead>
-            <TableHead>Nombre</TableHead>
-            <TableHead>
+            <TableHead className="w-32">Número de Caso</TableHead>
+            <TableHead className="w-48">Juzgado</TableHead>
+            <TableHead className="min-w-[200px]">Nombre</TableHead>
+            <TableHead className="w-40">
               <Button
                 variant="ghost"
                 size="sm"
@@ -150,7 +150,7 @@ export function CasesTable({ cases, onDelete }: CasesTableProps) {
                 )}
               </Button>
             </TableHead>
-            <TableHead className="text-right">Acciones</TableHead>
+            <TableHead className="text-right w-28">Acciones</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -182,9 +182,13 @@ export function CasesTable({ cases, onDelete }: CasesTableProps) {
                 </TableCell>
                 <TableCell className="font-mono">{case_.case_number}</TableCell>
                 <TableCell>
-                  <div className="max-w-xs truncate">{case_.juzgado}</div>
+                  <div className="truncate" title={case_.juzgado}>{case_.juzgado}</div>
                 </TableCell>
-                <TableCell>{case_.nombre || '-'}</TableCell>
+                <TableCell>
+                  <div className="min-w-[200px]" title={case_.nombre || '-'}>
+                    {case_.nombre || '-'}
+                  </div>
+                </TableCell>
                 <TableCell>{formatTijuanaDate(case_.created_at)}</TableCell>
                 <TableCell className="text-right">
                   <Button
