@@ -104,9 +104,6 @@ export default async function DashboardPage() {
       <Card>
         <CardHeader>
           <CardTitle>Lista de Casos</CardTitle>
-          <CardDescription>
-            Todos los casos que está monitoreando actualmente
-          </CardDescription>
         </CardHeader>
         <CardContent>
           {!casesWithAlerts || casesWithAlerts.length === 0 ? (
