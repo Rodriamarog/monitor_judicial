@@ -2,9 +2,10 @@ import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
-import { Scale, FileText, Bell, LogOut } from 'lucide-react'
+import { Scale, FileText, Bell } from 'lucide-react'
 import { MobileNav } from '@/components/mobile-nav'
 import { SubscriptionButton } from '@/components/subscription-button'
+import { SignOutButton } from '@/components/sign-out-button'
 
 export default async function DashboardLayout({
   children,
@@ -27,13 +28,6 @@ export default async function DashboardLayout({
     .select('*')
     .eq('id', user.id)
     .single()
-
-  const handleSignOut = async () => {
-    'use server'
-    const supabase = await createClient()
-    await supabase.auth.signOut()
-    redirect('/login')
-  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -83,12 +77,7 @@ export default async function DashboardLayout({
               tier={profile?.subscription_tier || 'free'}
               hasStripeCustomer={!!profile?.stripe_customer_id}
             />
-            <form action={handleSignOut}>
-              <Button variant="outline" size="sm" className="gap-2">
-                <LogOut className="h-4 w-4" />
-                <span className="hidden sm:inline">Salir</span>
-              </Button>
-            </form>
+            <SignOutButton />
           </div>
         </div>
       </nav>

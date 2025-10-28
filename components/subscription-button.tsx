@@ -16,6 +16,9 @@ export function SubscriptionButton({ tier, hasStripeCustomer }: SubscriptionButt
   const [isLoading, setIsLoading] = useState(false)
 
   const handleClick = async () => {
+    console.log('SubscriptionButton clicked, tier:', tier)
+    setIsLoading(true)
+
     // If user has no subscription (free tier), redirect to upgrade page
     if (tier === 'free') {
       router.push('/upgrade')
@@ -25,8 +28,6 @@ export function SubscriptionButton({ tier, hasStripeCustomer }: SubscriptionButt
     // If user has active subscription, open customer portal
     if (hasStripeCustomer) {
       try {
-        setIsLoading(true)
-
         const response = await fetch('/api/stripe/create-portal-session', {
           method: 'POST',
         })
