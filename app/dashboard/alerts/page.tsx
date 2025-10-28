@@ -55,25 +55,25 @@ export default async function AlertsPage() {
 
       {/* Compact Stats Card */}
       <Card>
-        <CardContent className="p-3">
-          <div className="grid grid-cols-3 gap-3 text-center">
+        <CardContent className="py-2 px-3">
+          <div className="grid grid-cols-3 gap-2 text-center">
             <div>
-              <p className="text-xs text-muted-foreground mb-0.5">Total</p>
-              <p className="text-xl font-bold">{totalAlerts}</p>
+              <p className="text-xs text-muted-foreground">Total</p>
+              <p className="text-lg font-bold">{totalAlerts}</p>
             </div>
             <div>
-              <p className="text-xs text-muted-foreground mb-0.5 flex items-center justify-center gap-1">
+              <p className="text-xs text-muted-foreground flex items-center justify-center gap-1">
                 <Clock className="h-3 w-3" />
                 Pendientes
               </p>
-              <p className="text-xl font-bold">{unsentAlerts}</p>
+              <p className="text-lg font-bold">{unsentAlerts}</p>
             </div>
             <div>
-              <p className="text-xs text-muted-foreground mb-0.5 flex items-center justify-center gap-1">
+              <p className="text-xs text-muted-foreground flex items-center justify-center gap-1">
                 <CheckCircle2 className="h-3 w-3" />
                 Notificadas
               </p>
-              <p className="text-xl font-bold">{sentAlerts}</p>
+              <p className="text-lg font-bold">{sentAlerts}</p>
             </div>
           </div>
         </CardContent>

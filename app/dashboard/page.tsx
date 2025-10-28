@@ -82,19 +82,19 @@ export default async function DashboardPage() {
 
       {/* Compact Stats Card */}
       <Card>
-        <CardContent className="p-3">
-          <div className="grid grid-cols-3 gap-3 text-center">
+        <CardContent className="py-2 px-3">
+          <div className="grid grid-cols-3 gap-2 text-center">
             <div>
-              <p className="text-xs text-muted-foreground mb-0.5">Monitoreados</p>
-              <p className="text-xl font-bold">{caseCount}</p>
+              <p className="text-xs text-muted-foreground">Monitoreados</p>
+              <p className="text-lg font-bold">{caseCount}</p>
             </div>
             <div>
-              <p className="text-xs text-muted-foreground mb-0.5">Plan</p>
-              <p className="text-xl font-bold capitalize">{tier}</p>
+              <p className="text-xs text-muted-foreground">Plan</p>
+              <p className="text-lg font-bold capitalize">{tier}</p>
             </div>
             <div>
-              <p className="text-xs text-muted-foreground mb-0.5">Disponibles</p>
-              <p className="text-xl font-bold">{maxCases - caseCount}</p>
+              <p className="text-xs text-muted-foreground">Disponibles</p>
+              <p className="text-lg font-bold">{maxCases - caseCount}</p>
             </div>
           </div>
         </CardContent>
