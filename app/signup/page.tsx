@@ -53,23 +53,14 @@ export default function SignupPage() {
       return
     }
 
-    // Create user profile
+    // User profile is automatically created by database trigger
     if (authData.user) {
-      const { error: profileError } = await supabase
-        .from('user_profiles')
-        .insert([
-          {
-            id: authData.user.id,
-            email: email,
-            phone: phone || null,
-            subscription_tier: 'basico',
-          },
-        ])
-
-      if (profileError) {
-        setError('Error al crear el perfil: ' + profileError.message)
-        setLoading(false)
-        return
+      // Update phone if provided
+      if (phone) {
+        await supabase
+          .from('user_profiles')
+          .update({ phone: phone })
+          .eq('id', authData.user.id)
       }
 
       setSuccess(true)
