@@ -63,11 +63,22 @@ export default function SignupPage() {
           .eq('id', authData.user.id)
       }
 
-      setSuccess(true)
-      setTimeout(() => {
-        router.push('/dashboard')
-        router.refresh()
-      }, 1500)
+      // Check if email confirmation is required
+      const session = authData.session
+
+      if (!session) {
+        // Email confirmation required
+        setError(null)
+        setSuccess(true)
+        // Don't redirect, show confirmation message
+      } else {
+        // Email confirmation not required or already confirmed
+        setSuccess(true)
+        setTimeout(() => {
+          router.push('/dashboard')
+          router.refresh()
+        }, 1500)
+      }
     }
   }
 
@@ -91,7 +102,9 @@ export default function SignupPage() {
             {success && (
               <Alert>
                 <AlertDescription>
-                  ¡Cuenta creada exitosamente! Redirigiendo...
+                  ¡Cuenta creada exitosamente!
+                  <br />
+                  <strong>Por favor revise su correo electrónico</strong> y haga clic en el enlace de confirmación para activar su cuenta.
                 </AlertDescription>
               </Alert>
             )}
