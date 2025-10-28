@@ -187,26 +187,25 @@ export function CasesTable({ cases, onDelete }: CasesTableProps) {
                 <TableCell>{case_.nombre || '-'}</TableCell>
                 <TableCell>{formatTijuanaDate(case_.created_at)}</TableCell>
                 <TableCell className="text-right">
-                  <form action={() => handleDelete(case_.id)}>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="gap-2 text-destructive hover:text-destructive"
-                      disabled={deletingCaseId === case_.id}
-                    >
-                      {deletingCaseId === case_.id ? (
-                        <>
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                          <span className="hidden sm:inline">Eliminando...</span>
-                        </>
-                      ) : (
-                        <>
-                          <Trash2 className="h-4 w-4" />
-                          <span className="hidden sm:inline">Eliminar</span>
-                        </>
-                      )}
-                    </Button>
-                  </form>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="gap-2 text-destructive hover:text-destructive"
+                    onClick={() => handleDelete(case_.id)}
+                    disabled={deletingCaseId === case_.id}
+                  >
+                    {deletingCaseId === case_.id ? (
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        <span className="hidden sm:inline">Eliminando...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Trash2 className="h-4 w-4" />
+                        <span className="hidden sm:inline">Eliminar</span>
+                      </>
+                    )}
+                  </Button>
                 </TableCell>
               </TableRow>
             ))
