@@ -134,7 +134,7 @@ export function CasesTable({ cases, onDelete }: CasesTableProps) {
             <TableHead className="w-20">Alertas</TableHead>
             <TableHead className="w-32">Número de Caso</TableHead>
             <TableHead className="w-48">Juzgado</TableHead>
-            <TableHead className="min-w-[200px]">Nombre</TableHead>
+            <TableHead className="min-w-[200px] md:min-w-0">Nombre</TableHead>
             <TableHead className="w-40">
               <Button
                 variant="ghost"
@@ -185,7 +185,7 @@ export function CasesTable({ cases, onDelete }: CasesTableProps) {
                   <div className="truncate" title={case_.juzgado}>{case_.juzgado}</div>
                 </TableCell>
                 <TableCell>
-                  <div className="min-w-[200px]" title={case_.nombre || '-'}>
+                  <div className="min-w-[200px] md:min-w-0" title={case_.nombre || '-'}>
                     {case_.nombre || '-'}
                   </div>
                 </TableCell>
