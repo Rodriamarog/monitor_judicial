@@ -47,15 +47,13 @@ export function HowItWorks() {
                     {step.step}
                   </div>
 
-                  {/* Icon inline with title */}
-                  <div className="flex items-center justify-center gap-3 mb-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-amber-100">
-                      <step.icon className="h-6 w-6 text-amber-600" />
-                    </div>
-                    <h3 className="text-xl font-semibold text-foreground">{step.name}</h3>
+                  {/* Icon - centered above title */}
+                  <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-lg bg-amber-100">
+                    <step.icon className="h-6 w-6 text-amber-600" />
                   </div>
 
                   {/* Content */}
+                  <h3 className="text-xl font-semibold text-foreground">{step.name}</h3>
                   <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{step.description}</p>
                 </div>
               </div>
