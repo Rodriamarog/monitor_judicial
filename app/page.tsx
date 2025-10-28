@@ -77,15 +77,15 @@ export default async function Home() {
     <div className="min-h-screen bg-background">
       {/* Navigation */}
       <nav className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="mx-auto max-w-7xl px-6 lg:px-8">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="flex h-16 items-center justify-between">
-            <span className="text-xl font-bold">Monitor Judicial PJBC</span>
-            <div className="flex gap-4">
+            <span className="text-sm sm:text-xl font-bold">Monitor Judicial PJBC</span>
+            <div className="flex gap-2 sm:gap-4">
               <Link href="/login">
-                <Button variant="ghost">Iniciar Sesión</Button>
+                <Button variant="ghost" size="sm" className="sm:h-10">Iniciar Sesión</Button>
               </Link>
               <Link href="/signup">
-                <Button>Comenzar Gratis</Button>
+                <Button size="sm" className="sm:h-10">Comenzar Gratis</Button>
               </Link>
             </div>
           </div>

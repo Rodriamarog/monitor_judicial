@@ -47,7 +47,7 @@ export default async function DashboardLayout({
             {/* Logo */}
             <Link href="/dashboard" className="flex items-center space-x-2">
               <Scale className="h-6 w-6" />
-              <span className="font-bold text-lg hidden sm:inline">Monitor Judicial</span>
+              <span className="font-bold text-lg">Monitor Judicial</span>
             </Link>
 
             {/* Desktop Menu */}
