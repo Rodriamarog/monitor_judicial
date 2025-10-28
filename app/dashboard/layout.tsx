@@ -47,20 +47,23 @@ export default async function DashboardLayout({
             {/* Desktop Menu */}
             <div className="hidden md:flex items-center space-x-1 ml-6">
               <Link href="/dashboard">
-                <Button variant="ghost" className="gap-2">
+                <Button variant="ghost" className="gap-2 cursor-pointer relative group">
                   <FileText className="h-4 w-4" />
                   Mis Casos
+                  <span className="absolute inset-0 -z-10 bg-accent rounded-md scale-x-0 group-hover:scale-x-100 transition-transform origin-left" />
                 </Button>
               </Link>
               <Link href="/dashboard/add">
-                <Button variant="ghost">
+                <Button variant="ghost" className="cursor-pointer relative group">
                   Agregar Caso
+                  <span className="absolute inset-0 -z-10 bg-accent rounded-md scale-x-0 group-hover:scale-x-100 transition-transform origin-center" />
                 </Button>
               </Link>
               <Link href="/dashboard/alerts">
-                <Button variant="ghost" className="gap-2">
+                <Button variant="ghost" className="gap-2 cursor-pointer relative group">
                   <Bell className="h-4 w-4" />
                   Alertas
+                  <span className="absolute inset-0 -z-10 bg-accent rounded-md scale-x-0 group-hover:scale-x-100 transition-transform origin-right" />
                 </Button>
               </Link>
             </div>

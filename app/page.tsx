@@ -82,10 +82,15 @@ export default async function Home() {
             <span className="text-sm sm:text-xl font-bold">Monitor Judicial PJBC</span>
             <div className="flex gap-2 sm:gap-4">
               <Link href="/login">
-                <Button variant="ghost" size="sm" className="sm:h-10">Iniciar Sesión</Button>
+                <Button variant="ghost" size="sm" className="sm:h-10 cursor-pointer relative group">
+                  Iniciar Sesión
+                  <span className="absolute inset-0 -z-10 bg-accent rounded-md scale-x-0 group-hover:scale-x-100 transition-transform origin-left" />
+                </Button>
               </Link>
               <Link href="/signup">
-                <Button size="sm" className="sm:h-10">Comenzar Gratis</Button>
+                <Button size="sm" className="sm:h-10 cursor-pointer">
+                  Comenzar Gratis
+                </Button>
               </Link>
             </div>
           </div>
