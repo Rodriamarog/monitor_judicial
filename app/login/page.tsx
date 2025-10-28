@@ -30,7 +30,12 @@ export default function LoginPage() {
     })
 
     if (loginError) {
-      setError(loginError.message)
+      // Check if it's an email confirmation error
+      if (loginError.message.includes('Email not confirmed')) {
+        setError('Por favor confirme su correo electrónico antes de iniciar sesión. Revise su bandeja de entrada.')
+      } else {
+        setError(loginError.message)
+      }
       setLoading(false)
     } else {
       router.push('/dashboard')
