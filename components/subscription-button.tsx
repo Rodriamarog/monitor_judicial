@@ -4,7 +4,6 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { CreditCard, Sparkles, Loader2 } from 'lucide-react'
-import { toast } from 'sonner'
 
 interface SubscriptionButtonProps {
   tier: string
@@ -16,7 +15,6 @@ export function SubscriptionButton({ tier, hasStripeCustomer }: SubscriptionButt
   const [isLoading, setIsLoading] = useState(false)
 
   const handleClick = async () => {
-    console.log('SubscriptionButton clicked, tier:', tier)
     setIsLoading(true)
 
     // If user has no subscription (free tier), redirect to upgrade page
@@ -43,7 +41,6 @@ export function SubscriptionButton({ tier, hasStripeCustomer }: SubscriptionButt
         }
       } catch (error) {
         console.error('Portal error:', error)
-        toast.error('Error al abrir el portal de suscripción')
         setIsLoading(false)
       }
     } else {

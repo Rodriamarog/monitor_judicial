@@ -12,7 +12,6 @@ import {
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Trash2, Search, ChevronUp, ChevronDown, Loader2 } from 'lucide-react'
-import { toast } from 'sonner'
 import { formatTijuanaDate } from '@/lib/date-utils'
 
 interface Case {
@@ -110,13 +109,7 @@ export function CasesTable({ cases, onDelete }: CasesTableProps) {
 
   const handleDelete = async (caseId: string) => {
     setDeletingCaseId(caseId)
-    try {
-      await onDelete(caseId)
-      toast.success('Caso eliminado exitosamente')
-    } catch (error) {
-      toast.error('Error al eliminar el caso')
-      setDeletingCaseId(null)
-    }
+    await onDelete(caseId)
   }
 
   return (

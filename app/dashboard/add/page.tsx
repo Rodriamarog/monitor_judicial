@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Alert, AlertDescription } from '@/components/ui/alert'
 import {
   Select,
   SelectContent,
@@ -17,27 +18,25 @@ import {
 import { ALL_JUZGADOS, JUZGADOS_BY_REGION } from '@/lib/juzgados'
 import { ArrowLeft, Loader2 } from 'lucide-react'
 import Link from 'next/link'
-import { toast } from 'sonner'
 
 export default function AddCasePage() {
   const [caseNumber, setCaseNumber] = useState('')
   const [juzgado, setJuzgado] = useState('')
   const [nombre, setNombre] = useState('')
+  const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
   const [loading, setLoading] = useState(false)
   const router = useRouter()
   const supabase = createClient()
 
-  console.log('AddCasePage render - loading:', loading)
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    console.log('Form submitted, setting loading to true')
+    setError(null)
     setLoading(true)
 
     // Validate case number format
     if (!/^\d{4,5}\/\d{4}$/.test(caseNumber)) {
-      toast.error('Formato de caso inválido. Use el formato: 12345/2024')
+      setError('Formato de caso inválido. Use el formato: 12345/2024')
       setLoading(false)
       return
     }
@@ -48,7 +47,7 @@ export default function AddCasePage() {
     } = await supabase.auth.getUser()
 
     if (!user) {
-      toast.error('Debe iniciar sesión')
+      setError('Debe iniciar sesión')
       setLoading(false)
       return
     }
@@ -69,7 +68,7 @@ export default function AddCasePage() {
     const maxCases = tier === 'basico' ? 10 : tier === 'profesional' ? 100 : 500
 
     if ((count || 0) >= maxCases) {
-      toast.error(`Ha alcanzado el límite de ${maxCases} casos para su plan ${tier}`)
+      setError(`Ha alcanzado el límite de ${maxCases} casos para su plan ${tier}`)
       setLoading(false)
       return
     }
@@ -84,7 +83,7 @@ export default function AddCasePage() {
       .single()
 
     if (existing) {
-      toast.error('Este caso ya está siendo monitoreado')
+      setError('Este caso ya está siendo monitoreado')
       setLoading(false)
       return
     }
@@ -104,7 +103,7 @@ export default function AddCasePage() {
       .single()
 
     if (insertError) {
-      toast.error('Error al agregar caso: ' + insertError.message)
+      setError('Error al agregar caso: ' + insertError.message)
       setLoading(false)
       return
     }
@@ -125,15 +124,11 @@ export default function AddCasePage() {
 
       if (historyData.success && historyData.matchesFound > 0) {
         setSuccess(true)
-        toast.success(
-          `¡Caso agregado! Se encontraron ${historyData.matchesFound} apariciones en los últimos 30 días`,
-          { duration: 3000 }
-        )
         setLoading(false)
         setTimeout(() => {
           router.push('/dashboard/alerts')
           router.refresh()
-        }, 3000)
+        }, 2000)
         return
       }
     } catch (historyError) {
@@ -142,11 +137,10 @@ export default function AddCasePage() {
     }
 
     setSuccess(true)
-    toast.success('¡Caso agregado exitosamente!', { duration: 2000 })
     setTimeout(() => {
       router.push('/dashboard')
       router.refresh()
-    }, 1500)
+    }, 1000)
   }
 
   return (
@@ -170,6 +164,20 @@ export default function AddCasePage() {
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-6">
+            {error && (
+              <Alert variant="destructive">
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
+            )}
+
+            {success && (
+              <Alert>
+                <AlertDescription>
+                  ¡Caso agregado exitosamente! Redirigiendo...
+                </AlertDescription>
+              </Alert>
+            )}
+
             {/* Case Number */}
             <div className="space-y-2">
               <Label htmlFor="caseNumber">
