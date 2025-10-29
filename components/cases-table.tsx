@@ -224,6 +224,7 @@ export function CasesTable({ cases, onDelete }: CasesTableProps) {
               size="sm"
               onClick={() => setPage((p) => Math.max(0, p - 1))}
               disabled={page === 0}
+              className="cursor-pointer"
             >
               Anterior
             </Button>
@@ -232,6 +233,7 @@ export function CasesTable({ cases, onDelete }: CasesTableProps) {
               size="sm"
               onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
               disabled={page === totalPages - 1}
+              className="cursor-pointer"
             >
               Siguiente
             </Button>
