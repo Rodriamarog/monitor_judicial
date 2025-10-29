@@ -29,17 +29,31 @@ export default function AddCasePage() {
   const router = useRouter()
   const supabase = createClient()
 
+  // Normalize case number to 5 digits / 4 digits format
+  const normalizeCaseNumber = (input: string): string => {
+    const match = input.match(/^(\d{1,5})\/(\d{4})$/)
+    if (!match) return input
+
+    const [, caseNum, year] = match
+    // Pad case number to 5 digits with leading zeros
+    const paddedCaseNum = caseNum.padStart(5, '0')
+    return `${paddedCaseNum}/${year}`
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError(null)
     setLoading(true)
 
-    // Validate case number format
-    if (!/^\d{4,5}\/\d{4}$/.test(caseNumber)) {
-      setError('Formato de caso inválido. Use el formato: 12345/2024')
+    // Validate case number format (1-5 digits, slash, exactly 4 digits)
+    if (!/^\d{1,5}\/\d{4}$/.test(caseNumber)) {
+      setError('Formato de caso inválido. Use el formato: 00000/0000 (ej: 00342/2025)')
       setLoading(false)
       return
     }
+
+    // Normalize the case number
+    const normalizedCaseNumber = normalizeCaseNumber(caseNumber)
 
     // Get user
     const {
@@ -78,7 +92,7 @@ export default function AddCasePage() {
       .from('monitored_cases')
       .select('*')
       .eq('user_id', user.id)
-      .eq('case_number', caseNumber)
+      .eq('case_number', normalizedCaseNumber)
       .eq('juzgado', juzgado)
       .single()
 
@@ -94,7 +108,7 @@ export default function AddCasePage() {
       .insert([
         {
           user_id: user.id,
-          case_number: caseNumber,
+          case_number: normalizedCaseNumber,
           juzgado: juzgado,
           nombre: nombre || null,
         },
@@ -115,7 +129,7 @@ export default function AddCasePage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           monitored_case_id: insertedCase.id,
-          case_number: caseNumber,
+          case_number: normalizedCaseNumber,
           juzgado: juzgado,
         }),
       })
@@ -186,13 +200,13 @@ export default function AddCasePage() {
               <Input
                 id="caseNumber"
                 type="text"
-                placeholder="Ejemplo: 12345/2024"
+                placeholder="Ejemplo: 342/2025 o 01234/2024"
                 value={caseNumber}
                 onChange={(e) => setCaseNumber(e.target.value)}
                 required
               />
               <p className="text-xs text-muted-foreground">
-                Formato: números/año (ej: 12345/2024)
+                Formato: hasta 5 dígitos/año (ej: 342/2025). Se normalizará automáticamente.
               </p>
             </div>
 

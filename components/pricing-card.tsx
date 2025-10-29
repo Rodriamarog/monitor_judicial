@@ -68,7 +68,7 @@ export function PricingCard({ tier, onSelect, isLoading }: PricingCardProps) {
           </Button>
         ) : (
           <Button
-            className="w-full"
+            className="w-full cursor-pointer"
             onClick={handleSelect}
             disabled={isLoading || !tier.priceId}
           >

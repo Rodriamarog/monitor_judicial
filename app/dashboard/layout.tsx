@@ -41,7 +41,7 @@ export default async function DashboardLayout({
             {/* Logo */}
             <Link href="/dashboard" className="flex items-center space-x-2">
               <Scale className="h-6 w-6" />
-              <span className="font-bold text-lg">Monitor Judicial</span>
+              <span className="font-bold text-sm md:text-lg">Monitor Judicial</span>
             </Link>
 
             {/* Desktop Menu */}
@@ -51,12 +51,6 @@ export default async function DashboardLayout({
                   <FileText className="h-4 w-4" />
                   Mis Casos
                   <span className="absolute inset-0 -z-10 bg-accent rounded-md scale-x-0 group-hover:scale-x-100 transition-transform origin-left" />
-                </Button>
-              </Link>
-              <Link href="/dashboard/add">
-                <Button variant="ghost" className="cursor-pointer relative group">
-                  Agregar Caso
-                  <span className="absolute inset-0 -z-10 bg-accent rounded-md scale-x-0 group-hover:scale-x-100 transition-transform origin-center" />
                 </Button>
               </Link>
               <Link href="/dashboard/alerts">

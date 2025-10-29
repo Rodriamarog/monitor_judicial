@@ -131,8 +131,8 @@ export function CasesTable({ cases, onDelete }: CasesTableProps) {
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead className="w-16">Alertas</TableHead>
-            <TableHead className="min-w-[200px] md:min-w-0">Nombre</TableHead>
+            <TableHead className="w-12">Alertas</TableHead>
+            <TableHead className="min-w-[150px] md:min-w-0">Nombre</TableHead>
             <TableHead className="w-32">Número de Caso</TableHead>
             <TableHead className="w-48">Juzgado</TableHead>
             <TableHead className="w-40">
@@ -140,7 +140,7 @@ export function CasesTable({ cases, onDelete }: CasesTableProps) {
                 variant="ghost"
                 size="sm"
                 onClick={toggleSortOrder}
-                className="gap-1 hover:bg-transparent p-0"
+                className="gap-1 hover:bg-transparent p-0 cursor-pointer"
               >
                 Fecha de Registro
                 {sortOrder === 'desc' ? (
@@ -176,7 +176,7 @@ export function CasesTable({ cases, onDelete }: CasesTableProps) {
                   />
                 </TableCell>
                 <TableCell>
-                  <div className="min-w-[200px] md:min-w-0" title={case_.nombre || '-'}>
+                  <div className="min-w-[150px] md:min-w-0" title={case_.nombre || '-'}>
                     {case_.nombre || '-'}
                   </div>
                 </TableCell>
@@ -189,7 +189,7 @@ export function CasesTable({ cases, onDelete }: CasesTableProps) {
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="gap-2 text-destructive hover:text-destructive"
+                    className="gap-2 text-destructive hover:text-destructive cursor-pointer"
                     onClick={() => handleDelete(case_.id)}
                     disabled={deletingCaseId === case_.id}
                   >

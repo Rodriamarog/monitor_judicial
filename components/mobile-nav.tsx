@@ -10,7 +10,7 @@ import {
   SheetTitle,
   SheetTrigger,
 } from '@/components/ui/sheet'
-import { Menu, FileText, Bell, Plus, Settings } from 'lucide-react'
+import { Menu, FileText, Bell, Settings } from 'lucide-react'
 
 export function MobileNav() {
   const [open, setOpen] = useState(false)
@@ -32,12 +32,6 @@ export function MobileNav() {
             <Button variant="ghost" className="w-full justify-start gap-2">
               <FileText className="h-4 w-4" />
               Mis Casos
-            </Button>
-          </Link>
-          <Link href="/dashboard/add" onClick={() => setOpen(false)}>
-            <Button variant="ghost" className="w-full justify-start gap-2">
-              <Plus className="h-4 w-4" />
-              Agregar Caso
             </Button>
           </Link>
           <Link href="/dashboard/alerts" onClick={() => setOpen(false)}>
