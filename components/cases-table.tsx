@@ -131,7 +131,7 @@ export function CasesTable({ cases, onDelete }: CasesTableProps) {
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead className="w-12">Alertas</TableHead>
+            <TableHead className="w-8 text-center">Alertas</TableHead>
             <TableHead className="min-w-[150px] md:min-w-0">Nombre</TableHead>
             <TableHead className="w-32">Número de Caso</TableHead>
             <TableHead className="w-48">Juzgado</TableHead>
@@ -163,17 +163,19 @@ export function CasesTable({ cases, onDelete }: CasesTableProps) {
           ) : (
             paginatedCases.map((case_) => (
               <TableRow key={case_.id}>
-                <TableCell>
-                  <div
-                    className={`w-3 h-3 rounded-full ${
-                      case_.alert_count > 0 ? 'bg-green-500' : 'bg-gray-300'
-                    }`}
-                    title={
-                      case_.alert_count > 0
-                        ? `${case_.alert_count} ${case_.alert_count === 1 ? 'alerta' : 'alertas'}`
-                        : 'Sin alertas'
-                    }
-                  />
+                <TableCell className="text-center">
+                  <div className="flex justify-center">
+                    <div
+                      className={`w-3 h-3 rounded-full ${
+                        case_.alert_count > 0 ? 'bg-green-500' : 'bg-gray-300'
+                      }`}
+                      title={
+                        case_.alert_count > 0
+                          ? `${case_.alert_count} ${case_.alert_count === 1 ? 'alerta' : 'alertas'}`
+                          : 'Sin alertas'
+                      }
+                    />
+                  </div>
                 </TableCell>
                 <TableCell>
                   <div className="min-w-[150px] md:min-w-0" title={case_.nombre || '-'}>
