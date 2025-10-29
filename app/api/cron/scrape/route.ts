@@ -171,7 +171,7 @@ export async function GET(request: NextRequest) {
           });
 
           // Send consolidated email (only if user has email notifications enabled)
-          let emailResult = { success: true };
+          let emailResult: { success: boolean; error?: string } = { success: true };
           if (userProfile.email_notifications_enabled !== false) {
             emailResult = await sendBatchAlertEmail({
               userEmail: userProfile.email,
