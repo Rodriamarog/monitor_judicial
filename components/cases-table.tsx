@@ -131,10 +131,10 @@ export function CasesTable({ cases, onDelete }: CasesTableProps) {
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead className="w-20">Alertas</TableHead>
+            <TableHead className="w-16">Alertas</TableHead>
+            <TableHead className="min-w-[200px] md:min-w-0">Nombre</TableHead>
             <TableHead className="w-32">Número de Caso</TableHead>
             <TableHead className="w-48">Juzgado</TableHead>
-            <TableHead className="min-w-[200px] md:min-w-0">Nombre</TableHead>
             <TableHead className="w-40">
               <Button
                 variant="ghost"
@@ -164,30 +164,25 @@ export function CasesTable({ cases, onDelete }: CasesTableProps) {
             paginatedCases.map((case_) => (
               <TableRow key={case_.id}>
                 <TableCell>
-                  <div className="flex items-center gap-2">
-                    <div
-                      className={`w-3 h-3 rounded-full ${
-                        case_.alert_count > 0 ? 'bg-green-500' : 'bg-gray-300'
-                      }`}
-                      title={
-                        case_.alert_count > 0
-                          ? `${case_.alert_count} ${case_.alert_count === 1 ? 'alerta' : 'alertas'}`
-                          : 'Sin alertas'
-                      }
-                    />
-                    {case_.alert_count > 0 && (
-                      <span className="text-xs text-muted-foreground">{case_.alert_count}</span>
-                    )}
-                  </div>
-                </TableCell>
-                <TableCell className="font-mono">{case_.case_number}</TableCell>
-                <TableCell>
-                  <div className="truncate" title={case_.juzgado}>{case_.juzgado}</div>
+                  <div
+                    className={`w-3 h-3 rounded-full ${
+                      case_.alert_count > 0 ? 'bg-green-500' : 'bg-gray-300'
+                    }`}
+                    title={
+                      case_.alert_count > 0
+                        ? `${case_.alert_count} ${case_.alert_count === 1 ? 'alerta' : 'alertas'}`
+                        : 'Sin alertas'
+                    }
+                  />
                 </TableCell>
                 <TableCell>
                   <div className="min-w-[200px] md:min-w-0" title={case_.nombre || '-'}>
                     {case_.nombre || '-'}
                   </div>
+                </TableCell>
+                <TableCell className="font-mono">{case_.case_number}</TableCell>
+                <TableCell>
+                  <div className="truncate" title={case_.juzgado}>{case_.juzgado}</div>
                 </TableCell>
                 <TableCell>{formatTijuanaDate(case_.created_at)}</TableCell>
                 <TableCell className="text-right">

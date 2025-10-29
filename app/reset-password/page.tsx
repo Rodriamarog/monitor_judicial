@@ -2,44 +2,36 @@
 
 import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import { Loader2 } from 'lucide-react'
+import { Loader2, ArrowLeft } from 'lucide-react'
 import Link from 'next/link'
 
-export default function LoginPage() {
+export default function ResetPasswordPage() {
   const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
+  const [success, setSuccess] = useState(false)
   const [loading, setLoading] = useState(false)
-  const router = useRouter()
   const supabase = createClient()
 
-  const handleLogin = async (e: React.FormEvent) => {
+  const handleResetPassword = async (e: React.FormEvent) => {
     e.preventDefault()
     setError(null)
     setLoading(true)
 
-    const { error: loginError } = await supabase.auth.signInWithPassword({
-      email,
-      password,
+    const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/update-password`,
     })
 
-    if (loginError) {
-      // Check if it's an email confirmation error
-      if (loginError.message.includes('Email not confirmed')) {
-        setError('Por favor confirme su correo electrónico antes de iniciar sesión. Revise su bandeja de entrada.')
-      } else {
-        setError(loginError.message)
-      }
+    if (resetError) {
+      setError(resetError.message)
       setLoading(false)
     } else {
-      router.push('/dashboard')
-      router.refresh()
+      setSuccess(true)
+      setLoading(false)
     }
   }
 
@@ -47,16 +39,26 @@ export default function LoginPage() {
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-1">
-          <CardTitle className="text-2xl font-bold">Iniciar Sesión</CardTitle>
+          <CardTitle className="text-2xl font-bold">Restablecer Contraseña</CardTitle>
           <CardDescription>
-            Ingrese su email y contraseña para acceder
+            Ingrese su email para recibir un enlace de restablecimiento
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleLogin} className="space-y-4">
+          <form onSubmit={handleResetPassword} className="space-y-4">
             {error && (
               <Alert variant="destructive">
                 <AlertDescription>{error}</AlertDescription>
+              </Alert>
+            )}
+
+            {success && (
+              <Alert>
+                <AlertDescription>
+                  ¡Enlace enviado!
+                  <br />
+                  <strong>Por favor revise su correo electrónico</strong> y haga clic en el enlace para restablecer su contraseña.
+                </AlertDescription>
               </Alert>
             )}
 
@@ -69,42 +71,29 @@ export default function LoginPage() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
+                disabled={success}
               />
             </div>
 
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <Label htmlFor="password">Contraseña</Label>
-                <Link href="/reset-password" className="text-xs text-primary hover:underline">
-                  ¿Olvidó su contraseña?
-                </Link>
-              </div>
-              <Input
-                id="password"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-              />
-            </div>
-
-            <Button type="submit" className="w-full" disabled={loading}>
+            <Button type="submit" className="w-full" disabled={loading || success}>
               {loading ? (
                 <span className="flex items-center justify-center gap-2">
                   <Loader2 className="h-5 w-5 animate-spin" />
-                  <span>Ingresando...</span>
+                  <span>Enviando...</span>
                 </span>
               ) : (
-                'Iniciar Sesión'
+                'Enviar Enlace de Restablecimiento'
               )}
             </Button>
 
-            <p className="text-center text-sm text-muted-foreground">
-              ¿No tiene cuenta?{' '}
-              <Link href="/signup" className="text-primary hover:underline">
-                Regístrese aquí
+            <div className="pt-2">
+              <Link href="/login">
+                <Button variant="ghost" className="w-full gap-2">
+                  <ArrowLeft className="h-4 w-4" />
+                  Volver a Iniciar Sesión
+                </Button>
               </Link>
-            </p>
+            </div>
           </form>
         </CardContent>
       </Card>

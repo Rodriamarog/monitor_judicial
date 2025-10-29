@@ -54,7 +54,10 @@ export function SubscriptionButton({ tier, hasStripeCustomer }: SubscriptionButt
     <Button
       variant={tier === 'free' ? 'default' : 'outline'}
       size="sm"
-      className="gap-2"
+      className={tier === 'free'
+        ? "gap-2 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white font-semibold shadow-lg hover:shadow-xl transition-all"
+        : "gap-2"
+      }
       onClick={handleClick}
       disabled={isLoading}
     >
@@ -66,13 +69,14 @@ export function SubscriptionButton({ tier, hasStripeCustomer }: SubscriptionButt
       ) : tier === 'free' ? (
         <>
           <Sparkles className="h-4 w-4" />
-          <span className="hidden sm:inline">Mejorar Plan</span>
-          <span className="sm:hidden">Mejorar</span>
+          <span className="hidden sm:inline">Actualizar Plan</span>
+          <span className="sm:hidden">Upgrade</span>
         </>
       ) : (
         <>
           <CreditCard className="h-4 w-4" />
-          <span className="hidden sm:inline">Administrar</span>
+          <span className="hidden sm:inline">Mi Suscripción</span>
+          <span className="sm:hidden">Cuenta</span>
         </>
       )}
     </Button>

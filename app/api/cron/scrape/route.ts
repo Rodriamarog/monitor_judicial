@@ -170,13 +170,18 @@ export async function GET(request: NextRequest) {
             };
           });
 
-          // Send consolidated email
-          const emailResult = await sendBatchAlertEmail({
-            userEmail: userProfile.email,
-            userName: userProfile.full_name,
-            bulletinDate: bulletinDate,
-            alerts: alerts,
-          });
+          // Send consolidated email (only if user has email notifications enabled)
+          let emailResult = { success: true };
+          if (userProfile.email_notifications_enabled !== false) {
+            emailResult = await sendBatchAlertEmail({
+              userEmail: userProfile.email,
+              userName: userProfile.full_name,
+              bulletinDate: bulletinDate,
+              alerts: alerts,
+            });
+          } else {
+            console.log(`Skipping email for ${userProfile.email} - notifications disabled`);
+          }
 
           // Send WhatsApp notification if user has it enabled and phone number
           if (userProfile.whatsapp_enabled && userProfile.phone) {

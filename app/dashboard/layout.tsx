@@ -2,7 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
-import { Scale, FileText, Bell } from 'lucide-react'
+import { Scale, FileText, Bell, Settings } from 'lucide-react'
 import { MobileNav } from '@/components/mobile-nav'
 import { SubscriptionButton } from '@/components/subscription-button'
 import { SignOutButton } from '@/components/sign-out-button'
@@ -63,6 +63,13 @@ export default async function DashboardLayout({
                 <Button variant="ghost" className="gap-2 cursor-pointer relative group">
                   <Bell className="h-4 w-4" />
                   Alertas
+                  <span className="absolute inset-0 -z-10 bg-accent rounded-md scale-x-0 group-hover:scale-x-100 transition-transform origin-right" />
+                </Button>
+              </Link>
+              <Link href="/dashboard/settings">
+                <Button variant="ghost" className="gap-2 cursor-pointer relative group">
+                  <Settings className="h-4 w-4" />
+                  Configuración
                   <span className="absolute inset-0 -z-10 bg-accent rounded-md scale-x-0 group-hover:scale-x-100 transition-transform origin-right" />
                 </Button>
               </Link>
