@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import React, { useState } from 'react'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
@@ -49,8 +49,8 @@ export function AlertsTable({ alerts }: AlertsTableProps) {
           </TableHeader>
           <TableBody>
             {alerts.map((alert) => (
-              <>
-                <TableRow key={alert.id} className="cursor-pointer hover:bg-muted/50">
+              <React.Fragment key={alert.id}>
+                <TableRow className="cursor-pointer hover:bg-muted/50">
                   <TableCell className="font-medium">
                     {formatTijuanaDate(alert.created_at)}
                   </TableCell>
@@ -148,7 +148,7 @@ export function AlertsTable({ alerts }: AlertsTableProps) {
                     </TableCell>
                   </TableRow>
                 )}
-              </>
+              </React.Fragment>
             ))}
           </TableBody>
         </Table>
