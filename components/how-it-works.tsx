@@ -1,22 +1,17 @@
-import { FileText, RefreshCw, MessageSquare } from "lucide-react"
-
 const steps = [
   {
     name: "Registra tus casos",
     description: "Agrega números de expediente o nombres de partes a tu panel de control.",
-    icon: FileText,
     step: "01",
   },
   {
     name: "Monitoreo automático",
     description: "Revisamos los boletines judiciales diariamente en busca de actualizaciones.",
-    icon: RefreshCw,
     step: "02",
   },
   {
     name: "Recibe alertas",
     description: "Te notificamos por WhatsApp inmediatamente cuando detectamos cambios.",
-    icon: MessageSquare,
     step: "03",
   },
 ]
@@ -45,11 +40,6 @@ export function HowItWorks() {
                   {/* Step number - more visible */}
                   <div className="mb-6 flex h-16 w-16 items-center justify-center rounded-full bg-amber-500 text-2xl font-bold text-white shadow-lg">
                     {step.step}
-                  </div>
-
-                  {/* Icon - centered above title */}
-                  <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-lg bg-amber-100">
-                    <step.icon className="h-6 w-6 text-amber-600" />
                   </div>
 
                   {/* Content */}

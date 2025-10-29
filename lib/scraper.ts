@@ -93,6 +93,14 @@ function parseTableCases($: cheerio.CheerioAPI, table: cheerio.Cheerio<any>, juz
       return;
     }
 
+    // Normalize case number to always be 5 digits before the slash
+    // E.g., "3834/2013" -> "03834/2013", "0007/2025" -> "00007/2025"
+    const match = caseNumber.match(/^(\d{4,5})\/(\d{4})$/);
+    if (match) {
+      const [, caseNum, year] = match;
+      caseNumber = caseNum.padStart(5, '0') + '/' + year;
+    }
+
     // Clean up raw_text: normalize whitespace
     const cleanedText = details
       .replace(/\s+/g, ' ')

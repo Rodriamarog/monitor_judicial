@@ -200,7 +200,7 @@ export default function AddCasePage() {
               <Input
                 id="caseNumber"
                 type="text"
-                placeholder="Ejemplo: 342/2025 o 01234/2024"
+                placeholder="Ejemplo: 01234/2024"
                 value={caseNumber}
                 onChange={(e) => setCaseNumber(e.target.value)}
                 required
