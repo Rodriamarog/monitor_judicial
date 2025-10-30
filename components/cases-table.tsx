@@ -38,7 +38,7 @@ interface Case {
 interface CasesTableProps {
   cases: Case[]
   onDelete: (caseId: string) => void
-  onUpdate?: (caseId: string, updates: { case_number?: string; juzgado?: string; nombre?: string }) => Promise<void>
+  onUpdate?: (caseId: string, updates: { case_number?: string; juzgado?: string; nombre?: string | null }) => Promise<void>
 }
 
 export function CasesTable({ cases, onDelete, onUpdate }: CasesTableProps) {
