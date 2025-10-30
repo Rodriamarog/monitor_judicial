@@ -119,10 +119,10 @@ export default function SettingsPage() {
             )}
 
             {success && (
-              <Alert>
-                <CheckCircle2 className="h-4 w-4" />
-                <AlertDescription>
-                  Configuración guardada exitosamente
+              <Alert className="bg-amber-50 border-amber-500 dark:bg-amber-950 dark:border-amber-700">
+                <CheckCircle2 className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+                <AlertDescription className="text-amber-900 dark:text-amber-100 font-semibold text-base">
+                  ✓ Configuración guardada exitosamente
                 </AlertDescription>
               </Alert>
             )}

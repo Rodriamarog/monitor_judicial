@@ -73,7 +73,7 @@ export async function GET(request: NextRequest) {
       alerts_created: matchResults.alerts_created,
     });
 
-    // Step 2.5: Cleanup old bulletin entries (keep 90 days)
+    // Step 2.5: Cleanup old bulletin entries (keep 180 days)
     let cleanupResults = {
       deleted_entries: 0,
       deleted_scrape_logs: 0,
@@ -83,10 +83,10 @@ export async function GET(request: NextRequest) {
       const { createClient } = await import('@supabase/supabase-js');
       const supabase = createClient(supabaseUrl, supabaseKey);
 
-      // Delete bulletin entries older than 90 days
-      const ninetyDaysAgo = new Date();
-      ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
-      const cutoffDate = ninetyDaysAgo.toISOString().split('T')[0];
+      // Delete bulletin entries older than 180 days
+      const oneEightyDaysAgo = new Date();
+      oneEightyDaysAgo.setDate(oneEightyDaysAgo.getDate() - 180);
+      const cutoffDate = oneEightyDaysAgo.toISOString().split('T')[0];
 
       const { data: deletedEntries, error: entriesError } = await supabase
         .from('bulletin_entries')
@@ -103,7 +103,7 @@ export async function GET(request: NextRequest) {
         }
       }
 
-      // Delete scrape logs older than 90 days
+      // Delete scrape logs older than 180 days
       const { data: deletedLogs, error: logsError } = await supabase
         .from('scrape_log')
         .delete()

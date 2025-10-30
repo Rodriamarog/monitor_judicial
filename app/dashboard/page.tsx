@@ -62,6 +62,16 @@ export default async function DashboardPage() {
     revalidatePath('/dashboard')
   }
 
+  const handleUpdate = async (
+    caseId: string,
+    updates: { case_number?: string; juzgado?: string; nombre?: string | null }
+  ) => {
+    'use server'
+    const supabase = await createClient()
+    await supabase.from('monitored_cases').update(updates).eq('id', caseId)
+    revalidatePath('/dashboard')
+  }
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -116,7 +126,7 @@ export default async function DashboardPage() {
               </Link>
             </div>
           ) : (
-            <CasesTable cases={casesWithAlerts} onDelete={handleDelete} />
+            <CasesTable cases={casesWithAlerts} onDelete={handleDelete} onUpdate={handleUpdate} />
           )}
         </CardContent>
       </Card>

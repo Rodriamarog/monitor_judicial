@@ -45,6 +45,9 @@ export default function SignupPage() {
     const { data: authData, error: authError } = await supabase.auth.signUp({
       email,
       password,
+      options: {
+        emailRedirectTo: 'https://monitorjudicial.com.mx/dashboard',
+      },
     })
 
     if (authError) {
