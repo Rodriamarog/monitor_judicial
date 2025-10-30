@@ -29,8 +29,20 @@ export function Footer() {
         </div>
 
         {/* Copyright */}
-        <div className="mt-8 border-t border-border pt-8 text-center">
+        <div className="mt-8 border-t border-border pt-8 text-center space-y-2">
           <p className="text-sm text-muted-foreground">© 2025 Monitor Judicial PJBC. Todos los derechos reservados.</p>
+          <p className="text-xs text-muted-foreground">
+            Icono de{' '}
+            <a
+              href="https://www.flaticon.com/free-icons/law"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hover:text-foreground transition-colors"
+              title="law icons"
+            >
+              Freepik - Flaticon
+            </a>
+          </p>
         </div>
       </div>
     </footer>
