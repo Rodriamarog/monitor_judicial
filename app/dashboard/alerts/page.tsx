@@ -140,6 +140,32 @@ export default function AlertsPage() {
 
   const totalAlerts = filteredAlerts.length
 
+  // Helper functions to check which quick filter is active
+  const isToday = () => {
+    const today = getTodayDate()
+    return dateFrom === today && dateTo === today
+  }
+
+  const isLast7Days = () => {
+    const today = new Date()
+    const last7Days = new Date(today)
+    last7Days.setDate(last7Days.getDate() - 7)
+    const last7DaysStr = last7Days.toLocaleDateString('en-CA', { timeZone: 'America/Tijuana' })
+    return dateFrom === last7DaysStr && dateTo === getTodayDate()
+  }
+
+  const isLast30Days = () => {
+    const today = new Date()
+    const last30Days = new Date(today)
+    last30Days.setDate(last30Days.getDate() - 30)
+    const last30DaysStr = last30Days.toLocaleDateString('en-CA', { timeZone: 'America/Tijuana' })
+    return dateFrom === last30DaysStr && dateTo === getTodayDate()
+  }
+
+  const isAllDates = () => {
+    return dateFrom === '' && dateTo === ''
+  }
+
   if (loading) {
     return (
       <div className="space-y-6">
@@ -195,7 +221,7 @@ export default function AlertsPage() {
                     <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                   </Button>
                 </PopoverTrigger>
-                <PopoverContent className="w-full p-0" align="start">
+                <PopoverContent className="w-full p-0" align="start" side="bottom" avoidCollisions={false}>
                   <Command>
                     <CommandInput placeholder="Buscar caso..." />
                     <CommandList>
@@ -272,7 +298,7 @@ export default function AlertsPage() {
           {/* Quick date filters */}
           <div className="flex flex-wrap gap-2 mt-4">
             <Button
-              variant="outline"
+              variant={isToday() ? "default" : "outline"}
               size="sm"
               onClick={() => {
                 const today = getTodayDate()
@@ -283,7 +309,7 @@ export default function AlertsPage() {
               Hoy
             </Button>
             <Button
-              variant="outline"
+              variant={isLast7Days() ? "default" : "outline"}
               size="sm"
               onClick={() => {
                 const today = new Date()
@@ -296,7 +322,7 @@ export default function AlertsPage() {
               Últimos 7 días
             </Button>
             <Button
-              variant="outline"
+              variant={isLast30Days() ? "default" : "outline"}
               size="sm"
               onClick={() => {
                 const today = new Date()
@@ -309,7 +335,7 @@ export default function AlertsPage() {
               Últimos 30 días
             </Button>
             <Button
-              variant="outline"
+              variant={isAllDates() ? "default" : "outline"}
               size="sm"
               onClick={() => {
                 setDateFrom('')
