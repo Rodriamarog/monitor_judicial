@@ -6,6 +6,7 @@ import { Scale, FileText, Bell, Settings } from 'lucide-react'
 import { MobileNav } from '@/components/mobile-nav'
 import { SubscriptionButton } from '@/components/subscription-button'
 import { SignOutButton } from '@/components/sign-out-button'
+import { ThemeToggle } from '@/components/theme-toggle'
 
 export default async function DashboardLayout({
   children,
@@ -77,6 +78,7 @@ export default async function DashboardLayout({
                 Plan: {profile?.subscription_tier || 'free'}
               </p>
             </div>
+            <ThemeToggle />
             <SubscriptionButton
               tier={profile?.subscription_tier || 'free'}
               hasStripeCustomer={!!profile?.stripe_customer_id}

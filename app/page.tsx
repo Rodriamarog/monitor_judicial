@@ -11,6 +11,7 @@ import { Check } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Metadata } from 'next'
 import { OrganizationStructuredData, SoftwareApplicationStructuredData, LocalBusinessStructuredData } from '@/components/structured-data'
+import { ThemeToggle } from '@/components/theme-toggle'
 
 export const metadata: Metadata = {
   title: 'Monitor Judicial PJBC - Alertas Automáticas de Boletines Judiciales',
@@ -105,7 +106,8 @@ export default async function Home() {
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="flex h-16 items-center justify-between">
             <span className="text-sm sm:text-xl font-bold">Monitor Judicial PJBC</span>
-            <div className="flex gap-2 sm:gap-4">
+            <div className="flex items-center gap-2 sm:gap-4">
+              <ThemeToggle />
               <Link href="/login">
                 <Button variant="ghost" size="sm" className="sm:h-10 cursor-pointer relative group">
                   Iniciar Sesión

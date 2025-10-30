@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { PricingSection } from './pricing-section'
 import { Metadata } from 'next'
 import { FAQStructuredData, SoftwareApplicationStructuredData } from '@/components/structured-data'
+import { ThemeToggle } from '@/components/theme-toggle'
 
 export const metadata: Metadata = {
   title: 'Planes y Precios',
