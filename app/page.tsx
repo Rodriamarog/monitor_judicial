@@ -105,7 +105,7 @@ export default async function Home() {
       <nav className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="flex h-16 items-center justify-between">
-            <span className="text-sm sm:text-xl font-bold">Monitor Judicial PJBC</span>
+            <span className="hidden sm:block text-xl font-bold">Monitor Judicial PJBC</span>
             <div className="flex items-center gap-2 sm:gap-4">
               <ThemeToggle />
               <Link href="/login">

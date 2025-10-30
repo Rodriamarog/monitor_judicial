@@ -76,7 +76,6 @@ export function SubscriptionButton({ tier, hasStripeCustomer }: SubscriptionButt
         <>
           <CreditCard className="h-4 w-4" />
           <span className="hidden sm:inline">Mi Suscripción</span>
-          <span className="sm:hidden">Cuenta</span>
         </>
       )}
     </Button>
