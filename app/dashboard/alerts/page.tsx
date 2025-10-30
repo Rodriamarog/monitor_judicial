@@ -270,7 +270,7 @@ export default function AlertsPage() {
           </div>
 
           {/* Quick date filters */}
-          <div className="flex gap-2 mt-4">
+          <div className="flex flex-wrap gap-2 mt-4">
             <Button
               variant="outline"
               size="sm"
