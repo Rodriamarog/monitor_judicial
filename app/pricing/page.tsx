@@ -33,7 +33,8 @@ export default async function PricingPage() {
           <Link href="/" className="text-2xl font-bold">
             Monitor Judicial PJBC
           </Link>
-          <div className="flex gap-4">
+          <div className="flex items-center gap-4">
+            <ThemeToggle />
             {user ? (
               <Link href="/dashboard">
                 <Button>Dashboard</Button>

@@ -14,49 +14,8 @@ export function ThemeToggle() {
     setMounted(true)
   }, [])
 
-  const toggleTheme = (event: React.MouseEvent<HTMLButtonElement>) => {
-    const isDark = theme === 'dark'
-    const newTheme = isDark ? 'light' : 'dark'
-
-    // Check if View Transitions API is supported
-    if (!document.startViewTransition) {
-      setTheme(newTheme)
-      return
-    }
-
-    // Get the click position
-    const x = event.clientX
-    const y = event.clientY
-
-    // Calculate the radius needed to cover the entire screen from click point
-    const endRadius = Math.hypot(
-      Math.max(x, window.innerWidth - x),
-      Math.max(y, window.innerHeight - y)
-    )
-
-    // Start the view transition
-    const transition = document.startViewTransition(() => {
-      setTheme(newTheme)
-    })
-
-    // Animate the transition with a circular reveal/hide
-    transition.ready.then(() => {
-      const clipPath = [
-        `circle(0px at ${x}px ${y}px)`,
-        `circle(${endRadius}px at ${x}px ${y}px)`,
-      ]
-
-      document.documentElement.animate(
-        {
-          clipPath: isDark ? clipPath : clipPath.reverse(),
-        },
-        {
-          duration: 300,
-          easing: 'ease-in',
-          pseudoElement: isDark ? '::view-transition-old(root)' : '::view-transition-new(root)',
-        }
-      )
-    })
+  const toggleTheme = () => {
+    setTheme(theme === 'dark' ? 'light' : 'dark')
   }
 
   if (!mounted) {
