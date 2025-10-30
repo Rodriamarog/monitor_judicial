@@ -9,6 +9,27 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import { Check } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
+import { Metadata } from 'next'
+import { OrganizationStructuredData, SoftwareApplicationStructuredData, LocalBusinessStructuredData } from '@/components/structured-data'
+
+export const metadata: Metadata = {
+  title: 'Monitor Judicial PJBC - Alertas Automáticas de Boletines Judiciales',
+  description:
+    'Monitorea tus casos del Poder Judicial de Baja California automáticamente. Recibe alertas por WhatsApp y email cuando tus expedientes aparezcan en los boletines judiciales. Servicio para abogados en Tijuana, Mexicali, Ensenada y Tecate.',
+  keywords: [
+    'boletines judiciales Tijuana',
+    'alertas judiciales PJBC',
+    'monitor casos judiciales',
+    'notificaciones WhatsApp abogados',
+    'seguimiento expedientes',
+    'boletines Poder Judicial BC',
+  ],
+  openGraph: {
+    title: 'Monitor Judicial PJBC - Nunca Pierdas una Actualización de tus Casos',
+    description:
+      'Sistema automatizado de monitoreo de boletines judiciales del PJBC. Alertas instantáneas por WhatsApp y email.',
+  },
+}
 
 export default async function Home() {
   const supabase = await createClient()
@@ -75,6 +96,10 @@ export default async function Home() {
 
   return (
     <div className="min-h-screen bg-background">
+      <OrganizationStructuredData />
+      <SoftwareApplicationStructuredData />
+      <LocalBusinessStructuredData />
+
       {/* Navigation */}
       <nav className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">

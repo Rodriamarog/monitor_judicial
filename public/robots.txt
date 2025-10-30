@@ -1,0 +1,11 @@
+# Monitor Judicial - Robots.txt
+# https://monitorjudicial.com.mx
+
+User-agent: *
+Allow: /
+Disallow: /dashboard/
+Disallow: /api/
+Disallow: /auth/
+
+# Sitemap
+Sitemap: https://monitorjudicial.com.mx/sitemap.xml

@@ -2,6 +2,18 @@ import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { createClient } from '@/lib/supabase/server'
 import { PricingSection } from './pricing-section'
+import { Metadata } from 'next'
+import { FAQStructuredData, SoftwareApplicationStructuredData } from '@/components/structured-data'
+
+export const metadata: Metadata = {
+  title: 'Planes y Precios',
+  description:
+    'Elige el plan perfecto para monitorear tus casos judiciales. Desde 10 hasta 500 casos monitoreados con alertas instantáneas por WhatsApp y email. Planes desde $199 MXN/mes.',
+  openGraph: {
+    title: 'Planes y Precios - Monitor Judicial PJBC',
+    description: 'Monitorea desde 10 hasta 500 casos con alertas automáticas. Planes accesibles para abogados.',
+  },
+}
 
 export default async function PricingPage() {
   const supabase = await createClient()
@@ -11,6 +23,9 @@ export default async function PricingPage() {
 
   return (
     <div className="min-h-screen">
+      <FAQStructuredData />
+      <SoftwareApplicationStructuredData />
+
       {/* Header */}
       <header className="border-b">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
