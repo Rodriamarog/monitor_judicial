@@ -268,7 +268,7 @@ export async function markAlertAsSent(
 }
 
 /**
- * Check historical bulletins for a specific case (last 30 days)
+ * Check historical bulletins for a specific case (last 90 days)
  * Creates alerts for any matches found
  */
 export async function checkHistoricalMatches(
@@ -289,14 +289,14 @@ export async function checkHistoricalMatches(
 }> {
   const supabase = createClient(supabaseUrl, supabaseKey);
 
-  // Calculate date 30 days ago
-  const thirtyDaysAgo = new Date();
-  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-  const startDate = thirtyDaysAgo.toISOString().split('T')[0];
+  // Calculate date 90 days ago
+  const ninetyDaysAgo = new Date();
+  ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
+  const startDate = ninetyDaysAgo.toISOString().split('T')[0];
 
   console.log(`Checking historical bulletins for ${caseNumber} in ${juzgado} since ${startDate}`);
 
-  // Search for matching bulletin entries in the last 30 days
+  // Search for matching bulletin entries in the last 90 days
   const { data: bulletinEntries, error: searchError } = await supabase
     .from('bulletin_entries')
     .select('id, bulletin_date, raw_text, bulletin_url, source')

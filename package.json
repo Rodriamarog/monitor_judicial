@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test:matcher": "tsx scripts/test-matcher.ts"
+    "test:matcher": "tsx scripts/test-matcher.ts",
+    "test:whatsapp": "tsx scripts/test-whatsapp.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
