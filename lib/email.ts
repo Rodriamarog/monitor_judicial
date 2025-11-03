@@ -143,11 +143,12 @@ export async function sendAlertEmail(data: AlertEmailData): Promise<{ success: b
         <span class="label">Juzgado:</span> ${juzgado}
       </div>
       <div class="detail-row">
-        <span class="label">Fecha del Boletín:</span> ${new Date(bulletinDate).toLocaleDateString('es-MX', {
+        <span class="label">Fecha del Boletín:</span> ${new Date(bulletinDate + 'T12:00:00').toLocaleDateString('es-MX', {
           weekday: 'long',
           year: 'numeric',
           month: 'long',
-          day: 'numeric'
+          day: 'numeric',
+          timeZone: 'America/Tijuana'
         })}
       </div>
     </div>
@@ -334,11 +335,12 @@ export async function sendBatchAlertEmail(data: BatchAlertEmailData): Promise<{ 
 <body>
   <div class="header">
     <h1>${alertCount === 1 ? 'Actualización' : 'Actualizaciones'} en Boletín Judicial</h1>
-    <div class="badge">${new Date(bulletinDate).toLocaleDateString('es-MX', {
+    <div class="badge">${new Date(bulletinDate + 'T12:00:00').toLocaleDateString('es-MX', {
       weekday: 'long',
       year: 'numeric',
       month: 'long',
-      day: 'numeric'
+      day: 'numeric',
+      timeZone: 'America/Tijuana'
     })}</div>
   </div>
 
@@ -389,11 +391,12 @@ export async function sendBatchAlertEmail(data: BatchAlertEmailData): Promise<{ 
 MONITOR JUDICIAL PJBC
 ${alertCount} ${alertCount === 1 ? 'Actualización' : 'Actualizaciones'} en Boletín Judicial
 
-Fecha: ${new Date(bulletinDate).toLocaleDateString('es-MX', {
+Fecha: ${new Date(bulletinDate + 'T12:00:00').toLocaleDateString('es-MX', {
       weekday: 'long',
       year: 'numeric',
       month: 'long',
-      day: 'numeric'
+      day: 'numeric',
+      timeZone: 'America/Tijuana'
     })}
 
 Estimado${userName ? ' ' + userName : ''} usuario,

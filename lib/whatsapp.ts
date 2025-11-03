@@ -79,11 +79,12 @@ function formatWhatsAppMessage(data: WhatsAppAlertData): string {
   const { userName, bulletinDate, alerts } = data;
   const alertCount = alerts.length;
 
-  // Format date nicely
-  const formattedDate = new Date(bulletinDate).toLocaleDateString('es-MX', {
+  // Format date nicely (add T12:00:00 to avoid timezone issues)
+  const formattedDate = new Date(bulletinDate + 'T12:00:00').toLocaleDateString('es-MX', {
     day: '2-digit',
     month: '2-digit',
     year: 'numeric',
+    timeZone: 'America/Tijuana',
   });
 
   // Header
