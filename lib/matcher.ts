@@ -64,14 +64,31 @@ export async function findAndCreateMatches(
   };
 
   // Get all bulletin entries for this date
-  const { data: bulletinEntries, error: entriesError } = await supabase
-    .from('bulletin_entries')
-    .select('id, bulletin_date, juzgado, case_number, raw_text, source')
-    .eq('bulletin_date', bulletinDate);
+  // Note: Supabase has a default 1000 row limit, so we need to fetch all pages
+  let bulletinEntries: BulletinEntry[] = [];
+  let hasMore = true;
+  let page = 0;
+  const pageSize = 1000;
 
-  if (entriesError) {
-    console.error('Error fetching bulletin entries:', entriesError);
-    throw entriesError;
+  while (hasMore) {
+    const { data, error: entriesError } = await supabase
+      .from('bulletin_entries')
+      .select('id, bulletin_date, juzgado, case_number, raw_text, source')
+      .eq('bulletin_date', bulletinDate)
+      .range(page * pageSize, (page + 1) * pageSize - 1);
+
+    if (entriesError) {
+      console.error('Error fetching bulletin entries:', entriesError);
+      throw entriesError;
+    }
+
+    if (!data || data.length === 0) {
+      hasMore = false;
+    } else {
+      bulletinEntries.push(...(data as BulletinEntry[]));
+      hasMore = data.length === pageSize;
+      page++;
+    }
   }
 
   if (!bulletinEntries || bulletinEntries.length === 0) {
