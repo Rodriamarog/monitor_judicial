@@ -12,7 +12,7 @@ import {
 } from '@/components/ui/table'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Trash2, Search, ChevronUp, ChevronDown, Loader2, Pencil } from 'lucide-react'
+import { Trash2, Search, ChevronUp, ChevronDown, Loader2, Pencil, ChevronLeft, ChevronRight } from 'lucide-react'
 import { formatTijuanaDate } from '@/lib/date-utils'
 import {
   Dialog,
@@ -340,24 +340,50 @@ export function CasesTable({ cases, onDelete, onUpdate }: CasesTableProps) {
           <div className="text-muted-foreground">
             Mostrando {page * rowsPerPage + 1} - {Math.min((page + 1) * rowsPerPage, sortedCases.length)} de {sortedCases.length} casos
           </div>
-          <div className="flex gap-2">
+          <div className="flex gap-2 items-center">
             <Button
               variant="outline"
-              size="sm"
+              size="icon"
               onClick={() => setPage((p) => Math.max(0, p - 1))}
               disabled={page === 0}
-              className="cursor-pointer"
+              className="cursor-pointer h-8 w-8"
+              title="Página anterior"
             >
-              Anterior
+              <ChevronLeft className="h-4 w-4" />
             </Button>
+            <div className="flex items-center gap-1">
+              <span className="text-muted-foreground">Página</span>
+              <Input
+                type="text"
+                inputMode="numeric"
+                pattern="[0-9]*"
+                value={page + 1}
+                onChange={(e) => {
+                  const newPage = parseInt(e.target.value) - 1
+                  if (newPage >= 0 && newPage < totalPages) {
+                    setPage(newPage)
+                  }
+                }}
+                onBlur={(e) => {
+                  // Reset to current page if invalid
+                  const newPage = parseInt(e.target.value) - 1
+                  if (isNaN(newPage) || newPage < 0 || newPage >= totalPages) {
+                    e.target.value = (page + 1).toString()
+                  }
+                }}
+                className="w-16 h-8 text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+              />
+              <span className="text-muted-foreground">de {totalPages}</span>
+            </div>
             <Button
               variant="outline"
-              size="sm"
+              size="icon"
               onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
               disabled={page === totalPages - 1}
-              className="cursor-pointer"
+              className="cursor-pointer h-8 w-8"
+              title="Página siguiente"
             >
-              Siguiente
+              <ChevronRight className="h-4 w-4" />
             </Button>
           </div>
         </div>

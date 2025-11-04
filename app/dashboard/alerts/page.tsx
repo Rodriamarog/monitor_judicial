@@ -121,15 +121,13 @@ export default function AlertsPage() {
     fetchData()
   }, [selectedCase, router, supabase])
 
-  // Filter alerts by date range
+  // Filter alerts by date range (using alert creation date)
   const filteredAlerts = useMemo(() => {
     if (!dateFrom && !dateTo) return alerts
 
     return alerts.filter((alert) => {
-      const bulletinDate = alert.bulletin_entries?.bulletin_date
-      if (!bulletinDate) return false
-
-      const alertDate = new Date(bulletinDate).toISOString().split('T')[0]
+      // Use alert creation date instead of bulletin date
+      const alertDate = new Date(alert.created_at).toISOString().split('T')[0]
 
       if (dateFrom && alertDate < dateFrom) return false
       if (dateTo && alertDate > dateTo) return false

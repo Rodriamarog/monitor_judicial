@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "eslint",
     "test:matcher": "tsx scripts/test-matcher.ts",
-    "test:whatsapp": "tsx scripts/test-whatsapp.ts"
+    "test:whatsapp": "tsx scripts/test-whatsapp.ts",
+    "test:historical": "tsx scripts/test-historical.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",

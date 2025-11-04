@@ -2,15 +2,28 @@ name: Smart Bulletin Scraper
 
 on:
   schedule:
-    # Morning check: 9am Tijuana (16:00 UTC) - Mon-Fri
-    - cron: '0 16 * * 1-5'
+    # Hourly checks from 7am-7pm Tijuana (14:00-02:00 UTC) - Mon-Fri
+    # These check TODAY's bulletin
+    - cron: '0 14 * * 1-5'  # 7am Tijuana
+    - cron: '0 15 * * 1-5'  # 8am Tijuana
+    - cron: '0 16 * * 1-5'  # 9am Tijuana
+    - cron: '0 17 * * 1-5'  # 10am Tijuana
+    - cron: '0 18 * * 1-5'  # 11am Tijuana
+    - cron: '0 19 * * 1-5'  # 12pm Tijuana
+    - cron: '0 20 * * 1-5'  # 1pm Tijuana
+    - cron: '0 21 * * 1-5'  # 2pm Tijuana
+    - cron: '0 22 * * 1-5'  # 3pm Tijuana
+    - cron: '0 23 * * 1-5'  # 4pm Tijuana
+    - cron: '0 0 * * 2-6'   # 5pm Tijuana (00:00 UTC next day)
+    - cron: '0 1 * * 2-6'   # 6pm Tijuana
+    - cron: '0 2 * * 2-6'   # 7pm Tijuana
 
-    # Afternoon check: 2pm Tijuana (21:00 UTC) - Mon-Fri
-    - cron: '0 21 * * 1-5'
-
-    # Evening check: 8pm Tijuana (03:00 UTC next day) - Mon-Fri
-    # This catches bulletins published at night for next day
-    - cron: '0 3 * * 2-6'
+    # Evening/night checks 8pm-11pm Tijuana (03:00-06:00 UTC next day) - Mon-Fri
+    # These check TOMORROW's bulletin (catches late night publications)
+    - cron: '0 3 * * 2-6'   # 8pm Tijuana
+    - cron: '0 4 * * 2-6'   # 9pm Tijuana
+    - cron: '0 5 * * 2-6'   # 10pm Tijuana
+    - cron: '0 6 * * 2-6'   # 11pm Tijuana
 
   # Allow manual trigger for testing
   workflow_dispatch:
@@ -26,13 +39,35 @@ jobs:
 
     steps:
       - name: Trigger scraper (current day)
+        # Check today's bulletin for daytime runs (7am-7pm)
+        if: |
+          github.event.schedule == '0 14 * * 1-5' ||
+          github.event.schedule == '0 15 * * 1-5' ||
+          github.event.schedule == '0 16 * * 1-5' ||
+          github.event.schedule == '0 17 * * 1-5' ||
+          github.event.schedule == '0 18 * * 1-5' ||
+          github.event.schedule == '0 19 * * 1-5' ||
+          github.event.schedule == '0 20 * * 1-5' ||
+          github.event.schedule == '0 21 * * 1-5' ||
+          github.event.schedule == '0 22 * * 1-5' ||
+          github.event.schedule == '0 23 * * 1-5' ||
+          github.event.schedule == '0 0 * * 2-6' ||
+          github.event.schedule == '0 1 * * 2-6' ||
+          github.event.schedule == '0 2 * * 2-6' ||
+          github.event_name == 'workflow_dispatch'
         run: |
           curl -X GET "${{ secrets.VERCEL_DEPLOYMENT_URL }}/api/cron/scrape" \
             -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
             -f || echo "Current day scrape failed or returned no results"
 
-      - name: Trigger scraper (next day - evening check only)
-        if: github.event.schedule == '0 3 * * 2-6' || github.event.inputs.check_tomorrow == 'true'
+      - name: Trigger scraper (next day - evening/night runs)
+        # Check tomorrow's bulletin for evening/night runs (8pm-11pm) or manual trigger
+        if: |
+          github.event.schedule == '0 3 * * 2-6' ||
+          github.event.schedule == '0 4 * * 2-6' ||
+          github.event.schedule == '0 5 * * 2-6' ||
+          github.event.schedule == '0 6 * * 2-6' ||
+          github.event.inputs.check_tomorrow == 'true'
         run: |
           curl -X GET "${{ secrets.VERCEL_DEPLOYMENT_URL }}/api/cron/scrape?date=tomorrow" \
             -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
