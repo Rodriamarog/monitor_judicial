@@ -228,7 +228,7 @@ export async function scrapeBulletin(
       bulletin_date: date,
       bulletin_url: bulletinUrl,
       entries,
-      found: true,
+      found: entries.length > 0, // Only mark as found if we actually parsed entries
     };
   } catch (error) {
     return {
@@ -361,7 +361,7 @@ export async function scrapeAllBulletins(date: string, supabaseUrl: string, supa
       results.failed++;
       results.details.push({
         source: source.name,
-        found: false,
+        found: scraped.found,
         entries_count: 0,
         error: scraped.error_message,
       });

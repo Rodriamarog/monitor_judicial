@@ -371,7 +371,7 @@ export function CasesTable({ cases, onDelete, onUpdate }: CasesTableProps) {
                     e.target.value = (page + 1).toString()
                   }
                 }}
-                className="w-16 h-8 text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                className="w-12 h-8 text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
               />
               <span className="text-muted-foreground">de {totalPages}</span>
             </div>
