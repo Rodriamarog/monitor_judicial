@@ -45,7 +45,7 @@ export function SoftwareApplicationStructuredData() {
         price: '0',
         priceCurrency: 'MXN',
         name: 'Plan Gratis',
-        description: '10 casos monitoreados',
+        description: '5 casos monitoreados',
       },
       {
         '@type': 'Offer',

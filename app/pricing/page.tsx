@@ -9,10 +9,10 @@ import { ThemeToggle } from '@/components/theme-toggle'
 export const metadata: Metadata = {
   title: 'Planes y Precios',
   description:
-    'Elige el plan perfecto para monitorear tus casos judiciales. Desde 10 hasta 500 casos monitoreados con alertas instantáneas por WhatsApp y email. Planes desde $199 MXN/mes.',
+    'Elige el plan perfecto para monitorear tus casos judiciales. Desde 5 hasta 500 casos monitoreados con alertas instantáneas por WhatsApp y email. Planes desde $199 MXN/mes.',
   openGraph: {
     title: 'Planes y Precios - Monitor Judicial PJBC',
-    description: 'Monitorea desde 10 hasta 500 casos con alertas automáticas. Planes accesibles para abogados.',
+    description: 'Monitorea desde 5 hasta 500 casos con alertas automáticas. Planes accesibles para abogados.',
   },
 }
 
@@ -132,7 +132,7 @@ export default async function PricingPage() {
         <div className="mt-16 text-center">
           <h2 className="text-3xl font-bold mb-4">¿Listo para comenzar?</h2>
           <p className="text-lg text-muted-foreground mb-6">
-            Comience gratis hoy y monitoree hasta 10 casos sin costo
+            Comience gratis hoy y monitoree hasta 5 casos sin costo
           </p>
           <Link href={user ? '/dashboard' : '/signup'}>
             <Button size="lg" className="text-lg px-8">

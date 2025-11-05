@@ -17,8 +17,8 @@ export function SubscriptionButton({ tier, hasStripeCustomer }: SubscriptionButt
   const handleClick = async () => {
     setIsLoading(true)
 
-    // If user has no subscription (free tier), redirect to upgrade page
-    if (tier === 'free') {
+    // If user has no subscription (gratis tier), redirect to upgrade page
+    if (tier === 'gratis' || tier === 'Gratis') {
       router.push('/upgrade')
       return
     }
@@ -50,11 +50,13 @@ export function SubscriptionButton({ tier, hasStripeCustomer }: SubscriptionButt
     }
   }
 
+  const isFreeTier = tier === 'gratis' || tier === 'Gratis'
+
   return (
     <Button
-      variant={tier === 'free' ? 'default' : 'outline'}
+      variant={isFreeTier ? 'default' : 'outline'}
       size="sm"
-      className={tier === 'free'
+      className={isFreeTier
         ? "gap-2 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white font-semibold shadow-lg hover:shadow-xl transition-all cursor-pointer"
         : "gap-2 cursor-pointer"
       }
@@ -66,7 +68,7 @@ export function SubscriptionButton({ tier, hasStripeCustomer }: SubscriptionButt
           <Loader2 className="h-4 w-4 animate-spin" />
           <span className="hidden sm:inline">Cargando...</span>
         </>
-      ) : tier === 'free' ? (
+      ) : isFreeTier ? (
         <>
           <Sparkles className="h-4 w-4" />
           <span className="hidden sm:inline">Actualizar Plan</span>

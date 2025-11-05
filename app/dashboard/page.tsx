@@ -6,6 +6,7 @@ import { Plus } from 'lucide-react'
 import { redirect } from 'next/navigation'
 import { revalidatePath } from 'next/cache'
 import { CasesTable } from '@/components/cases-table'
+import { getTierConfig } from '@/lib/subscription-tiers'
 
 export default async function DashboardPage() {
   const supabase = await createClient()
@@ -52,8 +53,9 @@ export default async function DashboardPage() {
   }))
 
   const caseCount = cases?.length || 0
-  const tier = profile?.subscription_tier || 'free'
-  const maxCases = tier === 'free' ? 10 : tier === 'basic' ? 100 : 500
+  const tierConfig = getTierConfig(profile?.subscription_tier)
+  const tier = tierConfig.displayName
+  const maxCases = tierConfig.maxCases
 
   const handleDelete = async (caseId: string) => {
     'use server'

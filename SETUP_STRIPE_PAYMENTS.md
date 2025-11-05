@@ -4,7 +4,7 @@ This guide walks you through setting up Stripe for subscription payments.
 
 ## Overview
 
-Users can upgrade from Free (10 cases) to paid tiers:
+Users can upgrade from Free (5 cases) to paid tiers:
 - **Básico:** $X/month - 100 cases
 - **Profesional:** $Y/month - 500 cases
 
@@ -187,8 +187,8 @@ stripe trigger checkout.session.completed
 **Suggested Pricing:**
 
 ```
-Free:
-- 10 casos
+- Free:
+- 5 casos
 - Email alertas solamente
 - $0/mes
 

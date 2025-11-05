@@ -9,7 +9,10 @@
     "lint": "eslint",
     "test:matcher": "tsx scripts/test-matcher.ts",
     "test:whatsapp": "tsx scripts/test-whatsapp.ts",
-    "test:historical": "tsx scripts/test-historical.ts"
+    "test:historical": "tsx scripts/test-historical.ts",
+    "test:e2e": "tsx scripts/test-e2e-flow.ts",
+    "test:scraper": "tsx scripts/test-scraper-accuracy.ts",
+    "diagnose": "tsx scripts/diagnose-missing-cases.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",

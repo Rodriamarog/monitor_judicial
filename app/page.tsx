@@ -51,10 +51,10 @@ export default async function Home() {
       price: '$0',
       description: 'Perfecto para comenzar',
       features: [
-        '10 casos monitoreados',
+        '5 casos monitoreados',
         'Alertas por email',
         'Dashboard web',
-        'Historial de 30 días'
+        'Historial de 90 días'
       ],
       popular: false,
       href: '/signup',
@@ -69,7 +69,7 @@ export default async function Home() {
         '100 casos monitoreados',
         'Alertas por email',
         'Alertas por WhatsApp',
-        'Historial de 30 días',
+        'Historial de 90 días',
         'Soporte por email',
       ],
       popular: true,

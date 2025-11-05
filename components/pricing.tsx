@@ -2,46 +2,18 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Check } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
+import { getAllTiers } from "@/lib/subscription-tiers"
 
-const tiers = [
-  {
-    name: "Básico",
-    id: "basico",
-    price: "$275",
-    description: "Perfecto para abogados independientes",
-    features: ["10 casos monitoreados", "Alertas por WhatsApp", "Dashboard web", "Actualizaciones diarias"],
-    popular: false,
-  },
-  {
-    name: "Profesional",
-    id: "profesional",
-    price: "$495",
-    description: "Ideal para despachos pequeños",
-    features: [
-      "100 casos monitoreados",
-      "Alertas por WhatsApp",
-      "Dashboard web",
-      "Actualizaciones diarias",
-      "Soporte prioritario",
-    ],
-    popular: true,
-  },
-  {
-    name: "Corporativo",
-    id: "corporativo",
-    price: "$795",
-    description: "Para despachos grandes",
-    features: [
-      "500 casos monitoreados",
-      "Alertas por WhatsApp",
-      "Dashboard web",
-      "Actualizaciones diarias",
-      "Soporte prioritario",
-      "Acceso API",
-    ],
-    popular: false,
-  },
-]
+// Get tiers from centralized config
+const tierConfigs = getAllTiers()
+const tiers = tierConfigs.map(tier => ({
+  name: tier.displayName,
+  id: tier.id,
+  price: tier.price === 0 ? "Gratis" : `$${tier.price}`,
+  description: tier.description,
+  features: tier.features,
+  popular: tier.isPopular || false,
+}))
 
 export function Pricing() {
   return (

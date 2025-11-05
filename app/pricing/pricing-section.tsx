@@ -1,49 +1,17 @@
 'use client'
 
 import { PricingCard, PricingTier } from '@/components/pricing-card'
+import { getAllTiers } from '@/lib/subscription-tiers'
 
-const PRICING_TIERS: PricingTier[] = [
-  {
-    name: 'Gratis',
-    price: 0,
-    description: 'Perfecto para comenzar',
-    maxCases: 10,
-    features: [
-      '10 casos monitoreados',
-      'Alertas por email',
-      'Acceso al dashboard',
-      'Historial de 30 días',
-    ],
-  },
-  {
-    name: 'Básico',
-    price: 299,
-    description: 'Para profesionales independientes',
-    maxCases: 100,
-    isPopular: true,
-    features: [
-      '100 casos monitoreados',
-      'Alertas por email',
-      'Alertas por WhatsApp',
-      'Historial de 30 días',
-      'Soporte por email',
-    ],
-  },
-  {
-    name: 'Profesional',
-    price: 999,
-    description: 'Para despachos y equipos',
-    maxCases: 500,
-    features: [
-      '500 casos monitoreados',
-      'Alertas por email',
-      'Alertas por WhatsApp',
-      'Historial ilimitado',
-      'Soporte prioritario',
-      'Exportación de datos',
-    ],
-  },
-]
+// Get pricing tiers from centralized config
+const PRICING_TIERS: PricingTier[] = getAllTiers().map(tier => ({
+  name: tier.displayName,
+  price: tier.price,
+  description: tier.description,
+  maxCases: tier.maxCases,
+  features: tier.features,
+  isPopular: tier.isPopular,
+}))
 
 interface PricingSectionProps {
   isAuthenticated: boolean

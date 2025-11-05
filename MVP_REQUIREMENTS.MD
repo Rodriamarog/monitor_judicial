@@ -679,7 +679,7 @@ export default function LandingPage() {
             </CardHeader>
             <CardContent>
               <ul className="space-y-2">
-                <li>✓ 10 casos monitoreados</li>
+                <li>✓ 5 casos monitoreados</li>
                 <li>✓ Alertas por WhatsApp</li>
                 <li>✓ Dashboard web</li>
               </ul>

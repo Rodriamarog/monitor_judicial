@@ -132,18 +132,26 @@ function parseBulletin(html: string): CaseEntry[] {
     const hasJuzgadoKeyword = text.includes('JUZGADO') || text.includes('TRIBUNAL') || text.includes('SALA');
     const hasLocation = /TIJUANA|MEXICALI|ENSENADA|TECATE|BAJA CALIFORNIA|SAN FELIPE|CD\. MORELOS|GUADALUPE VICTORIA|PLAYAS DE ROSARITO|SAN QUINTIN/i.test(text);
 
-    // Filter out garbage
-    const isGarbage =
+    // Filter out actual case entries (not juzgado headers)
+    // Real juzgado headers should NOT have "VS" (which appears in case parties)
+    // or mention specific case types like "AMPARO DIRECTO" that indicate it's a case entry
+    const isActualCaseEntry =
       text.includes(' VS ') ||
-      text.includes('AMPARO') ||
-      text.includes('DE DISTRITO') ||
-      text.includes('CUADERNILLO') ||
-      /\d{4,5}\/\d{4}/.test(text) ||
-      text.length > 150;
+      text.includes('AMPARO DIRECTO') ||
+      text.includes('AMPARO INDIRECTO');
 
-    if (hasJuzgadoKeyword && hasLocation && !isGarbage) {
+    // Filter out non-juzgado text
+    const isNotJuzgado =
+      text.includes('DE DISTRITO') || // Federal courts, not state juzgados
+      text.includes('CUADERNILLO');
+
+    // Don't filter by case numbers or "AMPARO" alone - juzgados can mention these
+    // Don't filter by length - some juzgado names are long
+
+    if (hasJuzgadoKeyword && hasLocation && !isActualCaseEntry && !isNotJuzgado) {
       const cleanedName = cleanJuzgadoName(text);
-      if (cleanedName.length > 15) {
+      // More lenient length check - accept longer names
+      if (cleanedName.length > 15 && cleanedName.length < 250) {
         juzgadoHeaders.push({
           element: elem,
           name: cleanedName,

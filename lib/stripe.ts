@@ -18,17 +18,19 @@ export const stripe = new Stripe(stripeSecretKey || 'sk_test_placeholder', {
 });
 
 // Price IDs from Stripe Dashboard
+// Note: 'gratis' tier doesn't have a Stripe price (it's free)
 export const STRIPE_PRICES = {
   basico: process.env.STRIPE_PRICE_BASICO || '',
   profesional: process.env.STRIPE_PRICE_PROFESIONAL || '',
 } as const;
 
-// Subscription tier mapping
+// Subscription tier mapping (tier -> Stripe Price ID)
 export const TIER_TO_PRICE: Record<string, string> = {
   basico: STRIPE_PRICES.basico,
   profesional: STRIPE_PRICES.profesional,
 };
 
+// Reverse mapping (Stripe Price ID -> tier)
 export const PRICE_TO_TIER: Record<string, string> = {
   [STRIPE_PRICES.basico]: 'basico',
   [STRIPE_PRICES.profesional]: 'profesional',
