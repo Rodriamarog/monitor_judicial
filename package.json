@@ -12,6 +12,7 @@
     "test:historical": "tsx scripts/test-historical.ts",
     "test:e2e": "tsx scripts/test-e2e-flow.ts",
     "test:scraper": "tsx scripts/test-scraper-accuracy.ts",
+    "test:notifications": "tsx scripts/test-notification-preferences.ts",
     "diagnose": "tsx scripts/diagnose-missing-cases.ts"
   },
   "dependencies": {

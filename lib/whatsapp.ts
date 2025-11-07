@@ -8,6 +8,7 @@ import twilio from 'twilio';
 const accountSid = process.env.TWILIO_ACCOUNT_SID;
 const authToken = process.env.TWILIO_AUTH_TOKEN;
 const whatsappFrom = process.env.TWILIO_WHATSAPP_FROM;
+const alertTemplateContentSid = process.env.TWILIO_WHATSAPP_ALERT_TEMPLATE_SID;
 
 // Initialize Twilio client (lazy initialization)
 let twilioClient: ReturnType<typeof twilio> | null = null;
@@ -36,6 +37,17 @@ interface WhatsAppAlertData {
 
 /**
  * Send a consolidated WhatsApp alert with multiple cases
+ * Uses WhatsApp template: notificacion_de_compra_2 (UTILITY)
+ * ContentSid: HXd2473dd12164260d0b5f52aeccc29c7a
+ * Template: "Hay una nueva actualización en tu {{1}}
+ *
+ *            por {{2}}
+ *
+ *            en {{3}}
+ *
+ *            el {{4}}.
+ *
+ *            Puedes revisar la actualización en tu dashboard en la seccion de 'Alertas'."
  */
 export async function sendWhatsAppAlert(
   data: WhatsAppAlertData
@@ -45,23 +57,45 @@ export async function sendWhatsAppAlert(
       throw new Error('TWILIO_WHATSAPP_FROM not configured');
     }
 
+    if (!alertTemplateContentSid) {
+      throw new Error('TWILIO_WHATSAPP_ALERT_TEMPLATE_SID not configured');
+    }
+
     const client = getTwilioClient();
 
-    // Format the message
-    const message = formatWhatsAppMessage(data);
-
-    // Send via Twilio
-    const response = await client.messages.create({
-      from: whatsappFrom,
-      to: data.to,
-      body: message,
+    // Format bulletin date (add T12:00:00 to avoid timezone issues)
+    const formattedDate = new Date(data.bulletinDate + 'T12:00:00').toLocaleDateString('es-MX', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      timeZone: 'America/Tijuana',
     });
 
-    console.log(`WhatsApp sent successfully to ${data.to}, SID: ${response.sid}`);
+    // Send one message per alert using the template
+    const results = [];
+    for (const alert of data.alerts) {
+      // Extract location from juzgado name (e.g., "JUZGADO PRIMERO CIVIL TIJUANA" -> "Tijuana")
+      const location = extractLocation(alert.juzgado);
+
+      const response = await client.messages.create({
+        from: whatsappFrom,
+        to: data.to,
+        contentSid: alertTemplateContentSid,
+        contentVariables: JSON.stringify({
+          '1': `caso ${alert.caseNumber}`,
+          '2': alert.juzgado,
+          '3': location,
+          '4': formattedDate,
+        }),
+      });
+
+      console.log(`WhatsApp sent successfully to ${data.to}, SID: ${response.sid}`);
+      results.push(response.sid);
+    }
 
     return {
       success: true,
-      messageId: response.sid,
+      messageId: results.join(', '),
     };
   } catch (error) {
     console.error('WhatsApp send error:', error);
@@ -70,6 +104,19 @@ export async function sendWhatsAppAlert(
       error: error instanceof Error ? error.message : 'Unknown error',
     };
   }
+}
+
+/**
+ * Extract location from juzgado name
+ */
+function extractLocation(juzgado: string): string {
+  const upperJuzgado = juzgado.toUpperCase();
+  if (upperJuzgado.includes('TIJUANA')) return 'Tijuana';
+  if (upperJuzgado.includes('MEXICALI')) return 'Mexicali';
+  if (upperJuzgado.includes('ENSENADA')) return 'Ensenada';
+  if (upperJuzgado.includes('TECATE')) return 'Tecate';
+  if (upperJuzgado.includes('PLAYAS DE ROSARITO')) return 'Playas de Rosarito';
+  return 'Baja California';
 }
 
 /**

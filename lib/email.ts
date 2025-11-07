@@ -200,7 +200,7 @@ Monitor Judicial PJBC
     `;
 
     const result = await resend.emails.send({
-      from: 'Monitor Judicial PJBC <noreply@urbanedgetj.com>',
+      from: 'Monitor Judicial <noreply@monitorjudicial.com.mx>',
       to: userEmail,
       subject: `⚖️ Actualización: Caso ${caseNumber} - ${juzgado}`,
       html: emailHtml,
@@ -425,7 +425,7 @@ No responda a este correo.
     `;
 
     const result = await resend.emails.send({
-      from: 'Monitor Judicial PJBC <noreply@urbanedgetj.com>',
+      from: 'Monitor Judicial <noreply@monitorjudicial.com.mx>',
       to: userEmail,
       subject: `${alertCount === 1 ? 'Actualización' : 'Actualizaciones'} en Boletín Judicial - PJBC`,
       html: emailHtml,
