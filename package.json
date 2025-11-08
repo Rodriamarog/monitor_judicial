@@ -13,6 +13,8 @@
     "test:e2e": "tsx scripts/test-e2e-flow.ts",
     "test:scraper": "tsx scripts/test-scraper-accuracy.ts",
     "test:notifications": "tsx scripts/test-notification-preferences.ts",
+    "test:whatsapp-system": "tsx scripts/test-whatsapp-system.ts",
+    "test:both-users": "tsx scripts/test-both-users.ts",
     "diagnose": "tsx scripts/diagnose-missing-cases.ts"
   },
   "dependencies": {
