@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Plus } from 'lucide-react'
 import { CasesTable } from '@/components/cases-table'
 import { DowngradeBlockedAlert } from '@/components/downgrade-blocked-alert'
+import { StaleCasesAlert } from '@/components/stale-cases-alert'
 import { AddCaseDialog } from '@/components/add-case-dialog'
 
 interface DashboardClientProps {
@@ -15,6 +16,7 @@ interface DashboardClientProps {
   maxCases: number
   tier: string
   showDowngradeAlert: boolean
+  staleCaseCount: number
   onDelete: (caseId: string) => void
   onUpdate: (caseId: string, updates: any) => Promise<void>
 }
@@ -25,6 +27,7 @@ export function DashboardClient({
   maxCases,
   tier,
   showDowngradeAlert,
+  staleCaseCount,
   onDelete,
   onUpdate,
 }: DashboardClientProps) {
@@ -40,6 +43,9 @@ export function DashboardClient({
           targetTier="Pro 50"
         />
       )}
+
+      {/* Stale Cases Alert */}
+      <StaleCasesAlert staleCaseCount={staleCaseCount} />
 
       {/* Header */}
       <div className="flex items-center justify-between">

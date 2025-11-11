@@ -42,11 +42,27 @@ export default async function DashboardPage() {
     alertCounts.set(caseId, (alertCounts.get(caseId) || 0) + 1)
   })
 
-  // Add alert count to each case
-  const casesWithAlerts = cases?.map((case_) => ({
-    ...case_,
-    alert_count: alertCounts.get(case_.id) || 0,
-  }))
+  // Calculate if a case is stale (60+ days old with no alerts)
+  const sixtyDaysAgo = new Date()
+  sixtyDaysAgo.setDate(sixtyDaysAgo.getDate() - 60)
+
+  // Add alert count and stale status to each case
+  const casesWithAlerts = cases?.map((case_) => {
+    const alertCount = alertCounts.get(case_.id) || 0
+    const createdAt = new Date(case_.created_at)
+    const isStale = alertCount === 0 && createdAt < sixtyDaysAgo
+
+    return {
+      ...case_,
+      alert_count: alertCount,
+      is_stale: isStale,
+    }
+  })
+
+  // Count stale cases for the alert banner
+  const staleCases = casesWithAlerts?.filter((case_) => case_.is_stale)
+
+  const staleCaseCount = staleCases?.length || 0
 
   const caseCount = cases?.length || 0
   const tierConfig = getTierConfig(profile?.subscription_tier)
@@ -77,6 +93,7 @@ export default async function DashboardPage() {
       maxCases={maxCases}
       tier={tier}
       showDowngradeAlert={profile?.downgrade_blocked || false}
+      staleCaseCount={staleCaseCount}
       onDelete={handleDelete}
       onUpdate={handleUpdate}
     />

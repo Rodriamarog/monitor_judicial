@@ -34,6 +34,7 @@ interface Case {
   telefono: string | null
   created_at: string
   alert_count: number
+  is_stale?: boolean
 }
 
 interface CasesTableProps {
@@ -108,10 +109,20 @@ export function CasesTable({ cases, onDelete, onUpdate }: CasesTableProps) {
     const sorted = [...filteredCases]
     sorted.sort((a, b) => {
       if (sortOrder === 'alerts') {
-        // Sort by alerts first (green dots on top), then by most recent
-        if (a.alert_count !== b.alert_count) {
-          return b.alert_count - a.alert_count // Cases with alerts first
+        // Sort by "needs attention" (green dots ⚠️ OR warning signs 🟢)
+        const aHasAttention = a.alert_count > 0 || a.is_stale
+        const bHasAttention = b.alert_count > 0 || b.is_stale
+
+        // Cases that need attention first
+        if (aHasAttention !== bHasAttention) {
+          return aHasAttention ? -1 : 1
         }
+
+        // Among cases with alerts, sort by alert count (more alerts first)
+        if (a.alert_count !== b.alert_count) {
+          return b.alert_count - a.alert_count
+        }
+
         // If alert counts are equal, sort by date (most recent first)
         const dateA = new Date(a.created_at).getTime()
         const dateB = new Date(b.created_at).getTime()
@@ -247,8 +258,8 @@ export function CasesTable({ cases, onDelete, onUpdate }: CasesTableProps) {
                 className="gap-1 hover:bg-transparent p-0 cursor-pointer w-full"
                 title={
                   sortOrder === 'alerts'
-                    ? 'Ordenado por alertas (clic para volver a orden normal)'
-                    : 'Clic para ordenar por alertas'
+                    ? 'Ordenado por casos que requieren atención (clic para volver a orden normal)'
+                    : 'Clic para ordenar por casos con alertas o sin actualizaciones'
                 }
               >
                 Alertas
@@ -305,16 +316,25 @@ export function CasesTable({ cases, onDelete, onUpdate }: CasesTableProps) {
               >
                 <TableCell className="text-center">
                   <div className="flex justify-center">
-                    <div
-                      className={`w-3 h-3 rounded-full ${
-                        case_.alert_count > 0 ? 'bg-green-500' : 'bg-gray-300'
-                      }`}
-                      title={
-                        case_.alert_count > 0
-                          ? `${case_.alert_count} ${case_.alert_count === 1 ? 'alerta' : 'alertas'}`
-                          : 'Sin alertas'
-                      }
-                    />
+                    {case_.is_stale ? (
+                      <span
+                        className="text-lg"
+                        title="Sin actualizaciones por más de 60 días"
+                      >
+                        ⚠️
+                      </span>
+                    ) : (
+                      <div
+                        className={`w-3 h-3 rounded-full ${
+                          case_.alert_count > 0 ? 'bg-green-500' : 'bg-gray-300'
+                        }`}
+                        title={
+                          case_.alert_count > 0
+                            ? `${case_.alert_count} ${case_.alert_count === 1 ? 'alerta' : 'alertas'}`
+                            : 'Sin alertas'
+                        }
+                      />
+                    )}
                   </div>
                 </TableCell>
                 <TableCell>
