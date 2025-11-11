@@ -45,7 +45,7 @@ interface CasesTableProps {
 export function CasesTable({ cases, onDelete, onUpdate }: CasesTableProps) {
   const router = useRouter()
   const [searchQuery, setSearchQuery] = useState('')
-  const [sortOrder, setSortOrder] = useState<'alerts' | 'asc' | 'desc'>('alerts')
+  const [sortOrder, setSortOrder] = useState<'alerts' | 'asc' | 'desc'>('desc')
   const [page, setPage] = useState(0)
   const [rowsPerPage, setRowsPerPage] = useState(10)
   const [deletingCaseId, setDeletingCaseId] = useState<string | null>(null)
@@ -143,6 +143,14 @@ export function CasesTable({ cases, onDelete, onUpdate }: CasesTableProps) {
     })
   }
 
+  const toggleAlertsSorting = () => {
+    setSortOrder((prev) => {
+      // Toggle between alerts sorting and default (desc)
+      if (prev === 'alerts') return 'desc'
+      return 'alerts'
+    })
+  }
+
   const handleRowClick = (caseId: string, event: React.MouseEvent) => {
     // Don't navigate if clicking on buttons or action elements
     const target = event.target as HTMLElement
@@ -231,7 +239,24 @@ export function CasesTable({ cases, onDelete, onUpdate }: CasesTableProps) {
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead className="w-8 text-center">Alertas</TableHead>
+            <TableHead className="w-8 text-center">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={toggleAlertsSorting}
+                className="gap-1 hover:bg-transparent p-0 cursor-pointer w-full"
+                title={
+                  sortOrder === 'alerts'
+                    ? 'Ordenado por alertas (clic para volver a orden normal)'
+                    : 'Clic para ordenar por alertas'
+                }
+              >
+                Alertas
+                {sortOrder === 'alerts' && (
+                  <span className="text-xs text-green-500">●</span>
+                )}
+              </Button>
+            </TableHead>
             <TableHead className="min-w-[150px] md:min-w-0">Nombre</TableHead>
             <TableHead className="w-32">Número de Caso</TableHead>
             <TableHead className="w-40">Teléfono</TableHead>
