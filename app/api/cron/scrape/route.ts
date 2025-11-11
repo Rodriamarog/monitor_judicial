@@ -1,7 +1,7 @@
 /**
  * Scraper Cron Job API Route
  *
- * Runs every 30 minutes during business hours (6am-2pm Tijuana time)
+ * Runs hourly during business hours (7am-7pm Tijuana time) via GitHub Actions
  * Downloads bulletins, parses them, finds matches, creates alerts
  */
 

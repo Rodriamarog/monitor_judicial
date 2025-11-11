@@ -21,10 +21,10 @@ export async function POST(request: NextRequest) {
 
     // Get request body
     const body = await request.json();
-    const { priceId, tier } = body;
+    const { productId, tier, billing } = body;
 
-    if (!priceId) {
-      return NextResponse.json({ error: 'Missing priceId' }, { status: 400 });
+    if (!productId) {
+      return NextResponse.json({ error: 'Missing productId' }, { status: 400 });
     }
 
     // Get user profile for email
@@ -40,11 +40,12 @@ export async function POST(request: NextRequest) {
 
     // Create Checkout Session
     const session = await createCheckoutSession({
-      priceId,
+      productId,
       userId: user.id,
       userEmail: profile.email,
-      successUrl: `${request.nextUrl.origin}/dashboard?upgrade=success&tier=${tier}`,
+      successUrl: `${request.nextUrl.origin}/dashboard?upgrade=success&tier=${tier}&billing=${billing}`,
       cancelUrl: `${request.nextUrl.origin}/dashboard?upgrade=cancelled`,
+      billing: billing as 'monthly' | 'yearly',
     });
 
     return NextResponse.json({ sessionId: session.id, url: session.url });

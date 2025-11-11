@@ -1,7 +1,7 @@
 /**
  * Check Historical Bulletins API Route
  *
- * Checks the last 30 days of bulletins for a specific case
+ * Checks the last 90 days of bulletins for a specific case
  * Creates alerts for any historical matches found
  */
 

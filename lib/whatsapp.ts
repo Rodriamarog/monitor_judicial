@@ -37,17 +37,18 @@ interface WhatsAppAlertData {
 
 /**
  * Send a consolidated WhatsApp alert with multiple cases
- * Uses WhatsApp template: notificacion_de_compra_2 (UTILITY)
+ *
+ * Uses template notificacion_de_compra_2 (UTILITY) for all cases
  * ContentSid: HXd2473dd12164260d0b5f52aeccc29c7a
- * Template: "Hay una nueva actualización en tu {{1}}
  *
- *            por {{2}}
+ * For multiple cases, concatenates them into the template variables
  *
- *            en {{3}}
- *
- *            el {{4}}.
- *
- *            Puedes revisar la actualización en tu dashboard en la seccion de 'Alertas'."
+ * Template:
+ * "Hay una nueva actualización en tu {{1}}
+ *  por {{2}}
+ *  en {{3}}
+ *  el {{4}}.
+ *  Puedes revisar la actualización en tu dashboard en la seccion de 'Alertas'."
  */
 export async function sendWhatsAppAlert(
   data: WhatsAppAlertData
@@ -71,31 +72,46 @@ export async function sendWhatsAppAlert(
       timeZone: 'America/Tijuana',
     });
 
-    // Send one message per alert using the template
-    const results = [];
-    for (const alert of data.alerts) {
-      // Extract location from juzgado name (e.g., "JUZGADO PRIMERO CIVIL TIJUANA" -> "Tijuana")
-      const location = extractLocation(alert.juzgado);
+    const alertCount = data.alerts.length;
 
-      const response = await client.messages.create({
-        from: whatsappFrom,
-        to: data.to,
-        contentSid: alertTemplateContentSid,
-        contentVariables: JSON.stringify({
-          '1': `caso ${alert.caseNumber}`,
-          '2': alert.juzgado,
-          '3': location,
-          '4': formattedDate,
-        }),
-      });
+    // Build consolidated variables for the template
+    let casesText: string;
+    let juzgadosText: string;
+    let locationsText: string;
 
-      console.log(`WhatsApp sent successfully to ${data.to}, SID: ${response.sid}`);
-      results.push(response.sid);
+    if (alertCount === 1) {
+      // Single case - simple format
+      const alert = data.alerts[0];
+      casesText = `caso ${alert.caseNumber}`;
+      juzgadosText = alert.juzgado;
+      locationsText = extractLocation(alert.juzgado);
+    } else {
+      // Multiple cases - concatenate with separators (no newlines - template doesn't support them)
+      casesText = `${alertCount} casos: ` + data.alerts.map(a => a.caseNumber).join(', ');
+      juzgadosText = data.alerts.map(a => a.juzgado).join(' | ');
+
+      // Get unique locations
+      const locations = [...new Set(data.alerts.map(a => extractLocation(a.juzgado)))];
+      locationsText = locations.join(', ');
     }
+
+    const response = await client.messages.create({
+      from: whatsappFrom,
+      to: data.to,
+      contentSid: alertTemplateContentSid,
+      contentVariables: JSON.stringify({
+        '1': casesText,
+        '2': juzgadosText,
+        '3': locationsText,
+        '4': formattedDate,
+      }),
+    });
+
+    console.log(`WhatsApp sent successfully to ${data.to} (${alertCount} case${alertCount > 1 ? 's' : ''}), SID: ${response.sid}`);
 
     return {
       success: true,
-      messageId: results.join(', '),
+      messageId: response.sid,
     };
   } catch (error) {
     console.error('WhatsApp send error:', error);

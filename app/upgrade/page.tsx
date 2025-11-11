@@ -4,6 +4,7 @@ import { UpgradeClient } from './upgrade-client'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { ArrowLeft } from 'lucide-react'
+import { STRIPE_PRODUCTS } from '@/lib/stripe'
 
 export default async function UpgradePage() {
   const supabase = await createClient()
@@ -44,7 +45,7 @@ export default async function UpgradePage() {
         </p>
       </div>
 
-      <UpgradeClient currentTier={currentTier} />
+      <UpgradeClient currentTier={currentTier} stripeProducts={STRIPE_PRODUCTS} />
     </div>
   )
 }

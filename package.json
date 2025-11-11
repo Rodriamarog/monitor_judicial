@@ -15,6 +15,7 @@
     "test:notifications": "tsx scripts/test-notification-preferences.ts",
     "test:whatsapp-system": "tsx scripts/test-whatsapp-system.ts",
     "test:both-users": "tsx scripts/test-both-users.ts",
+    "test:multi-cases": "tsx scripts/test-multiple-cases.ts",
     "diagnose": "tsx scripts/diagnose-missing-cases.ts"
   },
   "dependencies": {

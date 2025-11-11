@@ -5,11 +5,15 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { headers } from 'next/headers';
-import { stripe, getTierFromPrice } from '@/lib/stripe';
+import { stripe, getTierFromProduct } from '@/lib/stripe';
 import { createClient } from '@supabase/supabase-js';
 import Stripe from 'stripe';
 
-const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET!;
+// Use TEST webhook secret in development, production webhook secret in production
+const isTestMode = process.env.NODE_ENV !== 'production';
+const webhookSecret = isTestMode
+  ? process.env.TEST_STRIPE_WEBHOOK_SECRET!
+  : process.env.STRIPE_WEBHOOK_SECRET!;
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 
@@ -79,6 +83,7 @@ export async function POST(request: NextRequest) {
  */
 async function handleCheckoutComplete(session: Stripe.Checkout.Session) {
   const userId = session.metadata?.user_id || session.client_reference_id;
+  const productId = session.metadata?.product_id;
 
   if (!userId) {
     console.error('No user_id in checkout session');
@@ -89,12 +94,16 @@ async function handleCheckoutComplete(session: Stripe.Checkout.Session) {
   const subscriptionId = session.subscription as string;
   const customerId = session.customer as string;
 
-  const subscription = await stripe.subscriptions.retrieve(subscriptionId);
-  const priceId = subscription.items.data[0].price.id;
-  const tier = getTierFromPrice(priceId);
+  const subscription = await stripe.subscriptions.retrieve(subscriptionId, {
+    expand: ['items.data.price.product'],
+  });
 
-  if (!tier) {
-    console.error(`Unknown price ID: ${priceId}`);
+  // Get product ID from subscription
+  const actualProductId = productId || (subscription.items.data[0].price.product as Stripe.Product).id;
+  const tierInfo = getTierFromProduct(actualProductId);
+
+  if (!tierInfo) {
+    console.error(`Unknown product ID: ${actualProductId}`);
     return;
   }
 
@@ -103,7 +112,7 @@ async function handleCheckoutComplete(session: Stripe.Checkout.Session) {
   const { error } = await supabase
     .from('user_profiles')
     .update({
-      subscription_tier: tier,
+      subscription_tier: tierInfo.tier,
       subscription_status: 'active',
       stripe_customer_id: customerId,
       stripe_subscription_id: subscriptionId,
@@ -114,7 +123,7 @@ async function handleCheckoutComplete(session: Stripe.Checkout.Session) {
   if (error) {
     console.error('Failed to update user subscription:', error);
   } else {
-    console.log(`✓ User ${userId} upgraded to ${tier}`);
+    console.log(`✓ User ${userId} upgraded to ${tierInfo.tier} (${tierInfo.billing})`);
   }
 }
 
@@ -129,16 +138,74 @@ async function handleSubscriptionUpdate(subscription: Stripe.Subscription) {
     return;
   }
 
-  const priceId = subscription.items.data[0].price.id;
-  const tier = getTierFromPrice(priceId);
+  // Always get the actual product from the subscription items (not metadata)
+  // because metadata doesn't update when users switch plans
+  const expandedSub = await stripe.subscriptions.retrieve(subscription.id, {
+    expand: ['items.data.price.product'],
+  });
+
+  const actualProductId = (expandedSub.items.data[0].price.product as Stripe.Product).id;
+  const tierInfo = getTierFromProduct(actualProductId);
   const status = subscription.status;
 
+  if (!tierInfo) {
+    console.error(`Unknown product ID: ${actualProductId}`);
+    return;
+  }
+
   const supabase = createClient(supabaseUrl, supabaseKey);
+
+  // Get current user profile and case count
+  const { data: profile } = await supabase
+    .from('user_profiles')
+    .select('subscription_tier')
+    .eq('id', userId)
+    .single();
+
+  const { count: caseCount } = await supabase
+    .from('cases')
+    .select('*', { count: 'exact', head: true })
+    .eq('user_id', userId);
+
+  const currentCaseCount = caseCount || 0;
+
+  // Check if this is a downgrade that would exceed the new limit
+  const { getMaxCases } = await import('@/lib/subscription-tiers');
+  const newMaxCases = getMaxCases(tierInfo.tier);
+
+  if (currentCaseCount > newMaxCases) {
+    console.warn(`⚠️ User ${userId} attempted to downgrade to ${tierInfo.tier} but has ${currentCaseCount} cases (limit: ${newMaxCases})`);
+
+    // Cancel the subscription change by reverting to previous tier
+    // We can't actually revert the Stripe subscription here, but we won't update the database
+    // and we'll set a flag so the dashboard can show a warning
+
+    const { error: flagError } = await supabase
+      .from('user_profiles')
+      .update({
+        downgrade_blocked: true,
+        downgrade_blocked_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', userId);
+
+    if (flagError) {
+      console.error('Failed to set downgrade block flag:', flagError);
+    }
+
+    // TODO: Send email notification to user explaining why downgrade was blocked
+    console.log(`✗ Downgrade blocked for user ${userId}: ${currentCaseCount} cases > ${newMaxCases} limit`);
+    return;
+  }
+
+  // Clear any previous downgrade block flags
   const { error } = await supabase
     .from('user_profiles')
     .update({
-      subscription_tier: tier || 'free',
+      subscription_tier: tierInfo.tier,
       subscription_status: status,
+      downgrade_blocked: false,
+      downgrade_blocked_at: null,
       updated_at: new Date().toISOString(),
     })
     .eq('id', userId);
@@ -146,7 +213,7 @@ async function handleSubscriptionUpdate(subscription: Stripe.Subscription) {
   if (error) {
     console.error('Failed to update subscription:', error);
   } else {
-    console.log(`✓ Subscription updated for user ${userId}: ${tier} (${status})`);
+    console.log(`✓ Subscription updated for user ${userId}: ${tierInfo.tier} (${status})`);
   }
 }
 
@@ -165,7 +232,7 @@ async function handleSubscriptionDeleted(subscription: Stripe.Subscription) {
   const { error } = await supabase
     .from('user_profiles')
     .update({
-      subscription_tier: 'free',
+      subscription_tier: 'gratis',
       subscription_status: 'cancelled',
       updated_at: new Date().toISOString(),
     })
@@ -174,7 +241,7 @@ async function handleSubscriptionDeleted(subscription: Stripe.Subscription) {
   if (error) {
     console.error('Failed to downgrade user:', error);
   } else {
-    console.log(`✓ User ${userId} downgraded to free (subscription cancelled)`);
+    console.log(`✓ User ${userId} downgraded to gratis (subscription cancelled)`);
   }
 }
 

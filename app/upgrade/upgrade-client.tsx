@@ -1,63 +1,40 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { PricingCard, PricingTier } from '@/components/pricing-card'
-
-const PRICING_TIERS: PricingTier[] = [
-  {
-    name: 'Gratis',
-    price: 0,
-    description: 'Perfecto para comenzar',
-    maxCases: 5,
-    features: [
-      '5 casos monitoreados',
-      'Alertas por email',
-      'Acceso al dashboard',
-      'Historial de 90 días',
-    ],
-  },
-  {
-    name: 'Básico',
-    price: 299,
-    priceId: process.env.NEXT_PUBLIC_STRIPE_PRICE_BASICO,
-    description: 'Para profesionales independientes',
-    maxCases: 100,
-    isPopular: true,
-    features: [
-      '100 casos monitoreados',
-      'Alertas por email',
-      'Alertas por WhatsApp',
-      'Historial de 90 días',
-      'Soporte por email',
-    ],
-  },
-  {
-    name: 'Profesional',
-    price: 999,
-    priceId: process.env.NEXT_PUBLIC_STRIPE_PRICE_PROFESIONAL,
-    description: 'Para despachos y equipos',
-    maxCases: 500,
-    features: [
-      '500 casos monitoreados',
-      'Alertas por email',
-      'Alertas por WhatsApp',
-      'Historial ilimitado',
-      'Soporte prioritario',
-      'Exportación de datos',
-    ],
-  },
-]
+import { getAllTiers } from '@/lib/subscription-tiers'
+import { Badge } from '@/components/ui/badge'
 
 interface UpgradeClientProps {
   currentTier: string
+  stripeProducts: Record<string, string>
 }
 
-export function UpgradeClient({ currentTier }: UpgradeClientProps) {
+export function UpgradeClient({ currentTier, stripeProducts }: UpgradeClientProps) {
   const router = useRouter()
   const [isLoading, setIsLoading] = useState(false)
+  const [billing, setBilling] = useState<'monthly' | 'yearly'>('monthly')
 
-  const handleSelectPlan = async (priceId: string, tier: string) => {
+  // Helper function to get product ID from tier and billing
+  const getProductFromTier = (tierId: string, billing: 'monthly' | 'yearly'): string | null => {
+    const key = billing === 'monthly' ? tierId : `${tierId}_yearly`;
+    return stripeProducts[key] || null;
+  }
+
+  // Use centralized tier configuration with dynamic billing
+  const PRICING_TIERS: PricingTier[] = getAllTiers().map(tier => ({
+    name: tier.displayName,
+    price: billing === 'monthly' ? tier.monthlyPrice : tier.yearlyPrice,
+    priceId: tier.id !== 'gratis' ? getProductFromTier(tier.id, billing) || '' : undefined,
+    description: tier.description,
+    maxCases: tier.maxCases,
+    features: tier.features,
+    isPopular: tier.isPopular,
+    billing: billing,
+  }))
+
+  const handleSelectPlan = async (productId: string, tierName: string) => {
     try {
       setIsLoading(true)
 
@@ -68,8 +45,9 @@ export function UpgradeClient({ currentTier }: UpgradeClientProps) {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          priceId,
-          tier,
+          productId,
+          tier: tierName,
+          billing: billing,
         }),
       })
 
@@ -98,18 +76,51 @@ export function UpgradeClient({ currentTier }: UpgradeClientProps) {
   }
 
   return (
-    <div className="grid md:grid-cols-3 gap-8">
-      {PRICING_TIERS.map((tier) => (
-        <PricingCard
-          key={tier.name}
-          tier={{
-            ...tier,
-            isCurrent: tier.name.toLowerCase() === currentTier.toLowerCase(),
-          }}
-          onSelect={handleSelectPlan}
-          isLoading={isLoading}
-        />
-      ))}
+    <div>
+      {/* Billing Toggle */}
+      <div className="flex justify-center mb-12">
+        <div className="relative inline-flex items-center gap-3">
+          <span className={`text-sm font-medium ${billing === 'monthly' ? 'text-foreground' : 'text-muted-foreground'}`}>
+            Mensual
+          </span>
+          <button
+            onClick={() => setBilling(billing === 'monthly' ? 'yearly' : 'monthly')}
+            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 ${
+              billing === 'yearly' ? 'bg-primary' : 'bg-muted-foreground/30'
+            }`}
+            role="switch"
+            aria-checked={billing === 'yearly'}
+          >
+            <span
+              className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                billing === 'yearly' ? 'translate-x-6' : 'translate-x-1'
+              }`}
+            />
+          </button>
+          <span className={`text-sm font-medium ${billing === 'yearly' ? 'text-foreground' : 'text-muted-foreground'}`}>
+            Anual
+          </span>
+          {billing === 'yearly' && (
+            <Badge variant="secondary" className="absolute left-full ml-3 whitespace-nowrap">
+              Ahorra hasta 30%
+            </Badge>
+          )}
+        </div>
+      </div>
+
+      <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+        {PRICING_TIERS.map((tier) => (
+          <PricingCard
+            key={tier.name}
+            tier={{
+              ...tier,
+              isCurrent: tier.name.toLowerCase() === currentTier.toLowerCase(),
+            }}
+            onSelect={handleSelectPlan}
+            isLoading={isLoading}
+          />
+        ))}
+      </div>
     </div>
   )
 }

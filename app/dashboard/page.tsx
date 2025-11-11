@@ -6,7 +6,8 @@ import { Plus } from 'lucide-react'
 import { redirect } from 'next/navigation'
 import { revalidatePath } from 'next/cache'
 import { CasesTable } from '@/components/cases-table'
-import { getTierConfig } from '@/lib/subscription-tiers'
+import { getTierConfig, getMaxCases } from '@/lib/subscription-tiers'
+import { DowngradeBlockedAlert } from '@/components/downgrade-blocked-alert'
 
 export default async function DashboardPage() {
   const supabase = await createClient()
@@ -26,10 +27,10 @@ export default async function DashboardPage() {
     .eq('user_id', user.id)
     .order('created_at', { ascending: false })
 
-  // Get user profile for tier info
+  // Get user profile for tier info and downgrade block status
   const { data: profile } = await supabase
     .from('user_profiles')
-    .select('subscription_tier')
+    .select('subscription_tier, downgrade_blocked, downgrade_blocked_at')
     .eq('id', user.id)
     .single()
 
@@ -76,6 +77,15 @@ export default async function DashboardPage() {
 
   return (
     <div className="space-y-6">
+      {/* Downgrade Blocked Alert */}
+      {profile?.downgrade_blocked && (
+        <DowngradeBlockedAlert
+          caseCount={caseCount}
+          maxCasesForNewTier={50} // We'll need to store the target tier, for now assume Pro 50
+          targetTier="Pro 50"
+        />
+      )}
+
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
