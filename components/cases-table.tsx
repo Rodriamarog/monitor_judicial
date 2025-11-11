@@ -31,6 +31,7 @@ interface Case {
   case_number: string
   juzgado: string
   nombre: string | null
+  telefono: string | null
   created_at: string
   alert_count: number
 }
@@ -38,7 +39,7 @@ interface Case {
 interface CasesTableProps {
   cases: Case[]
   onDelete: (caseId: string) => void
-  onUpdate?: (caseId: string, updates: { case_number?: string; juzgado?: string; nombre?: string | null }) => Promise<void>
+  onUpdate?: (caseId: string, updates: { case_number?: string; juzgado?: string; nombre?: string | null; telefono?: string | null }) => Promise<void>
 }
 
 export function CasesTable({ cases, onDelete, onUpdate }: CasesTableProps) {
@@ -54,6 +55,7 @@ export function CasesTable({ cases, onDelete, onUpdate }: CasesTableProps) {
   const [editCaseNumber, setEditCaseNumber] = useState('')
   const [editJuzgado, setEditJuzgado] = useState('')
   const [editNombre, setEditNombre] = useState('')
+  const [editTelefono, setEditTelefono] = useState('')
   const [editLoading, setEditLoading] = useState(false)
   const [editError, setEditError] = useState<string | null>(null)
 
@@ -96,7 +98,8 @@ export function CasesTable({ cases, onDelete, onUpdate }: CasesTableProps) {
       (case_) =>
         case_.case_number.toLowerCase().includes(query) ||
         case_.juzgado.toLowerCase().includes(query) ||
-        (case_.nombre && case_.nombre.toLowerCase().includes(query))
+        (case_.nombre && case_.nombre.toLowerCase().includes(query)) ||
+        (case_.telefono && case_.telefono.toLowerCase().includes(query))
     )
   }, [cases, searchQuery])
 
@@ -165,6 +168,7 @@ export function CasesTable({ cases, onDelete, onUpdate }: CasesTableProps) {
     setEditCaseNumber(case_.case_number)
     setEditJuzgado(case_.juzgado)
     setEditNombre(case_.nombre || '')
+    setEditTelefono(case_.telefono || '')
     setEditError(null)
   }
 
@@ -197,6 +201,7 @@ export function CasesTable({ cases, onDelete, onUpdate }: CasesTableProps) {
         case_number: normalizedCaseNumber,
         juzgado: editJuzgado,
         nombre: editNombre || null,
+        telefono: editTelefono || null,
       })
 
       setEditingCase(null)
@@ -214,7 +219,7 @@ export function CasesTable({ cases, onDelete, onUpdate }: CasesTableProps) {
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Buscar por número de caso, juzgado o nombre..."
+            placeholder="Buscar por número de caso, juzgado, nombre o teléfono..."
             value={searchQuery}
             onChange={(e) => handleSearch(e.target.value)}
             className="pl-10"
@@ -229,6 +234,7 @@ export function CasesTable({ cases, onDelete, onUpdate }: CasesTableProps) {
             <TableHead className="w-8 text-center">Alertas</TableHead>
             <TableHead className="min-w-[150px] md:min-w-0">Nombre</TableHead>
             <TableHead className="w-32">Número de Caso</TableHead>
+            <TableHead className="w-40">Teléfono</TableHead>
             <TableHead className="w-48">Juzgado</TableHead>
             <TableHead className="w-40">
               <Button
@@ -260,7 +266,7 @@ export function CasesTable({ cases, onDelete, onUpdate }: CasesTableProps) {
         <TableBody>
           {paginatedCases.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+              <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
                 {searchQuery ? 'No se encontraron casos' : 'No tiene casos registrados'}
               </TableCell>
             </TableRow>
@@ -292,6 +298,7 @@ export function CasesTable({ cases, onDelete, onUpdate }: CasesTableProps) {
                   </div>
                 </TableCell>
                 <TableCell className="font-mono">{case_.case_number}</TableCell>
+                <TableCell>{case_.telefono || '-'}</TableCell>
                 <TableCell>
                   <div className="truncate" title={case_.juzgado}>{case_.juzgado}</div>
                 </TableCell>
@@ -449,6 +456,18 @@ export function CasesTable({ cases, onDelete, onUpdate }: CasesTableProps) {
                 value={editNombre}
                 onChange={(e) => setEditNombre(e.target.value)}
                 placeholder="Nombre de la parte"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="edit-telefono">Teléfono del Cliente (opcional)</Label>
+              <Input
+                id="edit-telefono"
+                type="tel"
+                value={editTelefono}
+                onChange={(e) => setEditTelefono(e.target.value)}
+                placeholder="+52 664 123 4567"
+                maxLength={20}
               />
             </div>
           </div>

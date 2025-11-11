@@ -23,6 +23,7 @@ export default function AddCasePage() {
   const [caseNumber, setCaseNumber] = useState('')
   const [juzgado, setJuzgado] = useState('')
   const [nombre, setNombre] = useState('')
+  const [telefono, setTelefono] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
   const [loading, setLoading] = useState(false)
@@ -111,6 +112,7 @@ export default function AddCasePage() {
           case_number: normalizedCaseNumber,
           juzgado: juzgado,
           nombre: nombre || null,
+          telefono: telefono || null,
         },
       ])
       .select()
@@ -252,6 +254,22 @@ export default function AddCasePage() {
               />
               <p className="text-xs text-muted-foreground">
                 Un nombre de referencia para ayudarle a identificar este caso
+              </p>
+            </div>
+
+            {/* Teléfono (Optional) */}
+            <div className="space-y-2">
+              <Label htmlFor="telefono">Teléfono del Cliente (Opcional)</Label>
+              <Input
+                id="telefono"
+                type="tel"
+                placeholder="Ej: +52 664 123 4567"
+                value={telefono}
+                onChange={(e) => setTelefono(e.target.value)}
+                maxLength={20}
+              />
+              <p className="text-xs text-muted-foreground">
+                Número de teléfono del cliente asociado a este caso para su referencia
               </p>
             </div>
 

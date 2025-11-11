@@ -67,7 +67,7 @@ export default async function DashboardPage() {
 
   const handleUpdate = async (
     caseId: string,
-    updates: { case_number?: string; juzgado?: string; nombre?: string | null }
+    updates: { case_number?: string; juzgado?: string; nombre?: string | null; telefono?: string | null }
   ) => {
     'use server'
     const supabase = await createClient()
