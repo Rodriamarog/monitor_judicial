@@ -241,12 +241,14 @@ export async function getUnsentAlerts(supabaseUrl: string, supabaseKey: string) 
 }
 
 /**
- * Mark alert as sent
+ * Mark alert as sent (both email and WhatsApp)
  */
 export async function markAlertAsSent(
   alertId: string,
-  success: boolean,
-  errorMessage: string | null,
+  emailSuccess: boolean,
+  emailError: string | null,
+  whatsappSuccess: boolean,
+  whatsappError: string | null,
   supabaseUrl: string,
   supabaseKey: string
 ) {
@@ -255,9 +257,11 @@ export async function markAlertAsSent(
   const { error } = await supabase
     .from('alerts')
     .update({
-      whatsapp_sent: success,
-      whatsapp_error: errorMessage,
-      sent_at: success ? new Date().toISOString() : null,
+      email_sent: emailSuccess,
+      email_error: emailError,
+      whatsapp_sent: whatsappSuccess,
+      whatsapp_error: whatsappError,
+      sent_at: (emailSuccess || whatsappSuccess) ? new Date().toISOString() : null,
     })
     .eq('id', alertId);
 

@@ -184,10 +184,15 @@ export async function GET(request: NextRequest) {
           }
 
           // Send WhatsApp notification if user has it enabled and phone number
+          let whatsappResult: { success: boolean; error?: string; messageId?: string } = {
+            success: false,
+            error: 'WhatsApp not enabled or no phone number'
+          };
+
           if (userProfile.whatsapp_enabled && userProfile.phone) {
             try {
               const whatsappNumber = formatToWhatsApp(userProfile.phone);
-              const whatsappResult = await sendWhatsAppAlert({
+              whatsappResult = await sendWhatsAppAlert({
                 to: whatsappNumber,
                 userName: userProfile.full_name,
                 bulletinDate: bulletinDate,
@@ -206,7 +211,14 @@ export async function GET(request: NextRequest) {
               }
             } catch (whatsappError) {
               console.error(`WhatsApp error for ${userProfile.phone}:`, whatsappError);
+              whatsappResult = {
+                success: false,
+                error: whatsappError instanceof Error ? whatsappError.message : 'Unknown WhatsApp error'
+              };
             }
+          } else {
+            // WhatsApp not enabled, mark as success (no attempt needed)
+            whatsappResult = { success: true, error: null };
           }
 
           // Mark all alerts for this user as sent (or failed)
@@ -215,6 +227,8 @@ export async function GET(request: NextRequest) {
               alert.id,
               emailResult.success,
               emailResult.error || null,
+              whatsappResult.success,
+              whatsappResult.error || null,
               supabaseUrl,
               supabaseKey
             );
