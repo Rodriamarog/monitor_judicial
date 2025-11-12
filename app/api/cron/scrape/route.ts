@@ -261,7 +261,7 @@ export async function GET(request: NextRequest) {
               hasPhone: !!userProfile.phone
             });
             // WhatsApp not enabled, mark as success (no attempt needed)
-            whatsappResult = { success: true, error: null };
+            whatsappResult = { success: true };
           }
 
           // Mark all alerts for this user as sent (or failed)
