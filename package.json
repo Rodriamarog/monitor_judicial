@@ -16,6 +16,8 @@
     "test:whatsapp-system": "tsx scripts/test-whatsapp-system.ts",
     "test:both-users": "tsx scripts/test-both-users.ts",
     "test:multi-cases": "tsx scripts/test-multiple-cases.ts",
+    "test:logger": "tsx scripts/test-notification-logger.ts",
+    "logs": "tsx scripts/view-notification-logs.ts",
     "diagnose": "tsx scripts/diagnose-missing-cases.ts"
   },
   "dependencies": {
