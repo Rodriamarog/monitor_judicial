@@ -10,6 +10,7 @@ import { scrapeAllBulletins } from '@/lib/scraper';
 import { findAndCreateMatches, getUnsentAlerts, markAlertAsSent } from '@/lib/matcher';
 import { sendBatchAlertEmail } from '@/lib/email';
 import { sendWhatsAppAlert, formatToWhatsApp } from '@/lib/whatsapp';
+import { createNotificationLogger } from '@/lib/notification-logger';
 
 export const runtime = 'nodejs';
 export const maxDuration = 300; // 5 minutes max execution time
@@ -30,6 +31,9 @@ export async function GET(request: NextRequest) {
       { status: 500 }
     );
   }
+
+  // Initialize notification logger
+  const logger = createNotificationLogger(supabaseUrl, supabaseKey);
 
   try {
     // Get date parameter from query (?date=tomorrow or ?date=YYYY-MM-DD)
@@ -54,6 +58,7 @@ export async function GET(request: NextRequest) {
       });
     }
 
+    logger.info(`Starting scraper for ${targetDate}`, undefined, { dateParam });
     console.log(`Starting scraper for ${targetDate}`);
 
     // Step 1: Scrape all bulletins
@@ -132,6 +137,9 @@ export async function GET(request: NextRequest) {
     if (matchResults.alerts_created > 0) {
       try {
         const unsentAlerts = await getUnsentAlerts(supabaseUrl, supabaseKey);
+        logger.info(`Found ${unsentAlerts.length} unsent alerts to process`, undefined, {
+          alertCount: unsentAlerts.length
+        });
         console.log(`Found ${unsentAlerts.length} unsent alerts to process`);
 
         // Group alerts by user_id
@@ -173,13 +181,26 @@ export async function GET(request: NextRequest) {
           // Send consolidated email (only if user has email notifications enabled)
           let emailResult: { success: boolean; error?: string } = { success: true };
           if (userProfile.email_notifications_enabled !== false) {
+            logger.info(`Sending email to ${userProfile.email}`, userAlerts[0].id, {
+              alertCount: alerts.length,
+              userEmail: userProfile.email
+            });
             emailResult = await sendBatchAlertEmail({
               userEmail: userProfile.email,
               userName: userProfile.full_name,
               bulletinDate: bulletinDate,
               alerts: alerts,
             });
+
+            if (emailResult.success) {
+              logger.info(`✓ Email sent successfully to ${userProfile.email}`, userAlerts[0].id);
+            } else {
+              logger.error(`✗ Email failed to ${userProfile.email}`, userAlerts[0].id, {
+                error: emailResult.error
+              });
+            }
           } else {
+            logger.info(`Skipping email for ${userProfile.email} - notifications disabled`, userAlerts[0].id);
             console.log(`Skipping email for ${userProfile.email} - notifications disabled`);
           }
 
@@ -192,6 +213,12 @@ export async function GET(request: NextRequest) {
           if (userProfile.whatsapp_enabled && userProfile.phone) {
             try {
               const whatsappNumber = formatToWhatsApp(userProfile.phone);
+              logger.info(`Sending WhatsApp to ${userProfile.phone}`, userAlerts[0].id, {
+                alertCount: alerts.length,
+                phone: userProfile.phone,
+                formattedNumber: whatsappNumber
+              });
+
               whatsappResult = await sendWhatsAppAlert({
                 to: whatsappNumber,
                 userName: userProfile.full_name,
@@ -205,11 +232,23 @@ export async function GET(request: NextRequest) {
               });
 
               if (whatsappResult.success) {
+                logger.info(`✓ WhatsApp sent successfully to ${userProfile.phone}`, userAlerts[0].id, {
+                  messageId: whatsappResult.messageId
+                });
                 console.log(`✓ Sent WhatsApp to ${userProfile.phone} (${whatsappResult.messageId})`);
               } else {
+                logger.error(`✗ WhatsApp send failed to ${userProfile.phone}`, userAlerts[0].id, {
+                  error: whatsappResult.error,
+                  phone: userProfile.phone
+                });
                 console.error(`✗ Failed WhatsApp to ${userProfile.phone}: ${whatsappResult.error}`);
               }
             } catch (whatsappError) {
+              logger.error(`✗ WhatsApp exception for ${userProfile.phone}`, userAlerts[0].id, {
+                error: whatsappError instanceof Error ? whatsappError.message : String(whatsappError),
+                stack: whatsappError instanceof Error ? whatsappError.stack : undefined,
+                phone: userProfile.phone
+              });
               console.error(`WhatsApp error for ${userProfile.phone}:`, whatsappError);
               whatsappResult = {
                 success: false,
@@ -217,6 +256,10 @@ export async function GET(request: NextRequest) {
               };
             }
           } else {
+            logger.info(`WhatsApp not enabled for user ${userProfile.email}`, userAlerts[0].id, {
+              whatsappEnabled: userProfile.whatsapp_enabled,
+              hasPhone: !!userProfile.phone
+            });
             // WhatsApp not enabled, mark as success (no attempt needed)
             whatsappResult = { success: true, error: null };
           }
@@ -249,8 +292,20 @@ export async function GET(request: NextRequest) {
           await new Promise(resolve => setTimeout(resolve, 200));
         }
 
+        logger.info('Notification sending completed', undefined, {
+          emailsSent: emailResults.sent,
+          emailsFailed: emailResults.failed
+        });
         console.log('Email results:', emailResults);
+
+        // Flush all logs to database
+        await logger.flush();
       } catch (error) {
+        logger.error('Error sending notifications', undefined, {
+          error: error instanceof Error ? error.message : String(error),
+          stack: error instanceof Error ? error.stack : undefined
+        });
+        await logger.flush();
         console.error('Error sending emails:', error);
         emailResults.errors.push(error instanceof Error ? error.message : 'Unknown error');
       }
@@ -283,6 +338,11 @@ export async function GET(request: NextRequest) {
       },
     });
   } catch (error) {
+    logger.error('Scraper fatal error', undefined, {
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined
+    });
+    await logger.flush();
     console.error('Scraper error:', error);
     return NextResponse.json(
       {
