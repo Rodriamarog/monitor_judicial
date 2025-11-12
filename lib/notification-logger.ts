@@ -69,7 +69,7 @@ export class NotificationLogger {
 
     // Add to batch
     this.batchLogs.push({
-      alert_id: isValidUUID ? alertId : null,
+      alert_id: (isValidUUID && alertId) ? alertId : null,
       log_level: level,
       message,
       context: context || null,
