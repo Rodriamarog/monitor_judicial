@@ -525,8 +525,7 @@ export async function createWatchChannel(
   error?: string;
 }> {
   try {
-    const oauth2Client = await getRefreshedToken(tokenData, supabaseUrl, supabaseKey, userId);
-    const calendar = google.calendar({ version: 'v3', auth: oauth2Client });
+    const calendar = await getCalendarClient(tokenData, supabaseUrl, supabaseKey, userId);
 
     // Generate unique IDs
     const channelId = crypto.randomUUID();
