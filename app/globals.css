@@ -461,16 +461,16 @@
 
 /* Dark mode month view - off-range dates (previous/next month) - CRITICAL FIX */
 .dark .rbc-off-range {
-  color: rgba(156, 163, 175, 0.3) !important; /* Very dim text */
+  color: rgba(156, 163, 175, 0.25) !important; /* Very dim text */
 }
 
 .dark .rbc-off-range-bg {
-  background-color: rgba(39, 39, 42, 0.5) !important; /* Very dark background */
+  background-color: rgba(0, 0, 0, 0.4) !important; /* Much darker than current month */
 }
 
 /* Dark mode today cell - make it more subtle - CRITICAL FIX */
 .dark .rbc-today {
-  background-color: rgba(96, 165, 250, 0.12) !important; /* Very subtle blue tint */
+  background-color: rgba(96, 165, 250, 0.2) !important; /* Slightly more visible blue tint */
 }
 
 /* Dark mode selected cell */
