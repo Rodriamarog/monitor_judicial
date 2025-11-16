@@ -55,11 +55,58 @@ export async function POST(request: NextRequest) {
       .maybeSingle();
 
     if (channelError || !channel) {
-      console.error('Channel not found or inactive:', channelId);
-      return NextResponse.json(
-        { error: 'Invalid or inactive channel' },
-        { status: 401 }
-      );
+      console.warn('⚠️ Orphaned channel detected:', channelId);
+
+      // This is an orphaned channel from a previous connection
+      // We should stop it with Google to prevent future notifications
+      if (resourceId) {
+        try {
+          // Find ANY active user with this resource (same Google Calendar)
+          // Use their tokens to stop the orphaned channel
+          const { data: activeChannels } = await supabase
+            .from('calendar_watch_channels')
+            .select('user_id')
+            .eq('status', 'active')
+            .limit(1);
+
+          if (activeChannels && activeChannels.length > 0) {
+            const { data: tokens } = await supabase
+              .from('user_google_tokens')
+              .select('*')
+              .eq('user_id', activeChannels[0].user_id)
+              .single();
+
+            if (tokens) {
+              const tokenData = {
+                access_token: tokens.access_token,
+                refresh_token: tokens.refresh_token,
+                expires_at: tokens.expires_at,
+              };
+
+              const { stopWatchChannel } = await import('@/lib/google-calendar');
+              const result = await stopWatchChannel(
+                tokenData,
+                channelId,
+                resourceId,
+                supabaseUrl,
+                supabaseKey,
+                activeChannels[0].user_id
+              );
+
+              if (result.success) {
+                console.log('✅ Successfully stopped orphaned channel:', channelId);
+              } else {
+                console.error('❌ Failed to stop orphaned channel:', result.error);
+              }
+            }
+          }
+        } catch (stopError) {
+          console.error('Error stopping orphaned channel:', stopError);
+        }
+      }
+
+      // Return 200 to acknowledge and prevent retries
+      return NextResponse.json({ message: 'Orphaned channel handled' });
     }
 
     // Verify token matches
