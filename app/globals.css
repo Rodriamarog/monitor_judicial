@@ -563,21 +563,24 @@
 
 /* Hover state for calendar cells - Dark Mode */
 .dark .rbc-day-bg:hover {
-  background-color: hsl(var(--accent) / 0.15) !important;
+  background-color: rgba(255, 255, 255, 0.1) !important;
+  cursor: pointer;
 }
 
 /* Hover state for calendar cells - Light Mode */
 .rbc-day-bg:hover {
-  background-color: hsl(var(--accent) / 0.3) !important;
+  background-color: rgba(0, 0, 0, 0.05) !important;
   cursor: pointer;
 }
 
 /* Ensure off-range cells also get hover in dark mode */
 .dark .rbc-off-range-bg:hover {
-  background-color: rgba(255, 255, 255, 0.05) !important;
+  background-color: rgba(255, 255, 255, 0.08) !important;
+  cursor: pointer;
 }
 
 /* Off-range cells hover in light mode */
 .rbc-off-range-bg:hover {
-  background-color: hsl(var(--muted) / 0.7) !important;
+  background-color: rgba(0, 0, 0, 0.08) !important;
+  cursor: pointer;
 }
