@@ -8,7 +8,6 @@ import moment from 'moment'
 import 'moment/locale/es'
 import 'react-big-calendar/lib/css/react-big-calendar.css'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Loader2, Plus, Calendar as CalendarIcon, RefreshCw } from 'lucide-react'
 import { EventDialog } from '@/components/calendar/event-dialog'
@@ -189,111 +188,113 @@ export default function CalendarPage() {
   }
 
   return (
-    <div className="container mx-auto py-8 px-4">
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle className="flex items-center gap-2">
-                <CalendarIcon className="h-6 w-6" />
-                Mi Calendario
-              </CardTitle>
-              <CardDescription>
-                Gestiona tus eventos y audiencias
-                {googleCalendarEnabled && ' - Sincronizado con Google Calendar'}
-              </CardDescription>
-            </div>
-            <div className="flex gap-2">
-              {googleCalendarEnabled && (
-                <Button onClick={handleSync} disabled={syncing} variant="outline" size="sm">
-                  {syncing ? (
-                    <>
-                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                      Sincronizando...
-                    </>
-                  ) : (
-                    <>
-                      <RefreshCw className="h-4 w-4 mr-2" />
-                      Sincronizar
-                    </>
-                  )}
-                </Button>
+    <div className="h-[calc(100vh-5rem)] flex flex-col">
+      {/* Header */}
+      <div className="flex items-center justify-between px-6 py-4 border-b bg-card">
+        <div>
+          <h1 className="text-2xl font-bold flex items-center gap-2">
+            <CalendarIcon className="h-6 w-6" />
+            Mi Calendario
+          </h1>
+          <p className="text-sm text-muted-foreground">
+            Gestiona tus eventos y audiencias
+            {googleCalendarEnabled && ' - Sincronizado con Google Calendar'}
+          </p>
+        </div>
+        <div className="flex gap-2">
+          {googleCalendarEnabled && (
+            <Button onClick={handleSync} disabled={syncing} variant="outline" size="sm">
+              {syncing ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  Sincronizando...
+                </>
+              ) : (
+                <>
+                  <RefreshCw className="h-4 w-4 mr-2" />
+                  Sincronizar
+                </>
               )}
-              <Button
-                onClick={() => {
-                  setSelectedEvent({
-                    id: '',
-                    title: '',
-                    description: '',
-                    start_time: new Date().toISOString(),
-                    end_time: new Date(Date.now() + 3600000).toISOString(),
-                    location: '',
-                    sync_status: 'pending',
-                  })
-                  setDialogMode('create')
-                  setDialogOpen(true)
-                }}
-                size="sm"
-              >
-                <Plus className="h-4 w-4 mr-2" />
-                Nuevo Evento
+            </Button>
+          )}
+          <Button
+            onClick={() => {
+              setSelectedEvent({
+                id: '',
+                title: '',
+                description: '',
+                start_time: new Date().toISOString(),
+                end_time: new Date(Date.now() + 3600000).toISOString(),
+                location: '',
+                sync_status: 'pending',
+              })
+              setDialogMode('create')
+              setDialogOpen(true)
+            }}
+            size="sm"
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            Nuevo Evento
+          </Button>
+        </div>
+      </div>
+
+      {/* Alerts */}
+      <div className="px-6 pt-4">
+        {error && (
+          <Alert variant="destructive" className="mb-4">
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        )}
+
+        {!googleCalendarEnabled && (
+          <Alert className="mb-4">
+            <AlertDescription>
+              <p className="font-semibold mb-2">Conecta Google Calendar</p>
+              <p className="text-sm text-muted-foreground mb-3">
+                Conecta tu cuenta de Google Calendar en la configuración para sincronizar eventos automáticamente.
+              </p>
+              <Button onClick={() => router.push('/dashboard/settings')} size="sm" variant="outline">
+                Ir a Configuración
               </Button>
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent>
-          {error && (
-            <Alert variant="destructive" className="mb-4">
-              <AlertDescription>{error}</AlertDescription>
-            </Alert>
-          )}
+            </AlertDescription>
+          </Alert>
+        )}
+      </div>
 
-          {!googleCalendarEnabled && (
-            <Alert className="mb-4">
-              <AlertDescription>
-                <p className="font-semibold mb-2">Conecta Google Calendar</p>
-                <p className="text-sm text-muted-foreground mb-3">
-                  Conecta tu cuenta de Google Calendar en la configuración para sincronizar eventos automáticamente.
-                </p>
-                <Button onClick={() => router.push('/dashboard/settings')} size="sm" variant="outline">
-                  Ir a Configuración
-                </Button>
-              </AlertDescription>
-            </Alert>
-          )}
-
-          <div className="calendar-container" style={{ height: '600px' }}>
-            <BigCalendar
-              localizer={localizer}
-              events={calendarEvents}
-              startAccessor="start"
-              endAccessor="end"
-              view={view}
-              onView={setView}
-              date={date}
-              onNavigate={handleNavigate}
-              onSelectSlot={handleSelectSlot}
-              onSelectEvent={handleSelectEvent}
-              selectable
-              popup
-              messages={{
-                next: 'Siguiente',
-                previous: 'Anterior',
-                today: 'Hoy',
-                month: 'Mes',
-                week: 'Semana',
-                day: 'Día',
-                agenda: 'Agenda',
-                date: 'Fecha',
-                time: 'Hora',
-                event: 'Evento',
-                noEventsInRange: 'No hay eventos en este rango',
-                showMore: (total) => `+ Ver más (${total})`,
-              }}
-            />
-          </div>
-        </CardContent>
-      </Card>
+      {/* Calendar - Full Height */}
+      <div className="flex-1 px-6 pb-6">
+        <div className="h-full">
+          <BigCalendar
+            localizer={localizer}
+            events={calendarEvents}
+            startAccessor="start"
+            endAccessor="end"
+            view={view}
+            onView={setView}
+            date={date}
+            onNavigate={handleNavigate}
+            onSelectSlot={handleSelectSlot}
+            onSelectEvent={handleSelectEvent}
+            selectable
+            popup
+            messages={{
+              next: 'Siguiente',
+              previous: 'Anterior',
+              today: 'Hoy',
+              month: 'Mes',
+              week: 'Semana',
+              day: 'Día',
+              agenda: 'Agenda',
+              date: 'Fecha',
+              time: 'Hora',
+              event: 'Evento',
+              noEventsInRange: 'No hay eventos en este rango',
+              showMore: (total) => `+ Ver más (${total})`,
+            }}
+          />
+        </div>
+      </div>
 
       <EventDialog
         open={dialogOpen}
