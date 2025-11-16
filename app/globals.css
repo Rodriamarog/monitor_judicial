@@ -469,8 +469,22 @@
 }
 
 /* Dark mode today cell - make it stand out - CRITICAL FIX */
-.dark .rbc-today {
+/* Target all possible today cell variations */
+.dark .rbc-today,
+.dark .rbc-day-bg.rbc-today,
+.dark .rbc-month-view .rbc-today,
+.dark .rbc-date-cell.rbc-today {
   background-color: rgba(255, 255, 255, 0.08) !important; /* Lighter background to stand out */
+}
+
+/* Also target the date cell within today */
+.dark .rbc-today .rbc-date-cell {
+  background-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+/* Month row today cell */
+.dark .rbc-month-row .rbc-today {
+  background-color: rgba(255, 255, 255, 0.08) !important;
 }
 
 /* Dark mode selected cell */
