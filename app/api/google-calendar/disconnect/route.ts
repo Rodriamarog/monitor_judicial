@@ -21,31 +21,60 @@ export async function POST(request: NextRequest) {
     const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
     const serviceSupabase = createSupabaseClient(supabaseUrl, supabaseKey);
 
+    // Get user's tokens before deleting them (needed to stop watch channels)
+    const { data: tokens } = await serviceSupabase
+      .from('user_google_tokens')
+      .select('*')
+      .eq('user_id', user.id)
+      .single();
+
     // Stop all active watch channels for this user
-    try {
-      const { data: channels } = await serviceSupabase
-        .from('calendar_watch_channels')
-        .select('channel_id, resource_id')
-        .eq('user_id', user.id)
-        .eq('status', 'active');
+    if (tokens) {
+      try {
+        const { data: channels } = await serviceSupabase
+          .from('calendar_watch_channels')
+          .select('channel_id, resource_id')
+          .eq('user_id', user.id)
+          .eq('status', 'active');
 
-      if (channels && channels.length > 0) {
-        console.log(`Stopping ${channels.length} watch channels for user ${user.id}`);
+        if (channels && channels.length > 0) {
+          console.log(`Stopping ${channels.length} watch channels for user ${user.id}`);
 
-        for (const channel of channels) {
-          // Stop channel with Google
-          await stopWatchChannel(channel.channel_id, channel.resource_id);
+          const tokenData = {
+            access_token: tokens.access_token,
+            refresh_token: tokens.refresh_token,
+            expires_at: tokens.expires_at,
+          };
 
-          // Mark as stopped in database
-          await serviceSupabase
-            .from('calendar_watch_channels')
-            .update({ status: 'stopped' })
-            .eq('channel_id', channel.channel_id);
+          for (const channel of channels) {
+            // Stop channel with Google
+            const result = await stopWatchChannel(
+              tokenData,
+              channel.channel_id,
+              channel.resource_id,
+              supabaseUrl,
+              supabaseKey,
+              user.id
+            );
+
+            if (!result.success) {
+              throw new Error(`Failed to stop watch channel: ${result.error}`);
+            }
+
+            // Mark as stopped in database
+            await serviceSupabase
+              .from('calendar_watch_channels')
+              .update({ status: 'stopped' })
+              .eq('channel_id', channel.channel_id);
+          }
         }
+      } catch (channelError) {
+        console.error('Error stopping watch channels:', channelError);
+        return NextResponse.json(
+          { error: 'Failed to stop watch channels', message: channelError instanceof Error ? channelError.message : 'Unknown error' },
+          { status: 500 }
+        );
       }
-    } catch (channelError) {
-      console.error('Error stopping watch channels:', channelError);
-      // Don't fail the disconnect if channel stop fails
     }
 
     // Delete Google tokens

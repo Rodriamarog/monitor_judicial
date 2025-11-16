@@ -591,14 +591,15 @@ export async function createWatchChannel(
  * Unregisters a webhook channel from Google Calendar
  */
 export async function stopWatchChannel(
+  tokenData: TokenData,
   channelId: string,
-  resourceId: string
+  resourceId: string,
+  supabaseUrl: string,
+  supabaseKey: string,
+  userId: string
 ): Promise<{ success: boolean; error?: string }> {
   try {
-    // We need OAuth credentials to stop a channel
-    // Use a service client with minimal credentials
-    const oauth2Client = new OAuth2Client(GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET);
-    const calendar = google.calendar({ version: 'v3', auth: oauth2Client });
+    const calendar = await getCalendarClient(tokenData, supabaseUrl, supabaseKey, userId);
 
     await calendar.channels.stop({
       requestBody: {
@@ -610,7 +611,6 @@ export async function stopWatchChannel(
     return { success: true };
   } catch (error) {
     console.error('Error stopping watch channel:', error);
-    // Don't fail if stopping fails - channel will expire naturally
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Unknown error',
@@ -658,7 +658,7 @@ export async function renewWatchChannel(
       .eq('channel_id', oldChannelId);
 
     // Try to stop old channel with Google (not critical if it fails)
-    await stopWatchChannel(oldChannelId, oldResourceId);
+    await stopWatchChannel(tokenData, oldChannelId, oldResourceId, supabaseUrl, supabaseKey, userId);
 
     return {
       success: true,
