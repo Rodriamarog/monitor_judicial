@@ -139,6 +139,19 @@ export async function GET(request: NextRequest) {
 
     // Create watch channel for push notifications
     try {
+      // Mark any existing active channels as stopped before creating new one
+      // This prevents duplicate key constraint violations when reconnecting
+      const { error: updateError } = await supabase
+        .from('calendar_watch_channels')
+        .update({ status: 'stopped' })
+        .eq('user_id', userId)
+        .eq('calendar_id', calendarInfo.calendarId || 'primary')
+        .eq('status', 'active');
+
+      if (updateError) {
+        console.error('Error marking old channels as stopped:', updateError);
+      }
+
       const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
       const webhookUrl = `${appUrl}/api/google-calendar/webhook`;
 
