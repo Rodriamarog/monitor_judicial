@@ -444,128 +444,128 @@
 }
 
 /* React Big Calendar Dark Mode Customization */
-@layer components {
-  /* Dark mode calendar background */
-  .dark .rbc-calendar {
-    background-color: hsl(var(--card));
-    color: hsl(var(--card-foreground));
-  }
+/* Using higher specificity and !important to override default styles */
 
-  /* Dark mode calendar header */
-  .dark .rbc-header {
-    background-color: hsl(var(--muted));
-    color: hsl(var(--muted-foreground));
-    border-color: hsl(var(--border));
-  }
+/* Dark mode calendar background */
+.dark .rbc-calendar {
+  background-color: hsl(var(--card)) !important;
+  color: hsl(var(--card-foreground)) !important;
+}
 
-  /* Dark mode month view - off-range dates (previous/next month) */
-  .dark .rbc-off-range {
-    color: hsl(var(--muted-foreground) / 0.3);
-  }
+/* Dark mode calendar header */
+.dark .rbc-header {
+  background-color: hsl(var(--muted)) !important;
+  color: hsl(var(--muted-foreground)) !important;
+  border-color: hsl(var(--border)) !important;
+}
 
-  .dark .rbc-off-range-bg {
-    background-color: hsl(var(--muted) / 0.2);
-  }
+/* Dark mode month view - off-range dates (previous/next month) - CRITICAL FIX */
+.dark .rbc-off-range {
+  color: rgba(156, 163, 175, 0.3) !important; /* Very dim text */
+}
 
-  /* Dark mode today cell - make it more subtle */
-  .dark .rbc-today {
-    background-color: hsl(var(--accent) / 0.15);
-  }
+.dark .rbc-off-range-bg {
+  background-color: rgba(39, 39, 42, 0.5) !important; /* Very dark background */
+}
 
-  /* Dark mode selected cell */
-  .dark .rbc-selected-cell {
-    background-color: hsl(var(--accent) / 0.25);
-  }
+/* Dark mode today cell - make it more subtle - CRITICAL FIX */
+.dark .rbc-today {
+  background-color: rgba(96, 165, 250, 0.12) !important; /* Very subtle blue tint */
+}
 
-  /* Dark mode date cell */
-  .dark .rbc-date-cell {
-    color: hsl(var(--foreground));
-  }
+/* Dark mode selected cell */
+.dark .rbc-selected-cell {
+  background-color: hsl(var(--accent) / 0.25) !important;
+}
 
-  /* Dark mode day background */
-  .dark .rbc-day-bg {
-    background-color: hsl(var(--card));
-    border-color: hsl(var(--border));
-  }
+/* Dark mode date cell */
+.dark .rbc-date-cell {
+  color: hsl(var(--foreground)) !important;
+}
 
-  /* Dark mode event */
-  .dark .rbc-event {
-    background-color: hsl(var(--primary));
-    color: hsl(var(--primary-foreground));
-    border-color: hsl(var(--primary));
-  }
+/* Dark mode current month dates */
+.dark .rbc-day-bg:not(.rbc-off-range-bg) {
+  background-color: hsl(var(--card)) !important;
+  border-color: hsl(var(--border)) !important;
+}
 
-  .dark .rbc-event:hover {
-    background-color: hsl(var(--primary) / 0.9);
-  }
+/* Dark mode event */
+.dark .rbc-event {
+  background-color: hsl(var(--primary)) !important;
+  color: hsl(var(--primary-foreground)) !important;
+  border-color: hsl(var(--primary)) !important;
+}
 
-  .dark .rbc-event.rbc-selected {
-    background-color: hsl(var(--primary) / 0.8);
-  }
+.dark .rbc-event:hover {
+  background-color: hsl(var(--primary) / 0.9) !important;
+}
 
-  /* Dark mode toolbar */
-  .dark .rbc-toolbar {
-    color: hsl(var(--foreground));
-  }
+.dark .rbc-event.rbc-selected {
+  background-color: hsl(var(--primary) / 0.8) !important;
+}
 
-  .dark .rbc-toolbar button {
-    color: hsl(var(--foreground));
-    border-color: hsl(var(--border));
-  }
+/* Dark mode toolbar */
+.dark .rbc-toolbar {
+  color: hsl(var(--foreground)) !important;
+}
 
-  .dark .rbc-toolbar button:hover,
-  .dark .rbc-toolbar button:focus {
-    background-color: hsl(var(--accent));
-    color: hsl(var(--accent-foreground));
-  }
+.dark .rbc-toolbar button {
+  color: hsl(var(--foreground)) !important;
+  border-color: hsl(var(--border)) !important;
+}
 
-  .dark .rbc-toolbar button.rbc-active {
-    background-color: hsl(var(--primary));
-    color: hsl(var(--primary-foreground));
-    border-color: hsl(var(--primary));
-  }
+.dark .rbc-toolbar button:hover,
+.dark .rbc-toolbar button:focus {
+  background-color: hsl(var(--accent)) !important;
+  color: hsl(var(--accent-foreground)) !important;
+}
 
-  /* Dark mode time grid */
-  .dark .rbc-time-slot {
-    border-color: hsl(var(--border));
-  }
+.dark .rbc-toolbar button.rbc-active {
+  background-color: hsl(var(--primary)) !important;
+  color: hsl(var(--primary-foreground)) !important;
+  border-color: hsl(var(--primary)) !important;
+}
 
-  .dark .rbc-time-content {
-    border-color: hsl(var(--border));
-  }
+/* Dark mode time grid */
+.dark .rbc-time-slot {
+  border-color: hsl(var(--border)) !important;
+}
 
-  .dark .rbc-current-time-indicator {
-    background-color: hsl(var(--destructive));
-  }
+.dark .rbc-time-content {
+  border-color: hsl(var(--border)) !important;
+}
 
-  /* Dark mode agenda view */
-  .dark .rbc-agenda-view {
-    background-color: hsl(var(--card));
-  }
+.dark .rbc-current-time-indicator {
+  background-color: hsl(var(--destructive)) !important;
+}
 
-  .dark .rbc-agenda-date-cell,
-  .dark .rbc-agenda-time-cell {
-    background-color: hsl(var(--muted));
-    color: hsl(var(--muted-foreground));
-    border-color: hsl(var(--border));
-  }
+/* Dark mode agenda view */
+.dark .rbc-agenda-view {
+  background-color: hsl(var(--card)) !important;
+}
 
-  .dark .rbc-agenda-event-cell {
-    color: hsl(var(--card-foreground));
-    border-color: hsl(var(--border));
-  }
+.dark .rbc-agenda-date-cell,
+.dark .rbc-agenda-time-cell {
+  background-color: hsl(var(--muted)) !important;
+  color: hsl(var(--muted-foreground)) !important;
+  border-color: hsl(var(--border)) !important;
+}
 
-  /* Dark mode month view borders */
-  .dark .rbc-month-view {
-    border-color: hsl(var(--border));
-  }
+.dark .rbc-agenda-event-cell {
+  color: hsl(var(--card-foreground)) !important;
+  border-color: hsl(var(--border)) !important;
+}
 
-  .dark .rbc-month-row {
-    border-color: hsl(var(--border));
-  }
+/* Dark mode month view borders */
+.dark .rbc-month-view {
+  border-color: hsl(var(--border)) !important;
+}
 
-  /* Hover state for calendar cells */
-  .dark .rbc-day-bg:hover {
-    background-color: hsl(var(--accent) / 0.1);
-  }
+.dark .rbc-month-row {
+  border-color: hsl(var(--border)) !important;
+}
+
+/* Hover state for calendar cells */
+.dark .rbc-day-bg:hover {
+  background-color: hsl(var(--accent) / 0.1) !important;
 }
