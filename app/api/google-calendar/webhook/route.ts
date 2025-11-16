@@ -22,11 +22,15 @@ export async function POST(request: NextRequest) {
     const channelToken = request.headers.get('X-Goog-Channel-Token');
     const resourceState = request.headers.get('X-Goog-Resource-State');
     const messageNumber = request.headers.get('X-Goog-Message-Number');
+    const resourceId = request.headers.get('X-Goog-Resource-ID');
 
-    console.log('📬 Webhook received:', {
+    console.log('📬 Webhook received from Google Calendar:', {
       channelId,
+      channelToken: channelToken ? '***' : null,
       resourceState,
       messageNumber,
+      resourceId,
+      timestamp: new Date().toISOString(),
     });
 
     // Validate required headers

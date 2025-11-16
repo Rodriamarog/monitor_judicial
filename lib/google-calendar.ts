@@ -362,10 +362,11 @@ export async function syncFromGoogle(
       // When using sync token, don't use singleEvents/orderBy to get deletions
       params.syncToken = syncToken;
     } else {
-      // Initial sync - use singleEvents and time range
-      params.singleEvents = true;
-      params.orderBy = 'startTime';
+      // Initial sync - DO NOT use singleEvents to ensure we get a nextSyncToken
+      // Note: Without singleEvents, recurring events appear as single master events
+      // but we'll get a sync token which enables incremental syncs
       params.timeMin = timeMin;
+      params.maxResults = 2500; // Get more events in initial sync
     }
 
     try {
