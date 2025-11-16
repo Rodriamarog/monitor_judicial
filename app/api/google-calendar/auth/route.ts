@@ -4,6 +4,7 @@ import {
   exchangeCodeForTokens,
   getUserCalendarInfo,
   syncFromGoogle,
+  createWatchChannel,
 } from '@/lib/google-calendar';
 
 /**
@@ -134,6 +135,32 @@ export async function GET(request: NextRequest) {
     } catch (syncError) {
       console.error('Error during initial sync:', syncError);
       // Don't fail the OAuth flow if sync fails
+    }
+
+    // Create watch channel for push notifications
+    try {
+      const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+      const webhookUrl = `${appUrl}/api/google-calendar/webhook`;
+
+      const watchResult = await createWatchChannel(
+        tokenData,
+        calendarInfo.calendarId || 'primary',
+        webhookUrl,
+        supabaseUrl,
+        supabaseKey,
+        userId
+      );
+
+      if (watchResult.success) {
+        console.log('✅ Watch channel created:', watchResult.channelId);
+      } else {
+        console.error('Failed to create watch channel:', watchResult.error);
+        // Don't fail the OAuth flow if watch creation fails
+        // User can still use manual sync
+      }
+    } catch (watchError) {
+      console.error('Error creating watch channel:', watchError);
+      // Don't fail the OAuth flow if watch creation fails
     }
 
     // Redirect to settings with success message

@@ -505,3 +505,170 @@ export async function getUserCalendarInfo(
     };
   }
 }
+
+/**
+ * Create a watch channel for Google Calendar push notifications
+ * Registers a webhook URL to receive notifications when calendar events change
+ */
+export async function createWatchChannel(
+  tokenData: TokenData,
+  calendarId: string,
+  webhookUrl: string,
+  supabaseUrl: string,
+  supabaseKey: string,
+  userId: string
+): Promise<{
+  success: boolean;
+  channelId?: string;
+  resourceId?: string;
+  expiration?: number;
+  error?: string;
+}> {
+  try {
+    const oauth2Client = await getRefreshedToken(tokenData, supabaseUrl, supabaseKey, userId);
+    const calendar = google.calendar({ version: 'v3', auth: oauth2Client });
+
+    // Generate unique IDs
+    const channelId = crypto.randomUUID();
+    const channelToken = crypto.randomUUID();
+
+    // Create watch channel with 30-day expiration (maximum allowed)
+    const response = await calendar.events.watch({
+      calendarId: calendarId || 'primary',
+      requestBody: {
+        id: channelId,
+        type: 'web_hook',
+        address: webhookUrl,
+        token: channelToken,
+        params: {
+          ttl: '2592000', // 30 days in seconds
+        },
+      },
+    });
+
+    const expirationMs = response.data.expiration
+      ? parseInt(response.data.expiration)
+      : Date.now() + 30 * 24 * 60 * 60 * 1000;
+
+    // Store channel in database
+    const supabase = createSupabaseClient(supabaseUrl, supabaseKey);
+    const { error: dbError } = await supabase.from('calendar_watch_channels').insert({
+      user_id: userId,
+      calendar_id: calendarId || 'primary',
+      channel_id: channelId,
+      resource_id: response.data.resourceId || '',
+      resource_uri: response.data.resourceUri || '',
+      channel_token: channelToken,
+      expires_at: new Date(expirationMs).toISOString(),
+      status: 'active',
+    });
+
+    if (dbError) {
+      console.error('Error storing watch channel:', dbError);
+      return {
+        success: false,
+        error: `Failed to store channel: ${dbError.message}`,
+      };
+    }
+
+    return {
+      success: true,
+      channelId: channelId,
+      resourceId: response.data.resourceId || undefined,
+      expiration: expirationMs,
+    };
+  } catch (error) {
+    console.error('Error creating watch channel:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error',
+    };
+  }
+}
+
+/**
+ * Stop a watch channel
+ * Unregisters a webhook channel from Google Calendar
+ */
+export async function stopWatchChannel(
+  channelId: string,
+  resourceId: string
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    // We need OAuth credentials to stop a channel
+    // Use a service client with minimal credentials
+    const oauth2Client = new OAuth2Client(GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET);
+    const calendar = google.calendar({ version: 'v3', auth: oauth2Client });
+
+    await calendar.channels.stop({
+      requestBody: {
+        id: channelId,
+        resourceId: resourceId,
+      },
+    });
+
+    return { success: true };
+  } catch (error) {
+    console.error('Error stopping watch channel:', error);
+    // Don't fail if stopping fails - channel will expire naturally
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error',
+    };
+  }
+}
+
+/**
+ * Renew an expiring watch channel
+ * Creates a new channel and stops the old one
+ */
+export async function renewWatchChannel(
+  oldChannelId: string,
+  oldResourceId: string,
+  tokenData: TokenData,
+  calendarId: string,
+  webhookUrl: string,
+  supabaseUrl: string,
+  supabaseKey: string,
+  userId: string
+): Promise<{ success: boolean; newChannelId?: string; error?: string }> {
+  try {
+    // Create new channel first
+    const newChannel = await createWatchChannel(
+      tokenData,
+      calendarId,
+      webhookUrl,
+      supabaseUrl,
+      supabaseKey,
+      userId
+    );
+
+    if (!newChannel.success) {
+      return {
+        success: false,
+        error: `Failed to create new channel: ${newChannel.error}`,
+      };
+    }
+
+    // Update old channel status to 'stopped' in database
+    const supabase = createSupabaseClient(supabaseUrl, supabaseKey);
+    await supabase
+      .from('calendar_watch_channels')
+      .update({ status: 'stopped' })
+      .eq('channel_id', oldChannelId);
+
+    // Try to stop old channel with Google (not critical if it fails)
+    await stopWatchChannel(oldChannelId, oldResourceId);
+
+    return {
+      success: true,
+      newChannelId: newChannel.channelId,
+    };
+  } catch (error) {
+    console.error('Error renewing watch channel:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error',
+    };
+  }
+}

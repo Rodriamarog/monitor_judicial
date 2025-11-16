@@ -64,28 +64,20 @@ export default function CalendarPage() {
     const converted = events.map((event) => {
       // Handle all-day events (stored as UTC midnight) vs timed events
       const parseDate = (dateStr: string) => {
-        console.log('🔍 Parsing date:', dateStr)
-
         // Check if it's a date-only string (YYYY-MM-DD)
         if (dateStr.length === 10 && dateStr.match(/^\d{4}-\d{2}-\d{2}$/)) {
-          const parsed = moment(dateStr, 'YYYY-MM-DD').toDate()
-          console.log('  ➜ Date-only format, parsed as:', parsed.toString())
-          return parsed
+          return moment(dateStr, 'YYYY-MM-DD').toDate()
         }
 
         // Check if it's an all-day event (UTC midnight: ends with T00:00:00+00:00 or Z)
         if (dateStr.match(/T00:00:00(\+00:00|Z)$/)) {
           // Extract just the date part and parse as local date
           const dateOnly = dateStr.substring(0, 10)
-          const parsed = moment(dateOnly, 'YYYY-MM-DD').toDate()
-          console.log('  ➜ All-day event (UTC midnight), parsed as local date:', parsed.toString())
-          return parsed
+          return moment(dateOnly, 'YYYY-MM-DD').toDate()
         }
 
         // Regular timed event - parse with timezone
-        const parsed = moment(dateStr).toDate()
-        console.log('  ➜ Timed event, parsed as:', parsed.toString())
-        return parsed
+        return moment(dateStr).toDate()
       }
 
       return {
@@ -147,7 +139,6 @@ export default function CalendarPage() {
       }
 
       const data = await response.json()
-      console.log('📅 Raw events from API:', JSON.stringify(data.events, null, 2))
       setEvents(data.events || [])
     } catch (err) {
       console.error('Error loading events:', err)
