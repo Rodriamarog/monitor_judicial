@@ -31,6 +31,15 @@ export function Footer() {
         {/* Copyright */}
         <div className="mt-8 border-t border-border pt-8 text-center space-y-2">
           <p className="text-sm text-muted-foreground">© 2025 Monitor Judicial PJBC. Todos los derechos reservados.</p>
+          <p className="text-xs text-muted-foreground space-x-4">
+            <Link href="/privacy" className="hover:text-foreground transition-colors">
+              Política de Privacidad
+            </Link>
+            <span className="text-muted-foreground/50">·</span>
+            <Link href="/terms" className="hover:text-foreground transition-colors">
+              Términos de Servicio
+            </Link>
+          </p>
           <p className="text-xs text-muted-foreground">
             Icono de{' '}
             <a
