@@ -224,11 +224,11 @@ export async function createCalendarEvent(
       location: event.location,
       start: {
         dateTime: event.start_time,
-        timeZone: 'America/Tijuana',
+        // Let Google Calendar use the user's calendar timezone
       },
       end: {
         dateTime: event.end_time,
-        timeZone: 'America/Tijuana',
+        // Let Google Calendar use the user's calendar timezone
       },
     };
 
@@ -273,11 +273,11 @@ export async function updateCalendarEvent(
       location: event.location,
       start: {
         dateTime: event.start_time,
-        timeZone: 'America/Tijuana',
+        // Let Google Calendar use the user's calendar timezone
       },
       end: {
         dateTime: event.end_time,
-        timeZone: 'America/Tijuana',
+        // Let Google Calendar use the user's calendar timezone
       },
     };
 
@@ -356,13 +356,15 @@ export async function syncFromGoogle(
 
     const params: any = {
       calendarId: calendarId || 'primary',
-      singleEvents: true,
-      orderBy: 'startTime',
     };
 
     if (syncToken) {
+      // When using sync token, don't use singleEvents/orderBy to get deletions
       params.syncToken = syncToken;
     } else {
+      // Initial sync - use singleEvents and time range
+      params.singleEvents = true;
+      params.orderBy = 'startTime';
       params.timeMin = timeMin;
     }
 
@@ -396,12 +398,17 @@ export async function syncFromGoogle(
           .is('deleted_at', null)
           .maybeSingle();
 
+        // For all-day events, Google sends date (YYYY-MM-DD) instead of dateTime
+        // We need to preserve date-only format to avoid timezone issues
+        const startTime = googleEvent.start?.dateTime || googleEvent.start?.date;
+        const endTime = googleEvent.end?.dateTime || googleEvent.end?.date;
+
         const eventData = {
           user_id: userId,
           title: googleEvent.summary || '(No title)',
           description: googleEvent.description || null,
-          start_time: googleEvent.start?.dateTime || googleEvent.start?.date,
-          end_time: googleEvent.end?.dateTime || googleEvent.end?.date,
+          start_time: startTime,
+          end_time: endTime,
           location: googleEvent.location || null,
           google_calendar_id: calendarId || 'primary',
           google_event_id: googleEvent.id,

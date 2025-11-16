@@ -53,18 +53,49 @@ export default function CalendarPage() {
 
   useEffect(() => {
     checkGoogleCalendarStatus()
-    loadEvents()
   }, [])
 
   useEffect(() => {
+    loadEvents()
+  }, [date])
+
+  useEffect(() => {
     // Convert events to react-big-calendar format
-    const converted = events.map((event) => ({
-      id: event.id,
-      title: event.title,
-      start: new Date(event.start_time),
-      end: new Date(event.end_time),
-      resource: event,
-    }))
+    const converted = events.map((event) => {
+      // Handle all-day events (stored as UTC midnight) vs timed events
+      const parseDate = (dateStr: string) => {
+        console.log('🔍 Parsing date:', dateStr)
+
+        // Check if it's a date-only string (YYYY-MM-DD)
+        if (dateStr.length === 10 && dateStr.match(/^\d{4}-\d{2}-\d{2}$/)) {
+          const parsed = moment(dateStr, 'YYYY-MM-DD').toDate()
+          console.log('  ➜ Date-only format, parsed as:', parsed.toString())
+          return parsed
+        }
+
+        // Check if it's an all-day event (UTC midnight: ends with T00:00:00+00:00 or Z)
+        if (dateStr.match(/T00:00:00(\+00:00|Z)$/)) {
+          // Extract just the date part and parse as local date
+          const dateOnly = dateStr.substring(0, 10)
+          const parsed = moment(dateOnly, 'YYYY-MM-DD').toDate()
+          console.log('  ➜ All-day event (UTC midnight), parsed as local date:', parsed.toString())
+          return parsed
+        }
+
+        // Regular timed event - parse with timezone
+        const parsed = moment(dateStr).toDate()
+        console.log('  ➜ Timed event, parsed as:', parsed.toString())
+        return parsed
+      }
+
+      return {
+        id: event.id,
+        title: event.title,
+        start: parseDate(event.start_time),
+        end: parseDate(event.end_time),
+        resource: event,
+      }
+    })
     setCalendarEvents(converted)
   }, [events])
 
@@ -116,6 +147,7 @@ export default function CalendarPage() {
       }
 
       const data = await response.json()
+      console.log('📅 Raw events from API:', JSON.stringify(data.events, null, 2))
       setEvents(data.events || [])
     } catch (err) {
       console.error('Error loading events:', err)
@@ -175,8 +207,7 @@ export default function CalendarPage() {
 
   const handleNavigate = (newDate: Date) => {
     setDate(newDate)
-    // Reload events when navigating to different date ranges
-    setTimeout(() => loadEvents(), 100)
+    // Events will reload automatically via useEffect
   }
 
   if (loading) {
