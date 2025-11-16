@@ -468,9 +468,9 @@
   background-color: rgba(0, 0, 0, 0.4) !important; /* Much darker than current month */
 }
 
-/* Dark mode today cell - make it more subtle - CRITICAL FIX */
+/* Dark mode today cell - make it stand out - CRITICAL FIX */
 .dark .rbc-today {
-  background-color: rgba(96, 165, 250, 0.2) !important; /* Slightly more visible blue tint */
+  background-color: rgba(255, 255, 255, 0.08) !important; /* Lighter background to stand out */
 }
 
 /* Dark mode selected cell */
