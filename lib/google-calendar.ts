@@ -475,6 +475,7 @@ export async function syncFromGoogle(
 
 /**
  * Get user's primary calendar info
+ * Note: We just use 'primary' as the calendar ID since we only need events scope
  */
 export async function getUserCalendarInfo(
   tokenData: TokenData,
@@ -483,22 +484,11 @@ export async function getUserCalendarInfo(
   userId: string
 ): Promise<{ success: boolean; email?: string; calendarId?: string; error?: string }> {
   try {
-    const calendar = await getCalendarClient(tokenData, supabaseUrl, supabaseKey, userId);
-
-    const response = await calendar.calendarList.list();
-    const primaryCalendar = response.data.items?.find((cal) => cal.primary);
-
-    if (!primaryCalendar) {
-      return {
-        success: false,
-        error: 'No primary calendar found',
-      };
-    }
-
+    // We don't need to call calendarList.list() since we only have events scope
+    // Just use 'primary' as the calendar ID (this is the user's main calendar)
     return {
       success: true,
-      email: primaryCalendar.summary || undefined,
-      calendarId: primaryCalendar.id || 'primary',
+      calendarId: 'primary',
     };
   } catch (error) {
     console.error('Error getting calendar info:', error);
