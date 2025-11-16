@@ -57,11 +57,13 @@ export async function POST(request: NextRequest) {
               user.id
             );
 
-            if (!result.success) {
+            // If channel doesn't exist (404), that's fine - it's already stopped
+            // Only fail on other errors
+            if (!result.success && !result.error?.includes('not found')) {
               throw new Error(`Failed to stop watch channel: ${result.error}`);
             }
 
-            // Mark as stopped in database
+            // Mark as stopped in database regardless
             await serviceSupabase
               .from('calendar_watch_channels')
               .update({ status: 'stopped' })
