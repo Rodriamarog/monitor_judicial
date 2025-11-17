@@ -59,29 +59,14 @@ export default function CalendarPage() {
     loadEvents()
   }, [date])
 
-  // Set up Realtime subscription for automatic updates when events change
+  // Poll for new events every 10 seconds to catch webhook updates
   useEffect(() => {
-    const channel = supabase
-      .channel('calendar-events-changes')
-      .on(
-        'postgres_changes',
-        {
-          event: '*', // Listen to INSERT, UPDATE, DELETE
-          schema: 'public',
-          table: 'calendar_events',
-        },
-        (payload) => {
-          console.log('📡 Realtime event received:', payload)
-          loadEvents()
-        }
-      )
-      .subscribe((status) => {
-        console.log('Realtime subscription status:', status)
-      })
+    const interval = setInterval(() => {
+      loadEvents()
+    }, 10000) // 10 seconds
 
     return () => {
-      console.log('Cleaning up Realtime subscription')
-      supabase.removeChannel(channel)
+      clearInterval(interval)
     }
   }, [date])
 
