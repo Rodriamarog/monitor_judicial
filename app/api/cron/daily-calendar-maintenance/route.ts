@@ -32,13 +32,42 @@ export async function GET(request: NextRequest) {
       channelsRenewFailed: 0,
       calendarsSynced: 0,
       calendarsSyncFailed: 0,
+      oldEventsDeleted: 0,
+      softDeletedEventsDeleted: 0,
       errors: [] as string[],
     };
 
     // ==========================================
-    // TASK 1: Renew Expiring Watch Channels
+    // TASK 1: Clean Up Old Calendar Events
     // ==========================================
-    console.log('🔄 Task 1: Renewing expiring watch channels...');
+    console.log('🧹 Task 1: Cleaning up old calendar events...');
+
+    try {
+      const { data: cleanupResults, error: cleanupError } = await supabase.rpc(
+        'cleanup_old_calendar_events'
+      );
+
+      if (cleanupError) {
+        console.error('Error cleaning up old events:', cleanupError);
+        results.errors.push(`Failed to clean up old events: ${cleanupError.message}`);
+      } else if (cleanupResults && cleanupResults.length > 0) {
+        results.softDeletedEventsDeleted = cleanupResults[0].deleted_soft_deleted;
+        results.oldEventsDeleted = cleanupResults[0].deleted_old_events;
+        console.log(
+          `✅ Cleaned up ${results.softDeletedEventsDeleted} soft-deleted events and ${results.oldEventsDeleted} old events`
+        );
+      }
+    } catch (error) {
+      console.error('Error in cleanup task:', error);
+      results.errors.push(
+        `Cleanup task failed: ${error instanceof Error ? error.message : 'Unknown'}`
+      );
+    }
+
+    // ==========================================
+    // TASK 2: Renew Expiring Watch Channels
+    // ==========================================
+    console.log('🔄 Task 2: Renewing expiring watch channels...');
 
     // Find channels expiring in less than 3 days
     const threeDaysFromNow = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000);
@@ -96,9 +125,9 @@ export async function GET(request: NextRequest) {
     }
 
     // ==========================================
-    // TASK 2: Sync Stale Calendars (Catch Missed Webhooks)
+    // TASK 3: Sync Stale Calendars (Catch Missed Webhooks)
     // ==========================================
-    console.log('🔄 Task 2: Syncing stale calendars...');
+    console.log('🔄 Task 3: Syncing stale calendars...');
 
     // Find users with Google Calendar enabled but no sync/notification in 24+ hours
     const twentyFiveHoursAgo = new Date(Date.now() - 25 * 60 * 60 * 1000);
@@ -180,6 +209,8 @@ export async function GET(request: NextRequest) {
       success: true,
       timestamp: new Date().toISOString(),
       summary: {
+        softDeletedEventsDeleted: results.softDeletedEventsDeleted,
+        oldEventsDeleted: results.oldEventsDeleted,
         channelsRenewed: results.channelsRenewed,
         channelsRenewFailed: results.channelsRenewFailed,
         calendarsSynced: results.calendarsSynced,
