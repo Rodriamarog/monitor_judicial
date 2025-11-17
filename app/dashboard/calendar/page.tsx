@@ -59,6 +59,29 @@ export default function CalendarPage() {
     loadEvents()
   }, [date])
 
+  // Set up Realtime subscription for automatic updates when events change
+  useEffect(() => {
+    const channel = supabase
+      .channel('calendar-events-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*', // Listen to INSERT, UPDATE, DELETE
+          schema: 'public',
+          table: 'calendar_events',
+        },
+        () => {
+          console.log('📡 Calendar event changed, reloading...')
+          loadEvents()
+        }
+      )
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [date])
+
   useEffect(() => {
     // Convert events to react-big-calendar format
     const converted = events.map((event) => {
