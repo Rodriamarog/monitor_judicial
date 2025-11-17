@@ -9,11 +9,16 @@ import 'moment/locale/es'
 import 'react-big-calendar/lib/css/react-big-calendar.css'
 import { Button } from '@/components/ui/button'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import { Loader2, Plus, Calendar as CalendarIcon, RefreshCw } from 'lucide-react'
+import { Loader2, Plus, Calendar as CalendarIcon } from 'lucide-react'
 import { EventDialog } from '@/components/calendar/event-dialog'
 
-// Configure moment for Spanish
+// Configure moment for Spanish with capitalized month names
 moment.locale('es')
+moment.updateLocale('es', {
+  monthsShort: 'Ene_Feb_Mar_Abr_May_Jun_Jul_Ago_Sep_Oct_Nov_Dic'.split('_'),
+  months: 'Enero_Febrero_Marzo_Abril_Mayo_Junio_Julio_Agosto_Septiembre_Octubre_Noviembre_Diciembre'.split('_'),
+  weekdaysShort: 'Dom_Lun_Mar_Mié_Jue_Vie_Sáb'.split('_'),
+})
 const localizer = momentLocalizer(moment)
 
 interface CalendarEvent {
@@ -45,7 +50,6 @@ export default function CalendarPage() {
   const [view, setView] = useState<View>('month')
   const [date, setDate] = useState(new Date())
   const [error, setError] = useState<string | null>(null)
-  const [syncing, setSyncing] = useState(false)
   const [googleCalendarEnabled, setGoogleCalendarEnabled] = useState(false)
 
   const router = useRouter()
@@ -205,29 +209,6 @@ export default function CalendarPage() {
     loadEvents()
   }
 
-  const handleSync = async () => {
-    setSyncing(true)
-    setError(null)
-
-    try {
-      const response = await fetch('/api/calendar/sync', {
-        method: 'POST',
-      })
-
-      if (!response.ok) {
-        const data = await response.json()
-        throw new Error(data.error || 'Failed to sync')
-      }
-
-      await loadEvents()
-    } catch (err) {
-      console.error('Error syncing calendar:', err)
-      setError(err instanceof Error ? err.message : 'Error al sincronizar')
-    } finally {
-      setSyncing(false)
-    }
-  }
-
   const handleNavigate = (newDate: Date) => {
     setDate(newDate)
     // Events will reload automatically via useEffect
@@ -243,81 +224,16 @@ export default function CalendarPage() {
 
   return (
     <div className="h-[calc(100vh-5rem)] flex flex-col">
-      {/* Header */}
-      <div className="flex items-center justify-between px-6 py-4 border-b bg-card">
-        <div>
-          <h1 className="text-2xl font-bold flex items-center gap-2">
-            <CalendarIcon className="h-6 w-6" />
-            Mi Calendario
-          </h1>
-          <p className="text-sm text-muted-foreground">
-            Gestiona tus eventos y audiencias
-            {googleCalendarEnabled && ' - Sincronizado con Google Calendar'}
-          </p>
-        </div>
-        <div className="flex gap-2">
-          {googleCalendarEnabled && (
-            <Button onClick={handleSync} disabled={syncing} variant="outline" size="sm">
-              {syncing ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                  Sincronizando...
-                </>
-              ) : (
-                <>
-                  <RefreshCw className="h-4 w-4 mr-2" />
-                  Sincronizar
-                </>
-              )}
-            </Button>
-          )}
-          <Button
-            onClick={() => {
-              setSelectedEvent({
-                id: '',
-                title: '',
-                description: '',
-                start_time: new Date().toISOString(),
-                end_time: new Date(Date.now() + 3600000).toISOString(),
-                location: '',
-                sync_status: 'pending',
-              })
-              setDialogMode('create')
-              setDialogOpen(true)
-            }}
-            size="sm"
-          >
-            <Plus className="h-4 w-4 mr-2" />
-            Nuevo Evento
-          </Button>
-        </div>
-      </div>
-
-      {/* Alerts */}
-      <div className="px-6 pt-4">
-        {error && (
-          <Alert variant="destructive" className="mb-4">
-            <AlertDescription>{error}</AlertDescription>
-          </Alert>
-        )}
-
-        {!googleCalendarEnabled && (
-          <Alert className="mb-4">
-            <AlertDescription>
-              <p className="font-semibold mb-2">Conecta Google Calendar</p>
-              <p className="text-sm text-muted-foreground mb-3">
-                Conecta tu cuenta de Google Calendar en la configuración para sincronizar eventos automáticamente.
-              </p>
-              <Button onClick={() => router.push('/dashboard/settings')} size="sm" variant="outline">
-                Ir a Configuración
-              </Button>
-            </AlertDescription>
-          </Alert>
-        )}
-      </div>
-
       {/* Calendar - Full Height */}
-      <div className="flex-1 px-6 pb-6">
+      <div className="flex-1 p-6">
+        <style jsx global>{`
+          .rbc-toolbar .rbc-toolbar-label {
+            font-size: 2rem !important;
+            font-weight: 700 !important;
+            font-family: 'Inter', system-ui, -apple-system, sans-serif !important;
+            letter-spacing: -0.02em !important;
+          }
+        `}</style>
         <div className="h-full">
           <BigCalendar
             localizer={localizer}
