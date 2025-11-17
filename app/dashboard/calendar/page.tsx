@@ -70,14 +70,17 @@ export default function CalendarPage() {
           schema: 'public',
           table: 'calendar_events',
         },
-        () => {
-          console.log('📡 Calendar event changed, reloading...')
+        (payload) => {
+          console.log('📡 Realtime event received:', payload)
           loadEvents()
         }
       )
-      .subscribe()
+      .subscribe((status) => {
+        console.log('Realtime subscription status:', status)
+      })
 
     return () => {
+      console.log('Cleaning up Realtime subscription')
       supabase.removeChannel(channel)
     }
   }, [date])
