@@ -3,6 +3,9 @@ import { createClient } from '@/lib/supabase/server';
 import { createClient as createSupabaseClient } from '@supabase/supabase-js';
 import { createCalendarEvent } from '@/lib/google-calendar';
 
+// Force dynamic rendering - no caching
+export const dynamic = 'force-dynamic';
+
 /**
  * GET - List user's calendar events
  */

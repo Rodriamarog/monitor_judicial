@@ -71,28 +71,13 @@ export async function GET(request: NextRequest) {
     const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // Get user's calendar info
     const tokenData = {
       access_token: tokens.access_token!,
       refresh_token: tokens.refresh_token!,
       expires_at: expiresAt,
     };
 
-    const calendarInfo = await getUserCalendarInfo(
-      tokenData,
-      supabaseUrl,
-      supabaseKey,
-      userId
-    );
-
-    if (!calendarInfo.success) {
-      console.error('Failed to get calendar info:', calendarInfo.error);
-      return NextResponse.redirect(
-        new URL('/dashboard/settings?calendar_error=calendar_info_failed', request.url)
-      );
-    }
-
-    // Store tokens
+    // Store tokens FIRST before making any API calls that might need to refresh them
     const { error: tokenError } = await supabase.from('user_google_tokens').upsert({
       user_id: userId,
       access_token: tokens.access_token,
@@ -106,6 +91,21 @@ export async function GET(request: NextRequest) {
       console.error('Error storing tokens:', tokenError);
       return NextResponse.redirect(
         new URL('/dashboard/settings?calendar_error=store_tokens_failed', request.url)
+      );
+    }
+
+    // Get user's calendar info (this may refresh tokens, so tokens must be in DB first)
+    const calendarInfo = await getUserCalendarInfo(
+      tokenData,
+      supabaseUrl,
+      supabaseKey,
+      userId
+    );
+
+    if (!calendarInfo.success) {
+      console.error('Failed to get calendar info:', calendarInfo.error);
+      return NextResponse.redirect(
+        new URL('/dashboard/settings?calendar_error=calendar_info_failed', request.url)
       );
     }
 
