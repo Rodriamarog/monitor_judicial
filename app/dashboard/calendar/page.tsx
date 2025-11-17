@@ -131,7 +131,13 @@ export default function CalendarPage() {
       const endDate = moment(date).endOf('month').add(7, 'days').toISOString()
 
       const response = await fetch(
-        `/api/calendar/events?start_date=${encodeURIComponent(startDate)}&end_date=${encodeURIComponent(endDate)}`
+        `/api/calendar/events?start_date=${encodeURIComponent(startDate)}&end_date=${encodeURIComponent(endDate)}`,
+        {
+          cache: 'no-store',
+          headers: {
+            'Cache-Control': 'no-cache',
+          },
+        }
       )
 
       if (!response.ok) {
