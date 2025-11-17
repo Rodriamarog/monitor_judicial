@@ -159,34 +159,39 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Trigger incremental sync asynchronously (don't block response)
-    // We respond to Google immediately and process in background
-    setImmediate(async () => {
-      try {
-        console.log('🔄 Starting incremental sync for user:', channel.user_id);
+    // Perform incremental sync synchronously
+    // Google expects a response within a few seconds, and sync is fast
+    try {
+      console.log('🔄 Starting incremental sync for user:', channel.user_id);
 
-        const syncResult = await syncFromGoogle(
-          tokens,
-          profile.google_calendar_id || 'primary',
-          profile.google_calendar_sync_token,
-          supabaseUrl,
-          supabaseKey,
-          channel.user_id
-        );
+      const syncResult = await syncFromGoogle(
+        tokens,
+        profile.google_calendar_id || 'primary',
+        profile.google_calendar_sync_token,
+        supabaseUrl,
+        supabaseKey,
+        channel.user_id
+      );
 
-        console.log('✅ Sync completed:', syncResult);
-      } catch (syncError) {
-        console.error('Error during webhook sync:', syncError);
-        // Don't propagate error - webhook already acknowledged
-      }
-    });
+      console.log('✅ Sync completed:', syncResult);
 
-    // Respond to Google immediately with 200 OK
-    return NextResponse.json({
-      message: 'Webhook processed',
-      channelId,
-      resourceState,
-    });
+      // Respond to Google with 200 OK after sync completes
+      return NextResponse.json({
+        message: 'Webhook processed and synced',
+        channelId,
+        resourceState,
+        syncResult,
+      });
+    } catch (syncError) {
+      console.error('Error during webhook sync:', syncError);
+      // Return 200 even on sync error to prevent Google from retrying
+      return NextResponse.json({
+        message: 'Webhook processed, sync failed',
+        channelId,
+        resourceState,
+        error: syncError instanceof Error ? syncError.message : 'Unknown error',
+      });
+    }
   } catch (error) {
     console.error('Error processing webhook:', error);
 
