@@ -3,14 +3,27 @@
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { AlertTriangle, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 
 interface StaleCasesAlertProps {
   staleCaseCount: number
 }
 
+const ALERT_DISMISSED_KEY = 'stale-cases-alert-dismissed'
+
+// Check if alert was dismissed (before component renders to avoid flash)
+const isAlertDismissed = () => {
+  if (typeof window === 'undefined') return false
+  return sessionStorage.getItem(ALERT_DISMISSED_KEY) === 'true'
+}
+
 export function StaleCasesAlert({ staleCaseCount }: StaleCasesAlertProps) {
-  const [dismissed, setDismissed] = useState(false)
+  const [dismissed, setDismissed] = useState(() => isAlertDismissed())
+
+  const handleDismiss = () => {
+    setDismissed(true)
+    sessionStorage.setItem(ALERT_DISMISSED_KEY, 'true')
+  }
 
   if (dismissed || staleCaseCount === 0) return null
 
@@ -23,7 +36,7 @@ export function StaleCasesAlert({ staleCaseCount }: StaleCasesAlertProps) {
           variant="ghost"
           size="sm"
           className="h-6 w-6 p-0 text-yellow-800 dark:text-yellow-200 hover:bg-yellow-100 dark:hover:bg-yellow-900"
-          onClick={() => setDismissed(true)}
+          onClick={handleDismiss}
         >
           <X className="h-4 w-4" />
         </Button>

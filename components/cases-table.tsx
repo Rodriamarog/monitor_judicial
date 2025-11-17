@@ -12,7 +12,7 @@ import {
 } from '@/components/ui/table'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Trash2, Search, ChevronUp, ChevronDown, Loader2, Pencil, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Trash2, Search, ChevronUp, ChevronDown, Loader2, Pencil } from 'lucide-react'
 import { formatTijuanaDate } from '@/lib/date-utils'
 import {
   Dialog,
@@ -47,9 +47,8 @@ export function CasesTable({ cases, onDelete, onUpdate }: CasesTableProps) {
   const router = useRouter()
   const [searchQuery, setSearchQuery] = useState('')
   const [sortOrder, setSortOrder] = useState<'alerts' | 'asc' | 'desc'>('desc')
-  const [page, setPage] = useState(0)
-  const [rowsPerPage, setRowsPerPage] = useState(10)
   const [deletingCaseId, setDeletingCaseId] = useState<string | null>(null)
+  const [tableHeight, setTableHeight] = useState(600)
 
   // Edit dialog state
   const [editingCase, setEditingCase] = useState<Case | null>(null)
@@ -60,34 +59,28 @@ export function CasesTable({ cases, onDelete, onUpdate }: CasesTableProps) {
   const [editLoading, setEditLoading] = useState(false)
   const [editError, setEditError] = useState<string | null>(null)
 
-  // Calculate rows per page based on window height
+  // Calculate table height based on available window space
   useEffect(() => {
-    const calculateRowsPerPage = () => {
+    const calculateTableHeight = () => {
       // Approximate heights in pixels
-      const headerHeight = 200 // Top nav + page header
+      const headerHeight = 120 // Top nav
       const statsCardHeight = 100 // Compact stats card
       const tableHeaderHeight = 80 // Table title + search
-      const tableHeadHeight = 50 // Table column headers
-      const paginationHeight = 60 // Pagination controls
-      const rowHeight = 60 // Approximate row height
-      const padding = 100 // Extra padding
+      const padding = 40 // Extra padding
 
       const availableHeight =
         window.innerHeight -
         headerHeight -
         statsCardHeight -
         tableHeaderHeight -
-        tableHeadHeight -
-        paginationHeight -
         padding
 
-      const rows = Math.max(5, Math.floor(availableHeight / rowHeight))
-      setRowsPerPage(rows)
+      setTableHeight(Math.max(400, availableHeight))
     }
 
-    calculateRowsPerPage()
-    window.addEventListener('resize', calculateRowsPerPage)
-    return () => window.removeEventListener('resize', calculateRowsPerPage)
+    calculateTableHeight()
+    window.addEventListener('resize', calculateTableHeight)
+    return () => window.removeEventListener('resize', calculateTableHeight)
   }, [])
 
   // Filter cases based on search query
@@ -137,15 +130,6 @@ export function CasesTable({ cases, onDelete, onUpdate }: CasesTableProps) {
     return sorted
   }, [filteredCases, sortOrder])
 
-  // Paginate sorted cases
-  const paginatedCases = useMemo(() => {
-    const start = page * rowsPerPage
-    const end = start + rowsPerPage
-    return sortedCases.slice(start, end)
-  }, [sortedCases, page, rowsPerPage])
-
-  const totalPages = Math.ceil(sortedCases.length / rowsPerPage)
-
   const toggleSortOrder = () => {
     setSortOrder((prev) => {
       if (prev === 'alerts') return 'desc'
@@ -173,7 +157,6 @@ export function CasesTable({ cases, onDelete, onUpdate }: CasesTableProps) {
 
   const handleSearch = (value: string) => {
     setSearchQuery(value)
-    setPage(0) // Reset to first page when searching
   }
 
   const handleDelete = async (caseId: string) => {
@@ -246,12 +229,16 @@ export function CasesTable({ cases, onDelete, onUpdate }: CasesTableProps) {
         </div>
       </div>
 
-      {/* Cases Table */}
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead className="w-8 text-center">
-              <Button
+      {/* Cases Table - Scrollable Container */}
+      <div
+        className="border rounded-md overflow-auto"
+        style={{ height: `${tableHeight}px` }}
+      >
+        <Table>
+          <TableHeader className="sticky top-0 bg-background z-10">
+            <TableRow>
+              <TableHead className="w-8 text-center">
+                <Button
                 variant="ghost"
                 size="sm"
                 onClick={toggleAlertsSorting}
@@ -300,14 +287,14 @@ export function CasesTable({ cases, onDelete, onUpdate }: CasesTableProps) {
           </TableRow>
         </TableHeader>
         <TableBody>
-          {paginatedCases.length === 0 ? (
+          {sortedCases.length === 0 ? (
             <TableRow>
               <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
                 {searchQuery ? 'No se encontraron casos' : 'No tiene casos registrados'}
               </TableCell>
             </TableRow>
           ) : (
-            paginatedCases.map((case_) => (
+            sortedCases.map((case_) => (
               <TableRow
                 key={case_.id}
                 onClick={(e) => handleRowClick(case_.id, e)}
@@ -385,61 +372,12 @@ export function CasesTable({ cases, onDelete, onUpdate }: CasesTableProps) {
           )}
         </TableBody>
       </Table>
+      </div>
 
-      {/* Pagination */}
-      {totalPages > 1 && (
-        <div className="flex items-center justify-between text-sm">
-          <div className="text-muted-foreground">
-            Mostrando {page * rowsPerPage + 1} - {Math.min((page + 1) * rowsPerPage, sortedCases.length)} de {sortedCases.length} casos
-          </div>
-          <div className="flex gap-2 items-center">
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={() => setPage((p) => Math.max(0, p - 1))}
-              disabled={page === 0}
-              className="cursor-pointer h-8 w-8"
-              title="Página anterior"
-            >
-              <ChevronLeft className="h-4 w-4" />
-            </Button>
-            <div className="flex items-center gap-1">
-              <span className="text-muted-foreground">Página</span>
-              <Input
-                type="text"
-                inputMode="numeric"
-                pattern="[0-9]*"
-                value={page + 1}
-                onChange={(e) => {
-                  const newPage = parseInt(e.target.value) - 1
-                  if (newPage >= 0 && newPage < totalPages) {
-                    setPage(newPage)
-                  }
-                }}
-                onBlur={(e) => {
-                  // Reset to current page if invalid
-                  const newPage = parseInt(e.target.value) - 1
-                  if (isNaN(newPage) || newPage < 0 || newPage >= totalPages) {
-                    e.target.value = (page + 1).toString()
-                  }
-                }}
-                className="w-12 h-8 text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-              />
-              <span className="text-muted-foreground">de {totalPages}</span>
-            </div>
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
-              disabled={page === totalPages - 1}
-              className="cursor-pointer h-8 w-8"
-              title="Página siguiente"
-            >
-              <ChevronRight className="h-4 w-4" />
-            </Button>
-          </div>
-        </div>
-      )}
+      {/* Total count display */}
+      <div className="text-sm text-muted-foreground text-right">
+        Mostrando {sortedCases.length} de {cases.length} casos
+      </div>
 
       {/* Edit Dialog */}
       <Dialog open={!!editingCase} onOpenChange={(open) => !open && setEditingCase(null)}>

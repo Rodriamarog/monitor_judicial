@@ -291,21 +291,6 @@ export default function SettingsPage() {
                       Formato: +52 seguido de tu número (10 dígitos)
                     </p>
                   </div>
-
-                  <Alert>
-                    <AlertDescription className="text-sm space-y-2">
-                      <p className="font-semibold">⚠️ Importante - Unirse al Sandbox de Twilio:</p>
-                      <ol className="list-decimal list-inside space-y-1 text-xs">
-                        <li>Envía un mensaje de WhatsApp al número: <strong>+1 415 523 8886</strong></li>
-                        <li>El mensaje debe decir: <strong>join &lt;código&gt;</strong></li>
-                        <li>El código te lo proporciona el administrador</li>
-                        <li>Recibirás una confirmación cuando estés unido</li>
-                      </ol>
-                      <p className="text-xs text-muted-foreground mt-2">
-                        Esto solo es necesario una vez. Sin este paso, no podrás recibir mensajes.
-                      </p>
-                    </AlertDescription>
-                  </Alert>
                 </div>
               )}
             </div>

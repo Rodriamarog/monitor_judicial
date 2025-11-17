@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Card, CardContent } from '@/components/ui/card'
-import { Bell } from 'lucide-react'
+import { Bell, Loader2 } from 'lucide-react'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { AlertsTable } from '@/components/alerts-table'
@@ -166,10 +166,8 @@ export default function AlertsPage() {
 
   if (loading) {
     return (
-      <div className="space-y-6">
-        <div className="text-center py-12">
-          <p className="text-muted-foreground">Cargando alertas...</p>
-        </div>
+      <div className="flex items-center justify-center min-h-[400px]">
+        <Loader2 className="h-8 w-8 animate-spin" />
       </div>
     )
   }
