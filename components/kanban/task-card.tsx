@@ -47,7 +47,7 @@ export function TaskCard({ task, onClick, isDragging = false }: TaskCardProps) {
       <Card
         className={cn(
           'cursor-pointer hover:shadow-md transition-shadow',
-          isCurrentlyDragging && 'opacity-50'
+          isSortableDragging && 'opacity-0'
         )}
         onClick={onClick}
       >

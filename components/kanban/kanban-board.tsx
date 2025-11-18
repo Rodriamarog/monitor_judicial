@@ -55,6 +55,7 @@ export function KanbanBoard({
 }: KanbanBoardProps) {
   const supabase = createClient()
   const [activeTask, setActiveTask] = useState<Task | null>(null)
+  const [activeColumn, setActiveColumn] = useState<Column | null>(null)
   const [selectedTask, setSelectedTask] = useState<Task | null>(null)
 
   const sensors = useSensors(
@@ -68,8 +69,12 @@ export function KanbanBoard({
   const handleDragStart = (event: DragStartEvent) => {
     const { active } = event
     const task = tasks.find((t) => t.id === active.id)
+    const column = columns.find((c) => c.id === active.id)
+
     if (task) {
       setActiveTask(task)
+    } else if (column) {
+      setActiveColumn(column)
     }
   }
 
@@ -78,61 +83,103 @@ export function KanbanBoard({
     if (!over) return
 
     const activeTask = tasks.find((t) => t.id === active.id)
-    if (!activeTask) return
+    const activeCol = columns.find((c) => c.id === active.id)
 
-    // Check if dragging over a column
-    const overColumn = columns.find((c) => c.id === over.id)
-    if (overColumn && activeTask.column_id !== overColumn.id) {
-      // Move task to new column (optimistic update)
-      const updatedTasks = tasks.map((t) =>
-        t.id === activeTask.id ? { ...t, column_id: overColumn.id } : t
-      )
-      onTasksChange(updatedTasks)
+    // Handle task drag over
+    if (activeTask) {
+      // Check if dragging over a column
+      const overColumn = columns.find((c) => c.id === over.id)
+      if (overColumn && activeTask.column_id !== overColumn.id) {
+        // Move task to new column (optimistic update)
+        const updatedTasks = tasks.map((t) =>
+          t.id === activeTask.id ? { ...t, column_id: overColumn.id } : t
+        )
+        onTasksChange(updatedTasks)
+      }
+
+      // Check if dragging over another task
+      const overTask = tasks.find((t) => t.id === over.id)
+      if (overTask && activeTask.id !== overTask.id) {
+        // Reorder within column
+        const activeIndex = tasks.findIndex((t) => t.id === activeTask.id)
+        const overIndex = tasks.findIndex((t) => t.id === overTask.id)
+
+        const reorderedTasks = arrayMove(tasks, activeIndex, overIndex).map(
+          (task, index) => ({
+            ...task,
+            position: index,
+            column_id:
+              task.id === activeTask.id ? overTask.column_id : task.column_id,
+          })
+        )
+
+        onTasksChange(reorderedTasks)
+      }
     }
 
-    // Check if dragging over another task
-    const overTask = tasks.find((t) => t.id === over.id)
-    if (overTask && activeTask.id !== overTask.id) {
-      // Reorder within column
-      const activeIndex = tasks.findIndex((t) => t.id === activeTask.id)
-      const overIndex = tasks.findIndex((t) => t.id === overTask.id)
+    // Handle column drag over
+    if (activeCol) {
+      const overCol = columns.find((c) => c.id === over.id)
+      if (overCol && activeCol.id !== overCol.id) {
+        const activeIndex = columns.findIndex((c) => c.id === activeCol.id)
+        const overIndex = columns.findIndex((c) => c.id === overCol.id)
 
-      const reorderedTasks = arrayMove(tasks, activeIndex, overIndex).map(
-        (task, index) => ({
-          ...task,
-          position: index,
-          column_id:
-            task.id === activeTask.id ? overTask.column_id : task.column_id,
-        })
-      )
+        const reorderedColumns = arrayMove(columns, activeIndex, overIndex).map(
+          (col, index) => ({
+            ...col,
+            position: index,
+          })
+        )
 
-      onTasksChange(reorderedTasks)
+        onColumnsChange(reorderedColumns)
+      }
     }
   }
 
   const handleDragEnd = async (event: DragEndEvent) => {
     setActiveTask(null)
+    setActiveColumn(null)
 
     const { active, over } = event
     if (!over) return
 
     const activeTask = tasks.find((t) => t.id === active.id)
-    if (!activeTask) return
+    const activeCol = columns.find((c) => c.id === active.id)
 
-    // Persist changes to database
-    try {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) return
+    // Persist task changes to database
+    if (activeTask) {
+      try {
+        const { data: { user } } = await supabase.auth.getUser()
+        if (!user) return
 
-      await supabase
-        .from('kanban_tasks')
-        .update({
-          column_id: activeTask.column_id,
-          position: activeTask.position,
-        })
-        .eq('id', activeTask.id)
-    } catch (error) {
-      console.error('Error updating task:', error)
+        await supabase
+          .from('kanban_tasks')
+          .update({
+            column_id: activeTask.column_id,
+            position: activeTask.position,
+          })
+          .eq('id', activeTask.id)
+      } catch (error) {
+        console.error('Error updating task:', error)
+      }
+    }
+
+    // Persist column changes to database
+    if (activeCol) {
+      try {
+        const { data: { user } } = await supabase.auth.getUser()
+        if (!user) return
+
+        // Update all column positions
+        for (const column of columns) {
+          await supabase
+            .from('kanban_columns')
+            .update({ position: column.position })
+            .eq('id', column.id)
+        }
+      } catch (error) {
+        console.error('Error updating column positions:', error)
+      }
     }
   }
 
@@ -320,9 +367,9 @@ export function KanbanBoard({
         onDragOver={handleDragOver}
         onDragEnd={handleDragEnd}
       >
-        <div className="flex gap-4 overflow-x-auto pb-4">
+        <div className="flex gap-4 overflow-x-auto pb-4 relative">
           <SortableContext items={columns.map((c) => c.id)}>
-            {columns.map((column) => (
+            {columns.map((column, index) => (
               <KanbanColumn
                 key={column.id}
                 column={column}
@@ -331,26 +378,36 @@ export function KanbanBoard({
                 onDeleteColumn={handleDeleteColumn}
                 onAddTask={handleAddTask}
                 onTaskClick={setSelectedTask}
+                isFirstColumn={index === 0}
               />
             ))}
           </SortableContext>
 
-          {columns.length < 5 && (
-            <div className="flex-shrink-0">
-              <Button
-                variant="outline"
-                onClick={handleAddColumn}
-                className="h-full min-w-[280px]"
-              >
-                <Plus className="h-4 w-4 mr-2" />
-                Agregar Columna
-              </Button>
-            </div>
+          {columns.length < 5 && columns.length > 0 && (
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={handleAddColumn}
+              className="absolute top-3 right-3 h-8 w-8 rounded-full text-muted-foreground hover:text-foreground hover:bg-muted"
+              style={{ left: `${columns.length * 296}px` }}
+            >
+              <Plus className="h-4 w-4" />
+            </Button>
           )}
         </div>
 
         <DragOverlay>
           {activeTask && <TaskCard task={activeTask} isDragging />}
+          {activeColumn && (
+            <div className="flex flex-col flex-shrink-0 w-[280px] bg-muted/20 rounded-lg p-3 opacity-50">
+              <div className="flex items-center gap-2">
+                <h3 className="font-semibold text-sm">{activeColumn.title}</h3>
+                <span className="text-xs text-muted-foreground">
+                  {tasks.filter((t) => t.column_id === activeColumn.id).length}
+                </span>
+              </div>
+            </div>
+          )}
         </DragOverlay>
       </DndContext>
 

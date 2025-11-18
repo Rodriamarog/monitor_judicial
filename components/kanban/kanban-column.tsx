@@ -2,7 +2,8 @@
 
 import { useState } from 'react'
 import { useDroppable } from '@dnd-kit/core'
-import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
+import { SortableContext, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
 import { TaskCard } from './task-card'
 import { DropIndicator } from './drop-indicator'
 import { Button } from '@/components/ui/button'
@@ -43,6 +44,7 @@ interface KanbanColumnProps {
   onDeleteColumn: (columnId: string) => void
   onAddTask: (columnId: string) => void
   onTaskClick: (task: Task) => void
+  isFirstColumn: boolean
 }
 
 export function KanbanColumn({
@@ -52,13 +54,32 @@ export function KanbanColumn({
   onDeleteColumn,
   onAddTask,
   onTaskClick,
+  isFirstColumn,
 }: KanbanColumnProps) {
   const [isEditing, setIsEditing] = useState(false)
   const [title, setTitle] = useState(column.title)
+  const [isHovered, setIsHovered] = useState(false)
+  const [isHeaderHovered, setIsHeaderHovered] = useState(false)
 
   const { setNodeRef } = useDroppable({
     id: column.id,
   })
+
+  const {
+    attributes,
+    listeners,
+    setNodeRef: setSortableNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({
+    id: column.id,
+  })
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+  }
 
   const handleSaveTitle = () => {
     if (title.trim()) {
@@ -80,11 +101,23 @@ export function KanbanColumn({
 
   return (
     <div
-      ref={setNodeRef}
-      className="flex flex-col flex-shrink-0 w-[280px] bg-muted/20 rounded-lg p-3 border border-border/50"
+      ref={(node) => {
+        setNodeRef(node)
+        setSortableNodeRef(node)
+      }}
+      style={style}
+      className="flex flex-col flex-shrink-0 w-[280px] bg-muted/50 rounded-lg p-3"
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
     >
       {/* Column Header */}
-      <div className="flex items-center justify-between mb-3">
+      <div
+        className="flex items-center justify-between mb-3 group"
+        onMouseEnter={() => setIsHeaderHovered(true)}
+        onMouseLeave={() => setIsHeaderHovered(false)}
+        {...attributes}
+        {...listeners}
+      >
         {isEditing ? (
           <Input
             value={title}
@@ -96,11 +129,12 @@ export function KanbanColumn({
           />
         ) : (
           <div className="flex items-center gap-2 flex-1">
-            <div
-              className="w-2 h-2 rounded-full flex-shrink-0"
-              style={{ backgroundColor: column.color }}
-            />
-            <h3 className="font-semibold text-sm truncate">{column.title}</h3>
+            <h3
+              className="font-semibold text-sm truncate cursor-pointer"
+              onDoubleClick={() => setIsEditing(true)}
+            >
+              {column.title}
+            </h3>
             <span className="text-xs text-muted-foreground">
               {tasks.length}
             </span>
@@ -109,7 +143,13 @@ export function KanbanColumn({
 
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
+            <Button
+              variant="ghost"
+              size="sm"
+              className={`h-6 w-6 p-0 transition-opacity ${
+                isHeaderHovered ? 'opacity-100' : 'opacity-0'
+              }`}
+            >
               <MoreVertical className="h-3 w-3" />
             </Button>
           </DropdownMenuTrigger>
@@ -130,31 +170,35 @@ export function KanbanColumn({
       </div>
 
       {/* Tasks */}
-      <div className="flex-1 overflow-y-auto space-y-2 min-h-[200px]">
+      <div className="flex-1 overflow-y-auto min-h-[200px]">
         <SortableContext
           items={tasks.map((t) => t.id)}
           strategy={verticalListSortingStrategy}
         >
-          {tasks.map((task) => (
-            <TaskCard
-              key={task.id}
-              task={task}
-              onClick={() => onTaskClick(task)}
-            />
-          ))}
+          <div className="space-y-2 pb-10">
+            {tasks.map((task) => (
+              <TaskCard
+                key={task.id}
+                task={task}
+                onClick={() => onTaskClick(task)}
+              />
+            ))}
+
+            {/* Add Task Button - positioned right after tasks */}
+            {(isFirstColumn || isHovered) && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => onAddTask(column.id)}
+                className="w-full justify-start text-muted-foreground hover:text-foreground hover:bg-muted/50"
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Agregar
+              </Button>
+            )}
+          </div>
         </SortableContext>
       </div>
-
-      {/* Add Task Button */}
-      <Button
-        variant="ghost"
-        size="sm"
-        onClick={() => onAddTask(column.id)}
-        className="mt-2 justify-start text-muted-foreground hover:text-foreground"
-      >
-        <Plus className="h-4 w-4 mr-2" />
-        Agregar Tarea
-      </Button>
     </div>
   )
 }
