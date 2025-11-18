@@ -175,7 +175,7 @@ export function KanbanColumn({
           items={tasks.map((t) => t.id)}
           strategy={verticalListSortingStrategy}
         >
-          <div className="space-y-2 pb-10">
+          <div className="space-y-2">
             {tasks.map((task) => (
               <TaskCard
                 key={task.id}
@@ -185,17 +185,17 @@ export function KanbanColumn({
             ))}
 
             {/* Add Task Button - positioned right after tasks */}
-            {(isFirstColumn || isHovered) && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => onAddTask(column.id)}
-                className="w-full justify-start text-muted-foreground hover:text-foreground hover:bg-muted/50"
-              >
-                <Plus className="h-4 w-4 mr-2" />
-                Agregar
-              </Button>
-            )}
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => onAddTask(column.id)}
+              className={`w-full justify-start text-muted-foreground hover:text-foreground hover:bg-muted/50 ${
+                isFirstColumn || isHovered ? 'opacity-100' : 'opacity-0 pointer-events-none'
+              }`}
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              Agregar
+            </Button>
           </div>
         </SortableContext>
       </div>
