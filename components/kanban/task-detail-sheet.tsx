@@ -144,6 +144,27 @@ export function TaskDetailSheet({
         }
       } else if (!dueDate && task.calendar_event_id) {
         // Due date removed - delete calendar event
+        // Get the event details before deleting
+        const { data: calendarEvent } = await supabase
+          .from('calendar_events')
+          .select('google_event_id')
+          .eq('id', task.calendar_event_id)
+          .single()
+
+        // Delete from Google Calendar if synced
+        if (calendarEvent?.google_event_id) {
+          try {
+            await fetch('/api/calendar/delete-from-google', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ google_event_id: calendarEvent.google_event_id }),
+            })
+          } catch (syncError) {
+            console.error('Error deleting from Google Calendar:', syncError)
+          }
+        }
+
+        // Delete from database
         await supabase
           .from('calendar_events')
           .delete()
@@ -157,6 +178,16 @@ export function TaskDetailSheet({
         description,
         calendar_event_id: calendarEventId,
       })
+
+      // Sync to Google Calendar if we created/updated a calendar event
+      if (calendarEventId) {
+        try {
+          await fetch('/api/calendar/sync-to-google', { method: 'POST' })
+        } catch (syncError) {
+          console.error('Error syncing to Google Calendar:', syncError)
+          // Don't show error to user - sync can happen in background
+        }
+      }
 
       onClose()
     } catch (error) {

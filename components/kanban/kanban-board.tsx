@@ -354,6 +354,27 @@ export function KanbanBoard({
 
       // Delete associated calendar event if it exists
       if (taskToDelete?.calendar_event_id) {
+        // Get the calendar event details before deleting
+        const { data: calendarEvent } = await supabase
+          .from('calendar_events')
+          .select('google_event_id')
+          .eq('id', taskToDelete.calendar_event_id)
+          .single()
+
+        // Delete from Google Calendar first if it was already synced
+        if (calendarEvent?.google_event_id) {
+          try {
+            await fetch('/api/calendar/delete-from-google', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ google_event_id: calendarEvent.google_event_id }),
+            })
+          } catch (syncError) {
+            console.error('Error deleting from Google Calendar:', syncError)
+          }
+        }
+
+        // Delete from database
         await supabase
           .from('calendar_events')
           .delete()
