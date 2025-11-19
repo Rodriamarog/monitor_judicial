@@ -22,6 +22,7 @@ import {
   Trash2,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { createClient } from '@/lib/supabase/client'
 
 interface Task {
   id: string
@@ -31,6 +32,7 @@ interface Task {
   position: number
   color: string | null
   due_date: string | null
+  calendar_event_id: string | null
   created_at: string
   updated_at: string
 }
@@ -65,6 +67,7 @@ export function TaskDetailSheet({
   const [dueDate, setDueDate] = useState(
     task.due_date ? task.due_date.split('T')[0] : ''
   )
+  const supabase = createClient()
 
   const editor = useEditor({
     immediatelyRender: false,
@@ -92,12 +95,76 @@ export function TaskDetailSheet({
     },
   })
 
-  const handleSave = () => {
-    if (editor) {
-      const html = editor.getHTML()
-      onUpdate(task.id, { description: html })
+  const handleSave = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
+
+      // Save description
+      const description = editor ? editor.getHTML() : task.description
+
+      // Handle calendar event creation/update/deletion based on due date
+      let calendarEventId = task.calendar_event_id
+
+      if (dueDate && dueDate !== (task.due_date ? task.due_date.split('T')[0] : '')) {
+        // Due date changed or newly added
+        const startTime = new Date(dueDate)
+        startTime.setHours(9, 0, 0, 0) // Default to 9 AM
+
+        const endTime = new Date(dueDate)
+        endTime.setHours(10, 0, 0, 0) // Default 1 hour duration
+
+        if (task.calendar_event_id) {
+          // Update existing calendar event
+          await supabase
+            .from('calendar_events')
+            .update({
+              title: title,
+              description: description,
+              start_time: startTime.toISOString(),
+              end_time: endTime.toISOString(),
+            })
+            .eq('id', task.calendar_event_id)
+        } else {
+          // Create new calendar event
+          const { data: newEvent, error } = await supabase
+            .from('calendar_events')
+            .insert({
+              user_id: user.id,
+              title: title,
+              description: description,
+              start_time: startTime.toISOString(),
+              end_time: endTime.toISOString(),
+              sync_status: 'pending',
+            })
+            .select()
+            .single()
+
+          if (!error && newEvent) {
+            calendarEventId = newEvent.id
+          }
+        }
+      } else if (!dueDate && task.calendar_event_id) {
+        // Due date removed - delete calendar event
+        await supabase
+          .from('calendar_events')
+          .delete()
+          .eq('id', task.calendar_event_id)
+
+        calendarEventId = null
+      }
+
+      // Update the task with all changes
+      onUpdate(task.id, {
+        description,
+        calendar_event_id: calendarEventId,
+      })
+
+      onClose()
+    } catch (error) {
+      console.error('Error saving task:', error)
+      alert('Error al guardar la tarea')
     }
-    onClose()
   }
 
   useEffect(() => {

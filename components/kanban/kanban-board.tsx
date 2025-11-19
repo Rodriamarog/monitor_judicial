@@ -36,6 +36,7 @@ interface Task {
   position: number
   color: string | null
   due_date: string | null
+  calendar_event_id: string | null
   created_at: string
   updated_at: string
 }
@@ -348,6 +349,18 @@ export function KanbanBoard({
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) return
 
+      // Find the task to get calendar_event_id
+      const taskToDelete = tasks.find((t) => t.id === taskId)
+
+      // Delete associated calendar event if it exists
+      if (taskToDelete?.calendar_event_id) {
+        await supabase
+          .from('calendar_events')
+          .delete()
+          .eq('id', taskToDelete.calendar_event_id)
+      }
+
+      // Delete the task
       const { error } = await supabase
         .from('kanban_tasks')
         .delete()

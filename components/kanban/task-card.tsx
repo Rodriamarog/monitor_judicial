@@ -14,6 +14,7 @@ interface Task {
   position: number
   color: string | null
   due_date: string | null
+  calendar_event_id: string | null
   created_at: string
   updated_at: string
 }
