@@ -46,29 +46,22 @@ export function TaskCard({ task, onClick, isDragging = false }: TaskCardProps) {
     <div ref={setNodeRef} style={style} {...attributes} {...listeners}>
       <Card
         className={cn(
-          'cursor-pointer hover:shadow-md transition-shadow',
+          'cursor-pointer hover:shadow-md hover:bg-muted/30 transition-all rounded-none',
           isSortableDragging && 'opacity-0'
         )}
+        style={task.color ? { borderLeft: `4px solid ${task.color}` } : undefined}
         onClick={onClick}
       >
         <CardContent className="p-3">
-          <div className="flex items-start gap-2">
-            {task.color && (
-              <div
-                className="w-2 h-2 rounded-full flex-shrink-0 mt-1.5"
-                style={{ backgroundColor: task.color }}
-              />
-            )}
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium leading-tight break-words">
-                {task.title}
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium leading-tight break-words">
+              {task.title}
+            </p>
+            {task.description && (
+              <p className="text-xs text-muted-foreground mt-1 line-clamp-2 break-words">
+                {task.description.replace(/<[^>]*>/g, '').substring(0, 100)}
               </p>
-              {task.description && (
-                <p className="text-xs text-muted-foreground mt-1 line-clamp-2 break-words">
-                  {task.description.replace(/<[^>]*>/g, '').substring(0, 100)}
-                </p>
-              )}
-            </div>
+            )}
           </div>
         </CardContent>
       </Card>

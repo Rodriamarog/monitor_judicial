@@ -79,6 +79,7 @@ export function KanbanColumn({
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
+    backgroundColor: '#F8F8F8',
   }
 
   const handleSaveTitle = () => {
@@ -106,7 +107,7 @@ export function KanbanColumn({
         setSortableNodeRef(node)
       }}
       style={style}
-      className="flex flex-col flex-shrink-0 w-[280px] bg-muted/50 rounded-lg p-3"
+      className="flex flex-col flex-shrink-0 w-[280px] rounded-lg p-3"
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
