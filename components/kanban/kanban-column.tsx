@@ -79,7 +79,6 @@ export function KanbanColumn({
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
-    backgroundColor: '#F8F8F8',
   }
 
   const handleSaveTitle = () => {
@@ -107,7 +106,7 @@ export function KanbanColumn({
         setSortableNodeRef(node)
       }}
       style={style}
-      className="flex flex-col flex-shrink-0 w-[280px] rounded-lg p-3"
+      className="flex flex-col flex-shrink-0 w-[280px] rounded-lg p-3 bg-muted/50"
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
@@ -147,9 +146,8 @@ export function KanbanColumn({
             <Button
               variant="ghost"
               size="sm"
-              className={`h-6 w-6 p-0 transition-opacity ${
-                isHeaderHovered ? 'opacity-100' : 'opacity-0'
-              }`}
+              className={`h-6 w-6 p-0 transition-opacity ${isHeaderHovered ? 'opacity-100' : 'opacity-0'
+                }`}
             >
               <MoreVertical className="h-3 w-3" />
             </Button>
@@ -190,9 +188,8 @@ export function KanbanColumn({
               variant="ghost"
               size="sm"
               onClick={() => onAddTask(column.id)}
-              className={`w-full justify-start text-muted-foreground hover:text-foreground hover:bg-muted/50 ${
-                isFirstColumn || isHovered ? 'opacity-100' : 'opacity-0 pointer-events-none'
-              }`}
+              className={`w-full justify-start text-muted-foreground hover:text-foreground hover:bg-muted/50 ${isFirstColumn || isHovered ? 'opacity-100' : 'opacity-0 pointer-events-none'
+                }`}
             >
               <Plus className="h-4 w-4 mr-2" />
               Agregar

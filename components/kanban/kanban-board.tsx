@@ -90,6 +90,7 @@ export function KanbanBoard({
       // Check if dragging over a column
       const overColumn = columns.find((c) => c.id === over.id)
       if (overColumn && activeTask.column_id !== overColumn.id) {
+        console.log('Moving task to column:', overColumn.id)
         // Move task to new column (optimistic update)
         const updatedTasks = tasks.map((t) =>
           t.id === activeTask.id ? { ...t, column_id: overColumn.id } : t
@@ -100,9 +101,15 @@ export function KanbanBoard({
       // Check if dragging over another task
       const overTask = tasks.find((t) => t.id === over.id)
       if (overTask && activeTask.id !== overTask.id) {
+        console.log('Reordering task over:', overTask.id)
         // Reorder within column
         const activeIndex = tasks.findIndex((t) => t.id === activeTask.id)
         const overIndex = tasks.findIndex((t) => t.id === overTask.id)
+
+        if (tasks[activeIndex].column_id !== tasks[overIndex].column_id) {
+          console.log('Task moved to different column via task drag')
+          tasks[activeIndex].column_id = tasks[overIndex].column_id
+        }
 
         const reorderedTasks = arrayMove(tasks, activeIndex, overIndex).map(
           (task, index) => ({
