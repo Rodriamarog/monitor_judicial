@@ -69,7 +69,16 @@ export function TaskDetailSheet({
   const editor = useEditor({
     immediatelyRender: false,
     extensions: [
-      StarterKit,
+      StarterKit.configure({
+        bulletList: {
+          keepMarks: true,
+          keepAttributes: false,
+        },
+        orderedList: {
+          keepMarks: true,
+          keepAttributes: false,
+        },
+      }),
       Link.configure({
         openOnClick: false,
       }),
@@ -78,14 +87,18 @@ export function TaskDetailSheet({
     editorProps: {
       attributes: {
         class:
-          'prose prose-sm dark:prose-invert max-w-none min-h-[200px] focus:outline-none p-4',
+          'prose prose-sm dark:prose-invert max-w-none min-h-[200px] focus:outline-none p-4 [&_ul]:list-disc [&_ul]:ml-6 [&_ol]:list-decimal [&_ol]:ml-6 [&_li]:mb-1',
       },
     },
-    onUpdate: ({ editor }) => {
+  })
+
+  const handleSave = () => {
+    if (editor) {
       const html = editor.getHTML()
       onUpdate(task.id, { description: html })
-    },
-  })
+    }
+    onClose()
+  }
 
   useEffect(() => {
     if (editor && task.description !== editor.getHTML()) {
@@ -241,12 +254,18 @@ export function TaskDetailSheet({
             </div>
           </div>
 
-          {/* Delete Button */}
-          <div className="pt-4 border-t">
+          {/* Action Buttons */}
+          <div className="pt-4 border-t flex gap-2">
+            <Button
+              onClick={handleSave}
+              className="flex-1"
+            >
+              Guardar
+            </Button>
             <Button
               variant="destructive"
               onClick={() => onDelete(task.id)}
-              className="w-full"
+              className="flex-1"
             >
               <Trash2 className="h-4 w-4 mr-2" />
               Eliminar Tarea

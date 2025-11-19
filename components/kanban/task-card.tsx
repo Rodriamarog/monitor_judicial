@@ -4,6 +4,7 @@ import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { Card, CardContent } from '@/components/ui/card'
 import { cn } from '@/lib/utils'
+import { Calendar } from 'lucide-react'
 
 interface Task {
   id: string
@@ -58,9 +59,23 @@ export function TaskCard({ task, onClick, isDragging = false }: TaskCardProps) {
               {task.title}
             </p>
             {task.description && (
-              <p className="text-xs text-muted-foreground mt-1 line-clamp-2 break-words">
-                {task.description.replace(/<[^>]*>/g, '').substring(0, 100)}
-              </p>
+              <div
+                className="text-xs text-muted-foreground mt-1 line-clamp-3 break-words prose prose-sm max-w-none [&_ul]:list-disc [&_ul]:ml-4 [&_ol]:list-decimal [&_ol]:ml-4 [&_li]:mb-0"
+                dangerouslySetInnerHTML={{
+                  __html: task.description
+                }}
+              />
+            )}
+            {task.due_date && (
+              <div className="flex items-center gap-1 mt-2 text-xs text-muted-foreground">
+                <Calendar className="h-3 w-3" />
+                <span>
+                  {new Date(task.due_date).toLocaleDateString('es-MX', {
+                    month: 'short',
+                    day: 'numeric',
+                  })}
+                </span>
+              </div>
             )}
           </div>
         </CardContent>
