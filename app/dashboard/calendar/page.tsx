@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Loader2, Plus, Calendar as CalendarIcon } from 'lucide-react'
 import { EventDialog } from '@/components/calendar/event-dialog'
+import type { RealtimePostgresChangesPayload } from '@supabase/supabase-js'
 
 // Configure moment for Spanish with capitalized month names
 moment.locale('es')
@@ -74,12 +75,12 @@ export default function CalendarPage() {
           schema: 'public',
           table: 'calendar_events',
         },
-        (payload: any) => {
+        (payload: RealtimePostgresChangesPayload<{ [key: string]: any }>) => {
           console.log('📡 Realtime event received:', payload)
           loadEvents()
         }
       )
-      .subscribe((status) => {
+      .subscribe((status: string) => {
         console.log('Realtime subscription status:', status)
       })
 

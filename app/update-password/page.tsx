@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Loader2 } from 'lucide-react'
+import type { AuthChangeEvent, Session } from '@supabase/supabase-js'
 
 export default function UpdatePasswordPage() {
   const [password, setPassword] = useState('')
@@ -21,7 +22,7 @@ export default function UpdatePasswordPage() {
 
   useEffect(() => {
     // Listen for auth state changes to detect password recovery session
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event: AuthChangeEvent, session: Session | null) => {
       if (event === 'PASSWORD_RECOVERY') {
         // User has clicked the reset link and is ready to update password
       }
