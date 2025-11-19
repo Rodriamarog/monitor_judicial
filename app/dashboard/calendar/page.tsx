@@ -74,7 +74,7 @@ export default function CalendarPage() {
           schema: 'public',
           table: 'calendar_events',
         },
-        (payload) => {
+        (payload: any) => {
           console.log('📡 Realtime event received:', payload)
           loadEvents()
         }
