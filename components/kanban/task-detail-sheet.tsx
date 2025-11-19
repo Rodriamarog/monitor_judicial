@@ -108,12 +108,9 @@ export function TaskDetailSheet({
 
       if (dueDate && dueDate !== (task.due_date ? task.due_date.split('T')[0] : '')) {
         // Due date changed or newly added
-        // Parse the date string to avoid timezone issues
-        const [year, month, day] = dueDate.split('-').map(Number)
-
-        // Create date in LOCAL timezone, not UTC
-        const startTime = new Date(year, month - 1, day, 9, 0, 0, 0) // 9 AM local time
-        const endTime = new Date(year, month - 1, day, 10, 0, 0, 0) // 10 AM local time
+        // NO TIMEZONE CONVERSION - format strings directly
+        const startTimeString = `${dueDate}T09:00:00`
+        const endTimeString = `${dueDate}T10:00:00`
 
         if (task.calendar_event_id) {
           // Update existing calendar event
@@ -122,8 +119,8 @@ export function TaskDetailSheet({
             .update({
               title: title,
               description: description,
-              start_time: startTime.toISOString(),
-              end_time: endTime.toISOString(),
+              start_time: startTimeString,
+              end_time: endTimeString,
             })
             .eq('id', task.calendar_event_id)
         } else {
@@ -134,8 +131,8 @@ export function TaskDetailSheet({
               user_id: user.id,
               title: title,
               description: description,
-              start_time: startTime.toISOString(),
-              end_time: endTime.toISOString(),
+              start_time: startTimeString,
+              end_time: endTimeString,
               sync_status: 'pending',
             })
             .select()
