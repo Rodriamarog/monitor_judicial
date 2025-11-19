@@ -106,7 +106,7 @@ export function KanbanColumn({
         setSortableNodeRef(node)
       }}
       style={style}
-      className="flex flex-col flex-shrink-0 w-[280px] rounded-lg p-3 bg-muted/50"
+      className="flex flex-col flex-shrink-0 w-[280px] rounded-lg p-3 bg-[#F8F8F8] dark:bg-[#1c1c1c]"
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
