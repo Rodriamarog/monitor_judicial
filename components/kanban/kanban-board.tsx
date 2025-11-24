@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef, useCallback } from 'react'
 import {
   DndContext,
   DragEndEvent,
@@ -58,6 +58,7 @@ export function KanbanBoard({
   const [activeTask, setActiveTask] = useState<Task | null>(null)
   const [activeColumn, setActiveColumn] = useState<Column | null>(null)
   const [selectedTask, setSelectedTask] = useState<Task | null>(null)
+  const lastDragOverRef = useRef<{ activeId: string; overId: string } | null>(null)
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -79,9 +80,23 @@ export function KanbanBoard({
     }
   }
 
-  const handleDragOver = (event: DragOverEvent) => {
+  const handleDragOver = useCallback((event: DragOverEvent) => {
     const { active, over } = event
-    if (!over) return
+    if (!over) {
+      lastDragOverRef.current = null
+      return
+    }
+
+    // Prevent duplicate updates - if we're still over the same element, don't update
+    if (
+      lastDragOverRef.current &&
+      lastDragOverRef.current.activeId === active.id &&
+      lastDragOverRef.current.overId === over.id
+    ) {
+      return
+    }
+
+    lastDragOverRef.current = { activeId: active.id as string, overId: over.id as string }
 
     const activeTask = tasks.find((t) => t.id === active.id)
     const activeCol = columns.find((c) => c.id === active.id)
@@ -91,7 +106,6 @@ export function KanbanBoard({
       // Check if dragging over a column
       const overColumn = columns.find((c) => c.id === over.id)
       if (overColumn && activeTask.column_id !== overColumn.id) {
-        console.log('Moving task to column:', overColumn.id)
         // Move task to new column (optimistic update)
         const updatedTasks = tasks.map((t) =>
           t.id === activeTask.id ? { ...t, column_id: overColumn.id } : t
@@ -102,13 +116,11 @@ export function KanbanBoard({
       // Check if dragging over another task
       const overTask = tasks.find((t) => t.id === over.id)
       if (overTask && activeTask.id !== overTask.id) {
-        console.log('Reordering task over:', overTask.id)
         // Reorder within column
         const activeIndex = tasks.findIndex((t) => t.id === activeTask.id)
         const overIndex = tasks.findIndex((t) => t.id === overTask.id)
 
         if (tasks[activeIndex].column_id !== tasks[overIndex].column_id) {
-          console.log('Task moved to different column via task drag')
           tasks[activeIndex].column_id = tasks[overIndex].column_id
         }
 
@@ -142,11 +154,12 @@ export function KanbanBoard({
         onColumnsChange(reorderedColumns)
       }
     }
-  }
+  }, [tasks, columns, onTasksChange, onColumnsChange])
 
   const handleDragEnd = async (event: DragEndEvent) => {
     setActiveTask(null)
     setActiveColumn(null)
+    lastDragOverRef.current = null // Clear the ref when drag ends
 
     const { active, over } = event
     if (!over) return
