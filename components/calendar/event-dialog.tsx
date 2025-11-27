@@ -47,10 +47,20 @@ export function EventDialog({ open, mode, event, onClose, onSaved }: EventDialog
   const [deleting, setDeleting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
+  // Helper function to strip kanban metadata from description
+  const cleanDescription = (desc: string): string => {
+    if (!desc) return ''
+    // Remove [KANBAN_LABEL:...] and [KANBAN] markers
+    return desc
+      .replace(/\[KANBAN_LABEL:[^\]]+\]\s*/g, '')
+      .replace(/\[KANBAN\]\s*/g, '')
+      .trim()
+  }
+
   useEffect(() => {
     if (event) {
       setTitle(event.title || '')
-      setDescription(event.description || '')
+      setDescription(cleanDescription(event.description || ''))
       setLocation(event.location || '')
 
       // Parse start time
