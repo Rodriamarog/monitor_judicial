@@ -88,11 +88,17 @@ export default function EditTaskDialog({ task, onClose, onSave, onDelete }: Edit
         const startTimeString = `${dueDate}T09:00:00`
         const endTimeString = `${dueDate}T10:00:00`
 
+        // Add first label to description for color coding
+        const firstLabel = labels.length > 0 ? labels[0] : null
+        const eventDescription = firstLabel
+          ? `[KANBAN_LABEL:${firstLabel}]\n${description.trim()}`
+          : `[KANBAN]\n${description.trim()}`
+
         if (task.calendar_event_id) {
           // UPDATE existing calendar event
           await supabase.from('calendar_events').update({
-            title: `📋 ${title.trim()}`,
-            description: description.trim(),
+            title: title.trim(),
+            description: eventDescription,
             start_time: startTimeString,
             end_time: endTimeString,
             sync_status: 'pending'
@@ -103,8 +109,8 @@ export default function EditTaskDialog({ task, onClose, onSave, onDelete }: Edit
             .from('calendar_events')
             .insert({
               user_id: user.id,
-              title: `📋 ${title.trim()}`,
-              description: description.trim(),
+              title: title.trim(),
+              description: eventDescription,
               start_time: startTimeString,
               end_time: endTimeString,
               sync_status: 'pending'

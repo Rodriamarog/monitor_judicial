@@ -84,12 +84,12 @@ export function DashboardClient({
         </Card>
       </div>
 
-      {/* Cases Table - Flexible height */}
+      {/* Cases Table - Fills remaining space */}
       <Card className="flex-1 flex flex-col overflow-hidden">
         <CardHeader className="flex-shrink-0">
           <CardTitle>Lista de Casos</CardTitle>
         </CardHeader>
-        <CardContent className="flex-1 overflow-hidden">
+        <CardContent className="flex-1 overflow-auto">
           {!casesWithAlerts || casesWithAlerts.length === 0 ? (
             <div className="text-center py-12">
               <p className="text-muted-foreground mb-4">

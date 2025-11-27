@@ -209,7 +209,8 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="container max-w-2xl mx-auto py-8 px-4 space-y-6">
+    <div className="h-full overflow-y-auto">
+      <div className="container max-w-2xl mx-auto py-8 px-4 space-y-6">
       {/* Subscription Card */}
       <Card>
         <CardHeader>
@@ -436,6 +437,7 @@ export default function SettingsPage() {
           </form>
         </CardContent>
       </Card>
+      </div>
     </div>
   )
 }

@@ -55,12 +55,18 @@ export default function AddTaskDialog({ open, onClose, onAdd }: AddTaskDialogPro
           const startTimeString = `${dueDate}T09:00:00`
           const endTimeString = `${dueDate}T10:00:00`
 
+          // Add first label to description for color coding
+          const firstLabel = selectedLabels.length > 0 ? selectedLabels[0] : null
+          const eventDescription = firstLabel
+            ? `[KANBAN_LABEL:${firstLabel}]\n${description.trim()}`
+            : `[KANBAN]\n${description.trim()}`
+
           const { data: newEvent } = await supabase
             .from('calendar_events')
             .insert({
               user_id: user.id,
-              title: `📋 ${title.trim()}`,
-              description: description.trim(),
+              title: title.trim(),
+              description: eventDescription,
               start_time: startTimeString,
               end_time: endTimeString,
               sync_status: 'pending'

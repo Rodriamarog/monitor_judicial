@@ -41,6 +41,23 @@ interface BigCalendarEvent {
   resource: CalendarEvent
 }
 
+// Label color mappings for kanban events
+const labelColorGradients: Record<string, { color1: string; color2: string; glow: string }> = {
+  'Civil': { color1: '#3b82f6', color2: '#2563eb', glow: 'rgba(59, 130, 246, 0.4)' },
+  'Laboral': { color1: '#a855f7', color2: '#9333ea', glow: 'rgba(168, 85, 247, 0.4)' },
+  'Mercantil': { color1: '#06b6d4', color2: '#0891b2', glow: 'rgba(6, 182, 212, 0.4)' },
+  'Penal': { color1: '#ef4444', color2: '#dc2626', glow: 'rgba(239, 68, 68, 0.4)' },
+  'Familiar': { color1: '#ec4899', color2: '#db2777', glow: 'rgba(236, 72, 153, 0.4)' },
+  'Fiscal': { color1: '#eab308', color2: '#f59e0b', glow: 'rgba(234, 179, 8, 0.4)' },
+  'Administrativo': { color1: '#6366f1', color2: '#4f46e5', glow: 'rgba(99, 102, 241, 0.4)' },
+  'Propiedad Intelectual': { color1: '#f43f5e', color2: '#e11d48', glow: 'rgba(244, 63, 94, 0.4)' },
+  'Audiencia': { color1: '#f97316', color2: '#ea580c', glow: 'rgba(249, 115, 22, 0.4)' },
+  'Notarial': { color1: '#14b8a6', color2: '#0d9488', glow: 'rgba(20, 184, 166, 0.4)' },
+  'Negociación': { color1: '#22c55e', color2: '#16a34a', glow: 'rgba(34, 197, 94, 0.4)' },
+  'Apelación': { color1: '#8b5cf6', color2: '#7c3aed', glow: 'rgba(139, 92, 246, 0.4)' },
+  'Urgente': { color1: '#ef4444', color2: '#dc2626', glow: 'rgba(239, 68, 68, 0.4)' },
+}
+
 export default function CalendarPage() {
   const [loading, setLoading] = useState(true)
   const [events, setEvents] = useState<CalendarEvent[]>([])
@@ -55,6 +72,51 @@ export default function CalendarPage() {
 
   const router = useRouter()
   const supabase = createClient()
+
+  // Extract label from event description to determine color
+  const getEventLabel = (event: BigCalendarEvent): string | null => {
+    const description = event.resource.description || ''
+    const match = description.match(/\[KANBAN_LABEL:([^\]]+)\]/)
+    return match ? match[1] : null
+  }
+
+  // Check if event is from kanban (has [KANBAN] or [KANBAN_LABEL] marker)
+  const isKanbanEvent = (event: BigCalendarEvent): boolean => {
+    const description = event.resource.description || ''
+    return description.includes('[KANBAN]') || description.includes('[KANBAN_LABEL')
+  }
+
+  // Custom event style getter for different colors
+  const eventPropGetter = (event: BigCalendarEvent) => {
+    const label = getEventLabel(event)
+    const isFromKanban = isKanbanEvent(event)
+
+    if (isFromKanban && label && labelColorGradients[label]) {
+      const colors = labelColorGradients[label]
+      return {
+        style: {
+          background: `linear-gradient(135deg, ${colors.color1} 0%, ${colors.color2} 100%)`,
+          border: 'none',
+        },
+      }
+    } else if (isFromKanban) {
+      // Kanban event with no label - use green gradient
+      return {
+        style: {
+          background: 'linear-gradient(135deg, #22c55e 0%, #16a34a 100%)',
+          border: 'none',
+        },
+      }
+    }
+
+    // Non-kanban events - use yellow (default)
+    return {
+      style: {
+        background: 'linear-gradient(135deg, #eab308 0%, #f59e0b 100%)',
+        border: 'none',
+      },
+    }
+  }
 
   useEffect(() => {
     checkGoogleCalendarStatus()
@@ -423,6 +485,7 @@ export default function CalendarPage() {
             onNavigate={handleNavigate}
             onSelectSlot={handleSelectSlot}
             onSelectEvent={handleSelectEvent}
+            eventPropGetter={eventPropGetter}
             selectable
             popup
             messages={{
