@@ -91,30 +91,26 @@ export default function CalendarPage() {
     const label = getEventLabel(event)
     const isFromKanban = isKanbanEvent(event)
 
+    console.log('Event:', event.title, 'isKanban:', isFromKanban, 'label:', label, 'description:', event.resource.description)
+
     if (isFromKanban && label && labelColorGradients[label]) {
       const colors = labelColorGradients[label]
+      console.log('Using label color for', label, ':', colors)
       return {
-        style: {
-          background: `linear-gradient(135deg, ${colors.color1} 0%, ${colors.color2} 100%)`,
-          border: 'none',
-        },
+        className: `kanban-event kanban-label-${label.replace(/\s+/g, '-')}`,
       }
     } else if (isFromKanban) {
       // Kanban event with no label - use green gradient
+      console.log('Using default kanban color (green)')
       return {
-        style: {
-          background: 'linear-gradient(135deg, #22c55e 0%, #16a34a 100%)',
-          border: 'none',
-        },
+        className: 'kanban-event kanban-event-no-label',
       }
     }
 
     // Non-kanban events - use yellow (default)
+    console.log('Using non-kanban color (yellow)')
     return {
-      style: {
-        background: 'linear-gradient(135deg, #eab308 0%, #f59e0b 100%)',
-        border: 'none',
-      },
+      className: 'non-kanban-event',
     }
   }
 
@@ -425,8 +421,6 @@ export default function CalendarPage() {
 
           /* Event styling with gradient and pop-out effect */
           .rbc-event {
-            background: linear-gradient(135deg, var(--event-color-1) 0%, var(--event-color-2) 100%) !important;
-            opacity: 0.8 !important;
             border: none !important;
             border-radius: 6px !important;
             padding: 4px 8px !important;
@@ -436,10 +430,74 @@ export default function CalendarPage() {
             color: white !important;
           }
 
+          /* Default styling for non-kanban events (yellow) */
+          .rbc-event.non-kanban-event {
+            background: linear-gradient(135deg, var(--event-color-1) 0%, var(--event-color-2) 100%) !important;
+            opacity: 0.8 !important;
+          }
+
+          /* Kanban events with specific label colors */
+          .rbc-event.kanban-label-Civil {
+            background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%) !important;
+            opacity: 0.8 !important;
+          }
+          .rbc-event.kanban-label-Laboral {
+            background: linear-gradient(135deg, #a855f7 0%, #9333ea 100%) !important;
+            opacity: 0.8 !important;
+          }
+          .rbc-event.kanban-label-Mercantil {
+            background: linear-gradient(135deg, #06b6d4 0%, #0891b2 100%) !important;
+            opacity: 0.8 !important;
+          }
+          .rbc-event.kanban-label-Penal {
+            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%) !important;
+            opacity: 0.8 !important;
+          }
+          .rbc-event.kanban-label-Familiar {
+            background: linear-gradient(135deg, #ec4899 0%, #db2777 100%) !important;
+            opacity: 0.8 !important;
+          }
+          .rbc-event.kanban-label-Fiscal {
+            background: linear-gradient(135deg, #eab308 0%, #f59e0b 100%) !important;
+            opacity: 0.8 !important;
+          }
+          .rbc-event.kanban-label-Administrativo {
+            background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%) !important;
+            opacity: 0.8 !important;
+          }
+          .rbc-event.kanban-label-Propiedad-Intelectual {
+            background: linear-gradient(135deg, #f43f5e 0%, #e11d48 100%) !important;
+            opacity: 0.8 !important;
+          }
+          .rbc-event.kanban-label-Audiencia {
+            background: linear-gradient(135deg, #f97316 0%, #ea580c 100%) !important;
+            opacity: 0.8 !important;
+          }
+          .rbc-event.kanban-label-Notarial {
+            background: linear-gradient(135deg, #14b8a6 0%, #0d9488 100%) !important;
+            opacity: 0.8 !important;
+          }
+          .rbc-event.kanban-label-Negociación {
+            background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%) !important;
+            opacity: 0.8 !important;
+          }
+          .rbc-event.kanban-label-Apelación {
+            background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%) !important;
+            opacity: 0.8 !important;
+          }
+          .rbc-event.kanban-label-Urgente {
+            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%) !important;
+            opacity: 0.8 !important;
+          }
+          .rbc-event.kanban-event-no-label {
+            background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%) !important;
+            opacity: 0.8 !important;
+          }
+
           .rbc-event:hover {
             transform: translateY(-2px) !important;
             box-shadow: 0 4px 12px var(--event-glow), 0 2px 6px rgba(0, 0, 0, 0.1) !important;
-            background: linear-gradient(135deg, var(--event-hover-1) 0%, var(--event-hover-2) 100%) !important;
+            filter: brightness(0.9) !important;
           }
 
           .rbc-event:active {
