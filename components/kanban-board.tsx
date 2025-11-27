@@ -284,7 +284,7 @@ export default function KanbanBoard() {
   const handleAddTask = (columnId: string, task: Omit<Task, "id" | "column_id">) => {
     const newTask: Task = {
       ...task,
-      id: `task-${Date.now()}`,
+      id: crypto.randomUUID(),
       column_id: columnId,
       position: columns.find(col => col.id === columnId)?.tasks.length || 0,
     }
@@ -325,7 +325,7 @@ export default function KanbanBoard() {
     }
 
     const newColumn: Column = {
-      id: `column-${Date.now()}`,
+      id: crypto.randomUUID(),
       title: `Nueva Columna`,
       color: "bg-slate-500",
       tasks: [],
