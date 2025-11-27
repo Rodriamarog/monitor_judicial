@@ -53,17 +53,19 @@ export function Sidebar({ email, tier, hasStripeCustomer }: SidebarProps) {
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 p-4 space-y-2">
+      <nav className="flex-1 py-4">
         {navItems.map((item) => {
           const Icon = item.icon
           const isActive = pathname === item.href
           return (
             <Link key={item.href} href={item.href}>
               <Button
-                variant={isActive ? 'secondary' : 'ghost'}
+                variant="ghost"
                 className={cn(
-                  'w-full justify-start gap-3',
-                  isCollapsed && 'justify-center px-2'
+                  'w-full justify-start gap-3 transition-colors rounded-none relative cursor-pointer',
+                  isActive && 'bg-primary/10 border-l-4 border-l-primary text-foreground hover:bg-primary/15 font-semibold',
+                  !isActive && 'hover:bg-primary/5',
+                  isCollapsed && 'justify-center'
                 )}
                 onClick={() => setIsMobileOpen(false)}
               >
@@ -88,7 +90,6 @@ export function Sidebar({ email, tier, hasStripeCustomer }: SidebarProps) {
 
         <div className={cn('flex gap-2', isCollapsed && 'flex-col')}>
           <ThemeToggle />
-          <SubscriptionButton tier={tier} hasStripeCustomer={hasStripeCustomer} />
           <SignOutButton />
         </div>
       </div>
@@ -114,8 +115,8 @@ export function Sidebar({ email, tier, hasStripeCustomer }: SidebarProps) {
       {/* Desktop Sidebar */}
       <aside
         className={cn(
-          'hidden md:flex flex-col border-r bg-muted/30 transition-all duration-300',
-          isCollapsed ? 'w-20' : 'w-64'
+          'hidden md:flex flex-col border-r bg-muted/30 transition-all duration-300 relative',
+          isCollapsed ? 'w-16' : 'w-56'
         )}
       >
         <SidebarContent />

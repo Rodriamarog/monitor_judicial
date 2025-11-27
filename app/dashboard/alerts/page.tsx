@@ -173,26 +173,28 @@ export default function AlertsPage() {
   }
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold">Alertas</h1>
-          <p className="text-muted-foreground">
-            Historial de casos encontrados en boletines judiciales
-          </p>
+    <div className="flex flex-col h-full gap-4 overflow-hidden">
+      {/* Header & Filters - Fixed height */}
+      <div className="flex-shrink-0 space-y-4">
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold">Alertas</h1>
+            <p className="text-muted-foreground">
+              Historial de casos encontrados en boletines judiciales
+            </p>
+          </div>
+          <div className="text-right">
+            <p className="text-xs text-muted-foreground">
+              {dateFrom === dateTo && dateFrom === getTodayDate() ? 'Alertas de Hoy' : 'Alertas Filtradas'}
+            </p>
+            <p className="text-2xl font-bold">{totalAlerts}</p>
+          </div>
         </div>
-        <div className="text-right">
-          <p className="text-xs text-muted-foreground">
-            {dateFrom === dateTo && dateFrom === getTodayDate() ? 'Alertas de Hoy' : 'Alertas Filtradas'}
-          </p>
-          <p className="text-2xl font-bold">{totalAlerts}</p>
-        </div>
-      </div>
 
-      {/* Filters */}
-      <Card>
-        <CardContent className="pt-6">
+        {/* Filters */}
+        <Card>
+          <CardContent className="pt-6">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {/* Case Filter - Searchable Combobox */}
             <div className="space-y-2">
@@ -343,28 +345,33 @@ export default function AlertsPage() {
           </div>
         </CardContent>
       </Card>
+      </div>
 
-      {/* Alerts Table */}
-      {filteredAlerts.length === 0 ? (
-        <Card>
-          <CardContent className="text-center py-12">
-            <Bell className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-            <p className="text-lg font-medium mb-2">No hay alertas</p>
-            <p className="text-muted-foreground mb-4">
-              {alerts.length === 0
-                ? 'Las alertas aparecerán aquí cuando sus casos sean encontrados en los boletines'
-                : 'No se encontraron alertas con los filtros seleccionados'}
-            </p>
-            {alerts.length === 0 && (
-              <Link href="/dashboard/add">
-                <Button>Agregar un caso</Button>
-              </Link>
-            )}
-          </CardContent>
-        </Card>
-      ) : (
-        <AlertsTable alerts={filteredAlerts} />
-      )}
+      {/* Alerts Table - Flexible height */}
+      <div className="flex-1 overflow-hidden">
+        {filteredAlerts.length === 0 ? (
+          <Card className="h-full flex items-center justify-center">
+            <CardContent className="text-center py-12">
+              <Bell className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+              <p className="text-lg font-medium mb-2">No hay alertas</p>
+              <p className="text-muted-foreground mb-4">
+                {alerts.length === 0
+                  ? 'Las alertas aparecerán aquí cuando sus casos sean encontrados en los boletines'
+                  : 'No se encontraron alertas con los filtros seleccionados'}
+              </p>
+              {alerts.length === 0 && (
+                <Link href="/dashboard/add">
+                  <Button>Agregar un caso</Button>
+                </Link>
+              )}
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="h-full overflow-auto">
+            <AlertsTable alerts={filteredAlerts} />
+          </div>
+        )}
+      </div>
     </div>
   )
 }

@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { createClient } from "@/lib/supabase/client"
 import type { Task, Comment } from "@/components/kanban-board"
 import { labelColors } from "@/components/task-card"
 
@@ -71,26 +72,115 @@ export default function EditTaskDialog({ task, onClose, onSave, onDelete }: Edit
     }
   }, [task])
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!task || !title.trim()) return
 
-    // Format date as "Nov 27" if provided - no timezone conversion
-    let formattedDate: string | undefined = undefined
-    if (dueDate) {
-      // dueDate is "YYYY-MM-DD", split it directly
-      const [year, month, day] = dueDate.split('-')
-      const monthNames = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic']
-      formattedDate = `${monthNames[parseInt(month) - 1]} ${parseInt(day)}`
-    }
+    const supabase = createClient()
+    let calendarEventId = task.calendar_event_id
 
-    onSave({
-      ...task,
-      title: title.trim(),
-      description: description.trim(),
-      labels,
-      dueDate: formattedDate,
-      comments,
-    })
+    try {
+      // Get current user
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
+
+      // CASE 1: Due date added or changed
+      if (dueDate && dueDate !== task.due_date) {
+        const startTimeString = `${dueDate}T09:00:00`
+        const endTimeString = `${dueDate}T10:00:00`
+
+        if (task.calendar_event_id) {
+          // UPDATE existing calendar event
+          await supabase.from('calendar_events').update({
+            title: `📋 ${title.trim()}`,
+            description: description.trim(),
+            start_time: startTimeString,
+            end_time: endTimeString,
+            sync_status: 'pending'
+          }).eq('id', task.calendar_event_id)
+        } else {
+          // CREATE new calendar event
+          const { data: newEvent } = await supabase
+            .from('calendar_events')
+            .insert({
+              user_id: user.id,
+              title: `📋 ${title.trim()}`,
+              description: description.trim(),
+              start_time: startTimeString,
+              end_time: endTimeString,
+              sync_status: 'pending'
+            })
+            .select()
+            .single()
+
+          if (newEvent) {
+            calendarEventId = newEvent.id
+          }
+        }
+      }
+
+      // CASE 2: Due date removed
+      else if (!dueDate && task.calendar_event_id) {
+        const { data: event } = await supabase
+          .from('calendar_events')
+          .select('google_event_id')
+          .eq('id', task.calendar_event_id)
+          .single()
+
+        // Delete from Google Calendar
+        if (event?.google_event_id) {
+          await fetch('/api/calendar/delete-from-google', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ google_event_id: event.google_event_id })
+          })
+        }
+
+        // Delete from local DB
+        await supabase.from('calendar_events').delete().eq('id', task.calendar_event_id)
+        calendarEventId = null
+      }
+
+      // Format date as "Nov 27" if provided
+      let formattedDate: string | undefined = undefined
+      if (dueDate) {
+        const [year, month, day] = dueDate.split('-')
+        const monthNames = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic']
+        formattedDate = `${monthNames[parseInt(month) - 1]} ${parseInt(day)}`
+      }
+
+      // Update task with calendar event ID
+      onSave({
+        ...task,
+        title: title.trim(),
+        description: description.trim(),
+        labels,
+        dueDate: formattedDate,
+        due_date: dueDate || null,
+        calendar_event_id: calendarEventId,
+        comments,
+      })
+
+      // Async sync to Google (fire and forget)
+      if (calendarEventId) {
+        fetch('/api/calendar/sync-to-google', { method: 'POST' })
+      }
+    } catch (error) {
+      console.error('Error saving task with calendar sync:', error)
+      // Still save task even if calendar sync fails
+      const formattedDate = dueDate
+        ? `${['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'][parseInt(dueDate.split('-')[1]) - 1]} ${parseInt(dueDate.split('-')[2])}`
+        : undefined
+
+      onSave({
+        ...task,
+        title: title.trim(),
+        description: description.trim(),
+        labels,
+        dueDate: formattedDate,
+        due_date: dueDate || null,
+        comments,
+      })
+    }
   }
 
   const handleAddComment = () => {

@@ -47,23 +47,28 @@ export async function POST(request: NextRequest) {
           };
 
           for (const channel of channels) {
-            // Stop channel with Google
-            const result = await stopWatchChannel(
-              tokenData,
-              channel.channel_id,
-              channel.resource_id,
-              supabaseUrl,
-              supabaseKey,
-              user.id
-            );
+            try {
+              // Stop channel with Google
+              const result = await stopWatchChannel(
+                tokenData,
+                channel.channel_id,
+                channel.resource_id,
+                supabaseUrl,
+                supabaseKey,
+                user.id
+              );
 
-            // If channel doesn't exist (404), that's fine - it's already stopped
-            // Only fail on other errors
-            if (!result.success && !result.error?.includes('not found')) {
-              throw new Error(`Failed to stop watch channel: ${result.error}`);
+              // If channel doesn't exist (404), that's fine - it's already stopped
+              if (!result.success && !result.error?.includes('not found')) {
+                console.warn(`Could not stop watch channel ${channel.channel_id}: ${result.error}`);
+              }
+            } catch (stopError) {
+              // If tokens are invalid (invalid_grant), we can't stop the channel via API
+              // but that's OK - Google will auto-expire the channel in 24 hours
+              console.warn(`Could not stop watch channel ${channel.channel_id}:`, stopError);
             }
 
-            // Mark as stopped in database regardless
+            // Mark as stopped in database regardless (cleanup)
             await serviceSupabase
               .from('calendar_watch_channels')
               .update({ status: 'stopped' })
@@ -71,11 +76,9 @@ export async function POST(request: NextRequest) {
           }
         }
       } catch (channelError) {
-        console.error('Error stopping watch channels:', channelError);
-        return NextResponse.json(
-          { error: 'Failed to stop watch channels', message: channelError instanceof Error ? channelError.message : 'Unknown error' },
-          { status: 500 }
-        );
+        // Don't fail the disconnect if we can't stop channels
+        // The channels will auto-expire anyway
+        console.error('Error stopping watch channels (continuing with disconnect):', channelError);
       }
     }
 

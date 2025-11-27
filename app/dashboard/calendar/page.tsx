@@ -234,6 +234,182 @@ export default function CalendarPage() {
             font-family: 'Inter', system-ui, -apple-system, sans-serif !important;
             letter-spacing: -0.02em !important;
           }
+
+          /* Toolbar buttons - modern, borderless design */
+          .rbc-toolbar button {
+            border: none !important;
+            background: transparent !important;
+            padding: 8px 16px !important;
+            border-radius: 6px !important;
+            font-weight: 500 !important;
+            transition: all 0.2s ease-in-out !important;
+          }
+
+          .rbc-toolbar button:hover {
+            background: hsl(var(--accent)) !important;
+          }
+
+          .rbc-toolbar button:active,
+          .rbc-toolbar button.rbc-active {
+            background: linear-gradient(135deg, #eab308 0%, #f59e0b 100%) !important;
+            color: white !important;
+            transform: scale(0.98) !important;
+          }
+
+          /* Hide "Hoy" button */
+          .rbc-toolbar .rbc-btn-group:first-child button:nth-child(2) {
+            display: none !important;
+          }
+
+          /* Hide text in navigation buttons and replace with icons */
+          .rbc-toolbar .rbc-btn-group:first-child button:first-child,
+          .rbc-toolbar .rbc-btn-group:first-child button:last-child {
+            font-size: 0 !important;
+            width: 32px !important;
+            height: 32px !important;
+            padding: 0 !important;
+            display: inline-flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            border-radius: 50% !important;
+            position: relative !important;
+          }
+
+          /* Override hover for navigation buttons with yellow */
+          .rbc-toolbar .rbc-btn-group:first-child button:first-child:hover,
+          .rbc-toolbar .rbc-btn-group:first-child button:last-child:hover {
+            background: #fef3c7 !important;
+          }
+
+          .rbc-toolbar .rbc-btn-group:first-child button:first-child::before {
+            content: '‹' !important;
+            font-size: 24px !important;
+            font-weight: 600 !important;
+            line-height: 1 !important;
+            position: absolute !important;
+            top: 46% !important;
+            left: 50% !important;
+            transform: translate(-50%, -50%) !important;
+            display: block !important;
+          }
+
+          .rbc-toolbar .rbc-btn-group:first-child button:last-child::before {
+            content: '›' !important;
+            font-size: 24px !important;
+            font-weight: 600 !important;
+            line-height: 1 !important;
+            position: absolute !important;
+            top: 46% !important;
+            left: 50% !important;
+            transform: translate(-50%, -50%) !important;
+            display: block !important;
+          }
+
+          /* Weekday headers - add color and style */
+          .rbc-header {
+            padding: 12px 4px !important;
+            font-weight: 600 !important;
+            font-size: 0.875rem !important;
+            text-transform: uppercase !important;
+            letter-spacing: 0.05em !important;
+            background: linear-gradient(135deg, hsl(var(--primary) / 0.1) 0%, hsl(var(--primary) / 0.05) 100%) !important;
+            border-bottom: 2px solid hsl(var(--primary) / 0.3) !important;
+            color: hsl(var(--primary)) !important;
+          }
+
+          .rbc-header + .rbc-header {
+            border-left: 1px solid hsl(var(--border)) !important;
+          }
+
+          /*
+            COLOR SCHEME OPTIONS - Change the numbers below to switch:
+
+            YELLOW TO AMBER (Current):
+            --event-color-1: #eab308
+            --event-color-2: #f59e0b
+            --event-hover-1: #ca8a04
+            --event-hover-2: #d97706
+            --event-selected-1: #a16207
+            --event-selected-2: #b45309
+            --event-glow: rgba(234, 179, 8, 0.4)
+
+            BLUE TO INDIGO:
+            --event-color-1: #3b82f6
+            --event-color-2: #6366f1
+            --event-hover-1: #2563eb
+            --event-hover-2: #4f46e5
+            --event-selected-1: #1d4ed8
+            --event-selected-2: #4338ca
+            --event-glow: rgba(59, 130, 246, 0.4)
+
+            GREEN TO EMERALD:
+            --event-color-1: #10b981
+            --event-color-2: #059669
+            --event-hover-1: #059669
+            --event-hover-2: #047857
+            --event-selected-1: #047857
+            --event-selected-2: #065f46
+            --event-glow: rgba(16, 185, 129, 0.4)
+          */
+          :root {
+            --event-color-1: #eab308;
+            --event-color-2: #f59e0b;
+            --event-hover-1: #ca8a04;
+            --event-hover-2: #d97706;
+            --event-selected-1: #a16207;
+            --event-selected-2: #b45309;
+            --event-glow: rgba(234, 179, 8, 0.4);
+          }
+
+          /* Event styling with gradient and pop-out effect */
+          .rbc-event {
+            background: linear-gradient(135deg, var(--event-color-1) 0%, var(--event-color-2) 100%) !important;
+            opacity: 0.8 !important;
+            border: none !important;
+            border-radius: 6px !important;
+            padding: 4px 8px !important;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1), 0 1px 2px rgba(0, 0, 0, 0.06) !important;
+            transition: all 0.2s ease-in-out !important;
+            cursor: pointer !important;
+            color: white !important;
+          }
+
+          .rbc-event:hover {
+            transform: translateY(-2px) !important;
+            box-shadow: 0 4px 12px var(--event-glow), 0 2px 6px rgba(0, 0, 0, 0.1) !important;
+            background: linear-gradient(135deg, var(--event-hover-1) 0%, var(--event-hover-2) 100%) !important;
+          }
+
+          .rbc-event:active {
+            transform: translateY(0px) !important;
+          }
+
+          .rbc-event-label {
+            font-size: 0.75rem !important;
+            font-weight: 500 !important;
+            color: white !important;
+          }
+
+          .rbc-event-content {
+            font-weight: 500 !important;
+            font-size: 0.875rem !important;
+            color: white !important;
+          }
+
+          /* Selected event state */
+          .rbc-selected {
+            background: linear-gradient(135deg, var(--event-selected-1) 0%, var(--event-selected-2) 100%) !important;
+            box-shadow: 0 0 0 2px var(--event-glow) !important;
+          }
+
+          /* Month view all-day events */
+          .rbc-event.rbc-event-allday {
+            background: linear-gradient(90deg, var(--event-color-1) 0%, var(--event-color-2) 100%) !important;
+          }
+
+          .rbc-event.rbc-event-allday:hover {
+            background: linear-gradient(90deg, var(--event-hover-1) 0%, var(--event-hover-2) 100%) !important;
+          }
         `}</style>
         <div className="h-full">
           <BigCalendar

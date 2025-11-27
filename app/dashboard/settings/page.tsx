@@ -10,6 +10,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Loader2, CheckCircle2, Calendar, RefreshCw } from 'lucide-react'
 import { Switch } from '@/components/ui/switch'
+import { SubscriptionButton } from '@/components/subscription-button'
 
 export default function SettingsPage() {
   const [loading, setLoading] = useState(true)
@@ -25,6 +26,8 @@ export default function SettingsPage() {
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
   const [calendarSuccess, setCalendarSuccess] = useState(false)
+  const [tier, setTier] = useState('free')
+  const [hasStripeCustomer, setHasStripeCustomer] = useState(false)
 
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -62,7 +65,7 @@ export default function SettingsPage() {
 
       const { data: profile, error: profileError } = await supabase
         .from('user_profiles')
-        .select('phone, whatsapp_enabled, email_notifications_enabled, google_calendar_enabled, google_calendar_id')
+        .select('phone, whatsapp_enabled, email_notifications_enabled, google_calendar_enabled, google_calendar_id, subscription_tier, stripe_customer_id')
         .eq('id', user.id)
         .single()
 
@@ -73,6 +76,8 @@ export default function SettingsPage() {
       setEmailEnabled(profile.email_notifications_enabled !== false)
       setGoogleCalendarEnabled(profile.google_calendar_enabled || false)
       setGoogleCalendarId(profile.google_calendar_id || null)
+      setTier(profile.subscription_tier || 'free')
+      setHasStripeCustomer(!!profile.stripe_customer_id)
     } catch (err) {
       console.error('Error loading profile:', err)
       setError('Error al cargar perfil')
@@ -204,7 +209,29 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="container max-w-2xl mx-auto py-8 px-4">
+    <div className="container max-w-2xl mx-auto py-8 px-4 space-y-6">
+      {/* Subscription Card */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Suscripción</CardTitle>
+          <CardDescription>
+            Administra tu plan de suscripción
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium">Plan actual</p>
+                <p className="text-2xl font-bold capitalize">{tier}</p>
+              </div>
+              <SubscriptionButton tier={tier} hasStripeCustomer={hasStripeCustomer} />
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Notifications Card */}
       <Card>
         <CardHeader>
           <CardTitle>Configuración de Notificaciones</CardTitle>

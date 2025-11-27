@@ -4,42 +4,15 @@ import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import { Loader2 } from 'lucide-react'
-import { KanbanBoard } from '@/components/kanban/kanban-board'
-
-interface KanbanColumn {
-  id: string
-  title: string
-  position: number
-  color: string
-  created_at: string
-  updated_at: string
-}
-
-interface KanbanTask {
-  id: string
-  column_id: string
-  title: string
-  description: string | null
-  position: number
-  color: string | null
-  due_date: string | null
-  calendar_event_id: string | null
-  created_at: string
-  updated_at: string
-}
+import KanbanBoard from '@/components/kanban-board'
 
 export default function ProyectosPage() {
   const router = useRouter()
   const supabase = createClient()
-
-  const [columns, setColumns] = useState<KanbanColumn[]>([])
-  const [tasks, setTasks] = useState<KanbanTask[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    async function fetchData() {
-      setLoading(true)
-
+    async function checkAuth() {
       const { data: { user } } = await supabase.auth.getUser()
 
       if (!user) {
@@ -52,29 +25,10 @@ export default function ProyectosPage() {
         p_user_id: user.id,
       })
 
-      // Fetch columns
-      const { data: columnsData } = await supabase
-        .from('kanban_columns')
-        .select('*')
-        .eq('user_id', user.id)
-        .is('deleted_at', null)
-        .order('position')
-
-      setColumns(columnsData || [])
-
-      // Fetch tasks
-      const { data: tasksData } = await supabase
-        .from('kanban_tasks')
-        .select('*')
-        .eq('user_id', user.id)
-        .is('deleted_at', null)
-        .order('position')
-
-      setTasks(tasksData || [])
       setLoading(false)
     }
 
-    fetchData()
+    checkAuth()
   }, [router, supabase])
 
   if (loading) {
@@ -85,25 +39,5 @@ export default function ProyectosPage() {
     )
   }
 
-  return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold">Proyectos</h1>
-          <p className="text-muted-foreground">
-            Organiza tus tareas y proyectos
-          </p>
-        </div>
-      </div>
-
-      {/* Kanban Board */}
-      <KanbanBoard
-        columns={columns}
-        tasks={tasks}
-        onColumnsChange={setColumns}
-        onTasksChange={setTasks}
-      />
-    </div>
-  )
+  return <KanbanBoard />
 }

@@ -1,8 +1,9 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
+import { useRouter } from "next/navigation"
 import { DragDropContext, Droppable, Draggable, type DropResult } from "@hello-pangea/dnd"
-import { Plus, MoreHorizontal, Trash2 } from "lucide-react"
+import { Plus, MoreHorizontal, Trash2, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import {
@@ -11,17 +12,26 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import { createClient } from "@/lib/supabase/client"
 import TaskCard from "@/components/task-card"
 import AddTaskDialog from "@/components/add-task-dialog"
 import EditTaskDialog from "@/components/edit-task-dialog"
 
+// Database task interface
 export interface Task {
   id: string
+  column_id: string
   title: string
   description: string
   labels: string[]
-  dueDate?: string
+  dueDate?: string // Display format: "Nov 27"
+  due_date?: string | null // Database format: "YYYY-MM-DD"
+  calendar_event_id?: string | null
+  position?: number
+  color?: string
   comments?: Comment[]
+  created_at?: string
+  updated_at?: string
 }
 
 export interface Comment {
@@ -36,96 +46,183 @@ export interface Column {
   title: string
   color: string
   tasks: Task[]
+  position?: number
+  user_id?: string
 }
 
-const initialColumns: Column[] = [
-  {
-    id: "pendiente",
-    title: "Pendiente",
-    color: "bg-slate-500",
-    tasks: [
-      {
-        id: "task-1",
-        title: "Presentar demanda laboral",
-        description: "Preparar y presentar demanda por despido injustificado ante el juzgado laboral",
-        labels: ["Laboral", "Urgente"],
-        dueDate: "28 Nov",
-      },
-      {
-        id: "task-2",
-        title: "Revisión de contrato mercantil",
-        description: "Análisis de cláusulas y condiciones del contrato de compraventa",
-        labels: ["Mercantil"],
-      },
-      {
-        id: "task-3",
-        title: "Audiencia preliminar",
-        description: "Preparar alegatos y documentación para audiencia preliminar",
-        labels: ["Civil", "Audiencia"],
-        dueDate: "30 Nov",
-      },
-    ],
-  },
-  {
-    id: "en-progreso",
-    title: "En Progreso",
-    color: "bg-blue-500",
-    tasks: [
-      {
-        id: "task-4",
-        title: "Recurso de apelación",
-        description: "Redactar recurso de apelación contra sentencia de primera instancia",
-        labels: ["Civil", "Apelación"],
-      },
-      {
-        id: "task-5",
-        title: "Negociación extrajudicial",
-        description: "Mediación con la contraparte para llegar a un acuerdo",
-        labels: ["Negociación"],
-        dueDate: "25 Nov",
-      },
-    ],
-  },
-  {
-    id: "revision",
-    title: "En Revisión",
-    color: "bg-amber-500",
-    tasks: [
-      {
-        id: "task-6",
-        title: "Escritura de constitución",
-        description: "Revisión final de escritura para constitución de sociedad",
-        labels: ["Mercantil", "Notarial"],
-      },
-    ],
-  },
-  {
-    id: "completado",
-    title: "Completado",
-    color: "bg-emerald-500",
-    tasks: [
-      {
-        id: "task-7",
-        title: "Registro de marca",
-        description: "Completado el registro de marca ante IMPI",
-        labels: ["Propiedad Intelectual"],
-      },
-      {
-        id: "task-8",
-        title: "Contestación de demanda",
-        description: "Presentada contestación de demanda en tiempo y forma",
-        labels: ["Civil"],
-      },
-    ],
-  },
-]
-
 export default function KanbanBoard() {
-  const [columns, setColumns] = useState<Column[]>(initialColumns)
+  const router = useRouter()
+  const supabase = createClient()
+
+  const [columns, setColumns] = useState<Column[]>([])
+  const [loading, setLoading] = useState(true)
+  const [hasChanges, setHasChanges] = useState(false)
+  const [userId, setUserId] = useState<string | null>(null)
   const [addTaskColumn, setAddTaskColumn] = useState<string | null>(null)
   const [editingTask, setEditingTask] = useState<Task | null>(null)
   const [editingColumnId, setEditingColumnId] = useState<string | null>(null)
   const [editingColumnTitle, setEditingColumnTitle] = useState("")
+
+  // Load kanban data from database
+  useEffect(() => {
+    async function loadKanbanData() {
+      try {
+        const { data: { user } } = await supabase.auth.getUser()
+
+        if (!user) {
+          router.push('/login')
+          return
+        }
+
+        setUserId(user.id)
+
+        const { data: columns, error } = await supabase
+          .from('kanban_columns')
+          .select(`
+            *,
+            kanban_tasks (*)
+          `)
+          .eq('user_id', user.id)
+          .is('deleted_at', null)
+          .order('position')
+
+        if (error) {
+          console.error('Error loading kanban data:', error)
+          return
+        }
+
+        // Transform to UI format
+        const transformedColumns: Column[] = (columns || []).map((col: any) => ({
+          id: col.id,
+          title: col.title,
+          color: col.color,
+          position: col.position,
+          user_id: col.user_id,
+          tasks: (col.kanban_tasks || [])
+            .filter((t: any) => !t.deleted_at)
+            .sort((a: any, b: any) => a.position - b.position)
+            .map((t: any) => ({
+              id: t.id,
+              column_id: t.column_id,
+              title: t.title,
+              description: t.description || '',
+              labels: Array.isArray(t.labels) ? t.labels : [], // Load labels from DB
+              dueDate: t.due_date ? formatDisplayDate(t.due_date) : undefined,
+              due_date: t.due_date,
+              calendar_event_id: t.calendar_event_id,
+              position: t.position,
+              color: t.color,
+              comments: [], // Comments not in DB schema yet - keep as UI-only
+            }))
+        }))
+
+        setColumns(transformedColumns)
+      } catch (err) {
+        console.error('Error in loadKanbanData:', err)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    loadKanbanData()
+  }, [router, supabase])
+
+  // Helper to format date for display
+  const formatDisplayDate = (dateStr: string): string => {
+    if (!dateStr) return ''
+    const [year, month, day] = dateStr.split('-')
+    const monthNames = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic']
+    return `${monthNames[parseInt(month) - 1]} ${parseInt(day)}`
+  }
+
+  // Save entire state to database (batch operation)
+  const saveKanbanData = async () => {
+    if (!hasChanges || !userId) return
+
+    try {
+      // Batch upsert columns
+      const columnsToSave = columns.map((col, idx) => ({
+        id: col.id,
+        user_id: userId,
+        title: col.title,
+        color: col.color,
+        position: idx,
+        deleted_at: null,
+      }))
+
+      const { error: colError } = await supabase
+        .from('kanban_columns')
+        .upsert(columnsToSave)
+
+      if (colError) {
+        console.error('Error saving columns:', colError)
+        return
+      }
+
+      // Batch upsert all tasks
+      const allTasks = columns.flatMap((col) =>
+        col.tasks.map((task, taskIdx) => ({
+          id: task.id,
+          column_id: col.id,
+          user_id: userId,
+          title: task.title,
+          description: task.description,
+          position: taskIdx,
+          color: task.color || 'bg-slate-500',
+          due_date: task.due_date || null,
+          calendar_event_id: task.calendar_event_id || null,
+          labels: task.labels || [], // Save labels to DB
+          deleted_at: null,
+        }))
+      )
+
+      const { error: taskError } = await supabase
+        .from('kanban_tasks')
+        .upsert(allTasks)
+
+      if (taskError) {
+        console.error('Error saving tasks:', taskError)
+        return
+      }
+
+      setHasChanges(false)
+      console.log('✅ Kanban data saved successfully')
+    } catch (err) {
+      console.error('Error in saveKanbanData:', err)
+    }
+  }
+
+  // Save on unmount
+  useEffect(() => {
+    return () => {
+      if (hasChanges) saveKanbanData()
+    }
+  }, [hasChanges, columns])
+
+  // Save on navigation/visibility change
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (hasChanges) {
+        saveKanbanData()
+        e.preventDefault()
+        e.returnValue = ''
+      }
+    }
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'hidden' && hasChanges) {
+        saveKanbanData()
+      }
+    }
+
+    window.addEventListener('beforeunload', handleBeforeUnload)
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload)
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+    }
+  }, [hasChanges, columns])
 
   const onDragEnd = (result: DropResult) => {
     const { destination, source } = result
@@ -145,6 +242,12 @@ export default function KanbanBoard() {
       const sourceTask = sourceColumn.tasks[source.index]
       if (!sourceTask) return prevColumns
 
+      // Update task's column_id when moving between columns
+      const updatedTask = {
+        ...sourceTask,
+        column_id: destination.droppableId,
+      }
+
       // Same column reordering
       if (source.droppableId === destination.droppableId) {
         return prevColumns.map((column) => {
@@ -152,7 +255,7 @@ export default function KanbanBoard() {
 
           const newTasks = [...column.tasks]
           newTasks.splice(source.index, 1)
-          newTasks.splice(destination.index, 0, sourceTask)
+          newTasks.splice(destination.index, 0, updatedTask)
           return { ...column, tasks: newTasks }
         })
       }
@@ -167,24 +270,30 @@ export default function KanbanBoard() {
         }
         if (column.id === destination.droppableId) {
           const newTasks = [...column.tasks]
-          newTasks.splice(destination.index, 0, sourceTask)
+          newTasks.splice(destination.index, 0, updatedTask)
           return { ...column, tasks: newTasks }
         }
         return column
       })
     })
+
+    // Mark as changed
+    setHasChanges(true)
   }
 
-  const handleAddTask = (columnId: string, task: Omit<Task, "id">) => {
+  const handleAddTask = (columnId: string, task: Omit<Task, "id" | "column_id">) => {
     const newTask: Task = {
       ...task,
       id: `task-${Date.now()}`,
+      column_id: columnId,
+      position: columns.find(col => col.id === columnId)?.tasks.length || 0,
     }
 
     setColumns((prev) =>
       prev.map((column) => (column.id === columnId ? { ...column, tasks: [...column.tasks, newTask] } : column)),
     )
     setAddTaskColumn(null)
+    setHasChanges(true)
   }
 
   const handleUpdateTask = (updatedTask: Task) => {
@@ -195,6 +304,7 @@ export default function KanbanBoard() {
       })),
     )
     setEditingTask(null)
+    setHasChanges(true)
   }
 
   const handleDeleteTask = (taskId: string) => {
@@ -205,6 +315,7 @@ export default function KanbanBoard() {
       })),
     )
     setEditingTask(null)
+    setHasChanges(true)
   }
 
   const handleAddColumn = () => {
@@ -218,9 +329,12 @@ export default function KanbanBoard() {
       title: `Nueva Columna`,
       color: "bg-slate-500",
       tasks: [],
+      position: columns.length,
+      user_id: userId || undefined,
     }
 
     setColumns([...columns, newColumn])
+    setHasChanges(true)
   }
 
   const handleDeleteColumn = (columnId: string) => {
@@ -236,6 +350,7 @@ export default function KanbanBoard() {
     }
 
     setColumns((prev) => prev.filter((col) => col.id !== columnId))
+    setHasChanges(true)
   }
 
   const handleColumnDoubleClick = (column: Column) => {
@@ -251,6 +366,7 @@ export default function KanbanBoard() {
     )
     setEditingColumnId(null)
     setEditingColumnTitle("")
+    setHasChanges(true)
   }
 
   const handleColumnTitleKeyDown = (e: React.KeyboardEvent) => {
@@ -260,6 +376,14 @@ export default function KanbanBoard() {
       setEditingColumnId(null)
       setEditingColumnTitle("")
     }
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <Loader2 className="h-8 w-8 animate-spin" />
+      </div>
+    )
   }
 
   return (

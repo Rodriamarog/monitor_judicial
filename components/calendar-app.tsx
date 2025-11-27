@@ -2,47 +2,44 @@
 
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Avatar, AvatarFallback } from '@/components/ui/avatar'
-import { ChevronLeft, ChevronRight, Plus, Search } from 'lucide-react'
-
-type ViewType = 'Day' | 'Week' | 'Month' | 'Year'
+import { ChevronLeft, ChevronRight, Plus } from 'lucide-react'
 
 type CalendarEvent = {
   id: number
   title: string
   date: Date
-  color: string
+  type: string
 }
 
-type Person = {
-  id: number
-  name: string
-  email: string
-  initials: string
-  color: string
-}
+const daysOfWeek = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb']
+const miniDaysOfWeek = ['D', 'L', 'M', 'M', 'J', 'V', 'S']
+const monthNames = [
+  'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+  'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
+]
 
-const daysOfWeek = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
-const miniDaysOfWeek = ['S', 'S', 'M', 'T', 'W', 'T', 'F']
+// Event gradients matching app colorway
+const eventGradients = [
+  'bg-gradient-to-r from-primary/80 to-primary/60',
+  'bg-gradient-to-r from-primary/70 to-amber-500/60',
+  'bg-gradient-to-r from-amber-500/70 to-orange-500/60',
+  'bg-gradient-to-r from-primary/60 to-yellow-500/60',
+]
+
+const getEventGradient = (index: number) => {
+  return eventGradients[index % eventGradients.length]
+}
 
 export default function CalendarApp() {
   const [currentDate, setCurrentDate] = useState(new Date(2023, 11, 2)) // December 2, 2023
-  const [view, setView] = useState<ViewType>('Month')
   const [miniCalDate] = useState(new Date(2021, 11, 2)) // December 2, 2021
 
   const events: CalendarEvent[] = [
-    { id: 1, title: 'Free day', date: new Date(2023, 11, 2), color: 'bg-gradient-to-r from-purple-500 to-purple-400' },
-    { id: 2, title: 'Party Time', date: new Date(2023, 11, 2), color: 'bg-gradient-to-r from-purple-600 to-blue-500' },
-    { id: 3, title: 'Victory day', date: new Date(2023, 11, 16), color: 'bg-gradient-to-r from-purple-500 to-purple-400' },
-    { id: 4, title: 'Invited by friends', date: new Date(2023, 11, 21), color: 'bg-gradient-to-r from-purple-500 to-purple-400' },
-    { id: 5, title: 'Christmas Day', date: new Date(2023, 11, 25), color: 'bg-gradient-to-r from-purple-500 to-purple-400' },
-  ]
-
-  const people: Person[] = [
-    { id: 1, name: 'Shajib W Joy', email: 'shajibjwjoy@gmail.com', initials: 'SJ', color: 'bg-blue-500' },
-    { id: 2, name: 'Tarek Jia', email: 'dasvykjz@gmail.com', initials: 'TJ', color: 'bg-teal-500' },
-    { id: 3, name: 'Joe Biden', email: 'joebidenofcc@gmail.com', initials: 'JB', color: 'bg-pink-500' },
+    { id: 1, title: 'Audiencia preliminar', date: new Date(2023, 11, 2), type: 'Audiencia' },
+    { id: 2, title: 'Revisión de contrato', date: new Date(2023, 11, 2), type: 'Mercantil' },
+    { id: 3, title: 'Demanda laboral', date: new Date(2023, 11, 16), type: 'Laboral' },
+    { id: 4, title: 'Caso civil urgente', date: new Date(2023, 11, 21), type: 'Civil' },
+    { id: 5, title: 'Consulta familiar', date: new Date(2023, 11, 25), type: 'Familiar' },
   ]
 
   const getDaysInMonth = (date: Date) => {
@@ -127,11 +124,11 @@ export default function CalendarApp() {
   }
 
   const formatMonthYear = (date: Date) => {
-    return date.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
+    return `${monthNames[date.getMonth()]} ${date.getDate()}, ${date.getFullYear()}`
   }
 
   const formatMiniMonthYear = (date: Date) => {
-    return date.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
+    return `${monthNames[date.getMonth()]} ${date.getDate()}, ${date.getFullYear()}`
   }
 
   const days = getDaysInMonth(currentDate)
@@ -140,34 +137,16 @@ export default function CalendarApp() {
   return (
     <div className="min-h-screen bg-background p-4 md:p-8">
       <div className="mx-auto max-w-[1400px]">
-        {/* Header */}
-        <div className="mb-8 flex items-center justify-between">
-          <h1 className="text-3xl font-bold">Calendar</h1>
-          <div className="flex gap-2 rounded-lg bg-card p-1">
-            {(['Day', 'Week', 'Month', 'Year'] as ViewType[]).map((v) => (
-              <button
-                key={v}
-                onClick={() => setView(v)}
-                className={`rounded-md px-4 py-2 text-sm font-medium transition-colors ${
-                  view === v
-                    ? 'bg-primary text-primary-foreground shadow-sm'
-                    : 'text-muted-foreground hover:text-foreground'
-                }`}
-              >
-                {v}
-              </button>
-            ))}
-          </div>
-        </div>
-
         {/* Main Content */}
         <div className="grid gap-6 lg:grid-cols-[280px_1fr]">
           {/* Sidebar */}
           <div className="space-y-6">
+            {/* Header */}
+            <h1 className="text-3xl font-bold">Calendario</h1>
             {/* Create Schedule Button */}
             <Button className="w-full bg-primary text-primary-foreground hover:bg-primary/90">
               <Plus className="mr-2 h-4 w-4" />
-              Create Schedule
+              Crear Evento
             </Button>
 
             {/* Mini Calendar */}
@@ -202,38 +181,6 @@ export default function CalendarApp() {
                 </div>
               </div>
             </div>
-
-            {/* People Section */}
-            <div className="rounded-lg bg-card p-4">
-              <h3 className="mb-4 text-sm font-semibold">People</h3>
-              <div className="relative mb-4">
-                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  placeholder="Search for People"
-                  className="pl-9 bg-muted/50 border-0"
-                />
-              </div>
-              <div className="space-y-3">
-                {people.map((person) => (
-                  <div key={person.id} className="flex items-center gap-3">
-                    <Avatar className="h-10 w-10">
-                      <AvatarFallback className={`${person.color} text-white text-xs`}>
-                        {person.initials}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div className="flex-1 min-w-0">
-                      <div className="text-sm font-medium truncate">{person.name}</div>
-                      <div className="text-xs text-muted-foreground truncate">{person.email}</div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* My Schedule Link */}
-            <button className="text-sm font-medium text-primary hover:underline">
-              My Schedule
-            </button>
           </div>
 
           {/* Calendar Grid */}
@@ -274,14 +221,15 @@ export default function CalendarApp() {
                 const dayEvents = getEventsForDate(day.date)
                 const isToday = day.day === 2 && day.isCurrentMonth
                 return (
-                  <div
+                  <button
                     key={i}
-                    className={`min-h-[100px] rounded-lg border p-2 ${
+                    onClick={() => console.log('Clicked date:', day.date)}
+                    className={`min-h-[100px] rounded-lg border p-2 cursor-pointer transition-all text-left ${
                       !day.isCurrentMonth
-                        ? 'bg-muted/30 text-muted-foreground'
+                        ? 'bg-muted/30 text-muted-foreground hover:bg-muted/40'
                         : isToday
-                        ? 'border-primary/50 bg-primary/5'
-                        : 'bg-card'
+                        ? 'border-primary/50 bg-primary/5 hover:bg-primary/10'
+                        : 'bg-card hover:bg-accent/50 hover:border-primary/30'
                     }`}
                   >
                     <div
@@ -295,16 +243,16 @@ export default function CalendarApp() {
                       {dayEvents.map((event, idx) => (
                         <div
                           key={event.id}
-                          className={`${event.color} rounded px-2 py-1 text-xs text-white font-medium`}
+                          className={`rounded px-2 py-1 text-xs font-medium text-white ${getEventGradient(idx)}`}
                         >
                           {event.title}
                         </div>
                       ))}
                       {dayEvents.length > 2 && (
-                        <button className="text-xs text-primary hover:underline">More</button>
+                        <button className="text-xs text-primary hover:underline">Más</button>
                       )}
                     </div>
-                  </div>
+                  </button>
                 )
               })}
             </div>
