@@ -389,7 +389,7 @@ export default function KanbanBoard() {
   return (
     <div className="flex flex-col h-screen">
       {/* Board */}
-      <div className="flex-1 overflow-x-auto p-6">
+      <div className="flex-1 overflow-x-auto px-6 pt-0 pb-12">
         <DragDropContext onDragEnd={onDragEnd}>
           <div className="flex gap-4 h-full relative">
             {columns.map((column) => (

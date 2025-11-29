@@ -32,6 +32,7 @@ const navItems = [
   { href: '/dashboard/alerts', label: 'Alertas', icon: Bell },
   { href: '/dashboard/calendar', label: 'Calendario', icon: Calendar },
   { href: '/dashboard/proyectos', label: 'Proyectos', icon: Kanban },
+  { href: '/dashboard/machotes', label: 'Machotes', icon: FileText },
   { href: '/dashboard/settings', label: 'Configuración', icon: Settings },
 ]
 

@@ -1,0 +1,20 @@
+'use client'
+
+import { usePathname } from 'next/navigation'
+import { cn } from '@/lib/utils'
+
+export function DashboardMain({ children }: { children: React.ReactNode }) {
+    const pathname = usePathname()
+    const isMachotes = pathname?.startsWith('/dashboard/machotes')
+
+    return (
+        <main className="flex-1 overflow-hidden">
+            <div className={cn(
+                "h-full p-8",
+                isMachotes ? "overflow-y-auto" : "overflow-hidden"
+            )}>
+                {children}
+            </div>
+        </main>
+    )
+}
