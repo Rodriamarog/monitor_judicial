@@ -114,72 +114,6 @@ export default function CalendarPage() {
     }
   }
 
-  useEffect(() => {
-    checkGoogleCalendarStatus()
-  }, [])
-
-  useEffect(() => {
-    loadEvents()
-  }, [date])
-
-  // Set up Realtime subscription for automatic updates when events change
-  useEffect(() => {
-    const channel = supabase
-      .channel('calendar-events-changes')
-      .on(
-        'postgres_changes',
-        {
-          event: '*', // Listen to INSERT, UPDATE, DELETE
-          schema: 'public',
-          table: 'calendar_events',
-        },
-        (payload: RealtimePostgresChangesPayload<{ [key: string]: any }>) => {
-          console.log('📡 Realtime event received:', payload)
-          loadEvents()
-        }
-      )
-      .subscribe((status: string) => {
-        console.log('Realtime subscription status:', status)
-      })
-
-    return () => {
-      console.log('Cleaning up Realtime subscription')
-      supabase.removeChannel(channel)
-    }
-  }, [date])
-
-  useEffect(() => {
-    // Convert events to react-big-calendar format
-    const converted = events.map((event) => {
-      // Handle all-day events (stored as UTC midnight) vs timed events
-      const parseDate = (dateStr: string) => {
-        // Check if it's a date-only string (YYYY-MM-DD)
-        if (dateStr.length === 10 && dateStr.match(/^\d{4}-\d{2}-\d{2}$/)) {
-          return moment(dateStr, 'YYYY-MM-DD').toDate()
-        }
-
-        // Check if it's an all-day event (UTC midnight: ends with T00:00:00+00:00 or Z)
-        if (dateStr.match(/T00:00:00(\+00:00|Z)$/)) {
-          // Extract just the date part and parse as local date
-          const dateOnly = dateStr.substring(0, 10)
-          return moment(dateOnly, 'YYYY-MM-DD').toDate()
-        }
-
-        // Regular timed event - parse with timezone
-        return moment(dateStr).toDate()
-      }
-
-      return {
-        id: event.id,
-        title: event.title,
-        start: parseDate(event.start_time),
-        end: parseDate(event.end_time),
-        resource: event,
-      }
-    })
-    setCalendarEvents(converted)
-  }, [events])
-
   const checkGoogleCalendarStatus = async () => {
     try {
       const {
@@ -203,7 +137,7 @@ export default function CalendarPage() {
     }
   }
 
-  const loadEvents = async () => {
+  const loadEvents = useCallback(async () => {
     try {
       setLoading(true)
       const {
@@ -241,7 +175,73 @@ export default function CalendarPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [date, router, supabase])
+
+  useEffect(() => {
+    checkGoogleCalendarStatus()
+  }, [])
+
+  useEffect(() => {
+    loadEvents()
+  }, [loadEvents])
+
+  // Set up Realtime subscription for automatic updates when events change
+  useEffect(() => {
+    const channel = supabase
+      .channel('calendar-events-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*', // Listen to INSERT, UPDATE, DELETE
+          schema: 'public',
+          table: 'calendar_events',
+        },
+        (payload: RealtimePostgresChangesPayload<{ [key: string]: any }>) => {
+          console.log('📡 Realtime event received:', payload)
+          loadEvents()
+        }
+      )
+      .subscribe((status: string) => {
+        console.log('Realtime subscription status:', status)
+      })
+
+    return () => {
+      console.log('Cleaning up Realtime subscription')
+      supabase.removeChannel(channel)
+    }
+  }, [loadEvents])
+
+  useEffect(() => {
+    // Convert events to react-big-calendar format
+    const converted = events.map((event) => {
+      // Handle all-day events (stored as UTC midnight) vs timed events
+      const parseDate = (dateStr: string) => {
+        // Check if it's a date-only string (YYYY-MM-DD)
+        if (dateStr.length === 10 && dateStr.match(/^\d{4}-\d{2}-\d{2}$/)) {
+          return moment(dateStr, 'YYYY-MM-DD').toDate()
+        }
+
+        // Check if it's an all-day event (UTC midnight: ends with T00:00:00+00:00 or Z)
+        if (dateStr.match(/T00:00:00(\+00:00|Z)$/)) {
+          // Extract just the date part and parse as local date
+          const dateOnly = dateStr.substring(0, 10)
+          return moment(dateOnly, 'YYYY-MM-DD').toDate()
+        }
+
+        // Regular timed event - parse with timezone
+        return moment(dateStr).toDate()
+      }
+
+      return {
+        id: event.id,
+        title: event.title,
+        start: parseDate(event.start_time),
+        end: parseDate(event.end_time),
+        resource: event,
+      }
+    })
+    setCalendarEvents(converted)
+  }, [events])
 
   const handleSelectSlot = useCallback((slotInfo: { start: Date; end: Date }) => {
     setSelectedEvent({
@@ -349,6 +349,7 @@ export default function CalendarPage() {
             left: 50% !important;
             transform: translate(-50%, -50%) !important;
             display: block !important;
+            pointer-events: none !important;
           }
 
           .rbc-toolbar .rbc-btn-group:first-child button:last-child::before {
@@ -361,6 +362,7 @@ export default function CalendarPage() {
             left: 50% !important;
             transform: translate(-50%, -50%) !important;
             display: block !important;
+            pointer-events: none !important;
           }
 
           /* Weekday headers - add color and style */

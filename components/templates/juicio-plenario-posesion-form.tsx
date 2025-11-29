@@ -370,7 +370,7 @@ export function JuicioPlenarioPosesionForm() {
                         new Paragraph({
                             alignment: AlignmentType.JUSTIFIED,
                             children: [
-                                new TextRun({ text: '"POSESION. ACCION PLENARIA DE. REQUISITOS." ', italic: true }),
+                                new TextRun({ text: '"POSESION. ACCION PLENARIA DE. REQUISITOS." ', italics: true }),
                                 new TextRun("La acción plenaria de posesión requiere que el actor acredite: 1) La posesión del inmueble; 2) Que dicha posesión sea en concepto de propietario; 3) El despojo o perturbación en la posesión; y 4) Que el demandado no tenga mejor derecho a poseer."),
                             ],
                         }),
