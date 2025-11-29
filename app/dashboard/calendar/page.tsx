@@ -91,24 +91,18 @@ export default function CalendarPage() {
     const label = getEventLabel(event)
     const isFromKanban = isKanbanEvent(event)
 
-    console.log('Event:', event.title, 'isKanban:', isFromKanban, 'label:', label, 'description:', event.resource.description)
-
     if (isFromKanban && label && labelColorGradients[label]) {
-      const colors = labelColorGradients[label]
-      console.log('Using label color for', label, ':', colors)
       return {
         className: `kanban-event kanban-label-${label.replace(/\s+/g, '-')}`,
       }
     } else if (isFromKanban) {
       // Kanban event with no label - use green gradient
-      console.log('Using default kanban color (green)')
       return {
         className: 'kanban-event kanban-event-no-label',
       }
     }
 
     // Non-kanban events - use yellow (default)
-    console.log('Using non-kanban color (yellow)')
     return {
       className: 'non-kanban-event',
     }
@@ -138,6 +132,7 @@ export default function CalendarPage() {
   }
 
   const loadEvents = useCallback(async () => {
+    console.log('🔄 loadEvents called for month:', moment(date).format('MMMM YYYY'))
     try {
       setLoading(true)
       const {
@@ -152,6 +147,8 @@ export default function CalendarPage() {
       // Get events for the current month (can be expanded based on view)
       const startDate = moment(date).startOf('month').subtract(7, 'days').toISOString()
       const endDate = moment(date).endOf('month').add(7, 'days').toISOString()
+
+      console.log('📅 Fetching events from', startDate, 'to', endDate)
 
       const response = await fetch(
         `/api/calendar/events?start_date=${encodeURIComponent(startDate)}&end_date=${encodeURIComponent(endDate)}`,
@@ -168,6 +165,7 @@ export default function CalendarPage() {
       }
 
       const data = await response.json()
+      console.log('✅ Loaded', data.events?.length || 0, 'events')
       setEvents(data.events || [])
     } catch (err) {
       console.error('Error loading events:', err)
@@ -268,10 +266,10 @@ export default function CalendarPage() {
     loadEvents()
   }
 
-  const handleNavigate = (newDate: Date) => {
+  const handleNavigate = useCallback((newDate: Date) => {
+    console.log('🧭 Navigate:', moment(date).format('MMMM YYYY'), '→', moment(newDate).format('MMMM YYYY'))
     setDate(newDate)
-    // Events will reload automatically via useEffect
-  }
+  }, [date])
 
   if (loading) {
     return (
@@ -286,139 +284,9 @@ export default function CalendarPage() {
       {/* Calendar - Full Height */}
       <div className="flex-1 p-6">
         <style jsx global>{`
-          .rbc-toolbar .rbc-toolbar-label {
-            font-size: 2rem !important;
-            font-weight: 700 !important;
-            font-family: 'Inter', system-ui, -apple-system, sans-serif !important;
-            letter-spacing: -0.02em !important;
-          }
-
-          /* Toolbar buttons - modern, borderless design */
+          /* Remove borders from toolbar buttons */
           .rbc-toolbar button {
             border: none !important;
-            background: transparent !important;
-            padding: 8px 16px !important;
-            border-radius: 6px !important;
-            font-weight: 500 !important;
-            transition: all 0.2s ease-in-out !important;
-          }
-
-          .rbc-toolbar button:hover {
-            background: hsl(var(--accent)) !important;
-          }
-
-          .rbc-toolbar button:active,
-          .rbc-toolbar button.rbc-active {
-            background: linear-gradient(135deg, #eab308 0%, #f59e0b 100%) !important;
-            color: white !important;
-            transform: scale(0.98) !important;
-          }
-
-          /* Hide "Hoy" button */
-          .rbc-toolbar .rbc-btn-group:first-child button:nth-child(2) {
-            display: none !important;
-          }
-
-          /* Hide text in navigation buttons and replace with icons */
-          .rbc-toolbar .rbc-btn-group:first-child button:first-child,
-          .rbc-toolbar .rbc-btn-group:first-child button:last-child {
-            font-size: 0 !important;
-            width: 32px !important;
-            height: 32px !important;
-            padding: 0 !important;
-            display: inline-flex !important;
-            align-items: center !important;
-            justify-content: center !important;
-            border-radius: 50% !important;
-            position: relative !important;
-          }
-
-          /* Override hover for navigation buttons with yellow */
-          .rbc-toolbar .rbc-btn-group:first-child button:first-child:hover,
-          .rbc-toolbar .rbc-btn-group:first-child button:last-child:hover {
-            background: #fef3c7 !important;
-          }
-
-          .rbc-toolbar .rbc-btn-group:first-child button:first-child::before {
-            content: '‹' !important;
-            font-size: 24px !important;
-            font-weight: 600 !important;
-            line-height: 1 !important;
-            position: absolute !important;
-            top: 46% !important;
-            left: 50% !important;
-            transform: translate(-50%, -50%) !important;
-            display: block !important;
-            pointer-events: none !important;
-          }
-
-          .rbc-toolbar .rbc-btn-group:first-child button:last-child::before {
-            content: '›' !important;
-            font-size: 24px !important;
-            font-weight: 600 !important;
-            line-height: 1 !important;
-            position: absolute !important;
-            top: 46% !important;
-            left: 50% !important;
-            transform: translate(-50%, -50%) !important;
-            display: block !important;
-            pointer-events: none !important;
-          }
-
-          /* Weekday headers - add color and style */
-          .rbc-header {
-            padding: 12px 4px !important;
-            font-weight: 600 !important;
-            font-size: 0.875rem !important;
-            text-transform: uppercase !important;
-            letter-spacing: 0.05em !important;
-            background: linear-gradient(135deg, hsl(var(--primary) / 0.1) 0%, hsl(var(--primary) / 0.05) 100%) !important;
-            border-bottom: 2px solid hsl(var(--primary) / 0.3) !important;
-            color: hsl(var(--primary)) !important;
-          }
-
-          .rbc-header + .rbc-header {
-            border-left: 1px solid hsl(var(--border)) !important;
-          }
-
-          /*
-            COLOR SCHEME OPTIONS - Change the numbers below to switch:
-
-            YELLOW TO AMBER (Current):
-            --event-color-1: #eab308
-            --event-color-2: #f59e0b
-            --event-hover-1: #ca8a04
-            --event-hover-2: #d97706
-            --event-selected-1: #a16207
-            --event-selected-2: #b45309
-            --event-glow: rgba(234, 179, 8, 0.4)
-
-            BLUE TO INDIGO:
-            --event-color-1: #3b82f6
-            --event-color-2: #6366f1
-            --event-hover-1: #2563eb
-            --event-hover-2: #4f46e5
-            --event-selected-1: #1d4ed8
-            --event-selected-2: #4338ca
-            --event-glow: rgba(59, 130, 246, 0.4)
-
-            GREEN TO EMERALD:
-            --event-color-1: #10b981
-            --event-color-2: #059669
-            --event-hover-1: #059669
-            --event-hover-2: #047857
-            --event-selected-1: #047857
-            --event-selected-2: #065f46
-            --event-glow: rgba(16, 185, 129, 0.4)
-          */
-          :root {
-            --event-color-1: #eab308;
-            --event-color-2: #f59e0b;
-            --event-hover-1: #ca8a04;
-            --event-hover-2: #d97706;
-            --event-selected-1: #a16207;
-            --event-selected-2: #b45309;
-            --event-glow: rgba(234, 179, 8, 0.4);
           }
 
           /* Event styling with gradient and pop-out effect */
@@ -434,7 +302,7 @@ export default function CalendarPage() {
 
           /* Default styling for non-kanban events (yellow) */
           .rbc-event.non-kanban-event {
-            background: linear-gradient(135deg, var(--event-color-1) 0%, var(--event-color-2) 100%) !important;
+            background: linear-gradient(135deg, #eab308 0%, #f59e0b 100%) !important;
             opacity: 0.8 !important;
           }
 
@@ -548,6 +416,8 @@ export default function CalendarPage() {
             eventPropGetter={eventPropGetter}
             selectable
             popup
+            step={30}
+            showMultiDayTimes
             messages={{
               next: 'Siguiente',
               previous: 'Anterior',
