@@ -11,6 +11,30 @@ const templates = [
         description: 'Demanda inicial para solicitar pensión alimenticia.',
         icon: FileText,
     },
+    {
+        id: 'juicio-plenario-posesion',
+        title: 'Juicio Plenario de Posesión',
+        description: 'Demanda para recuperar la posesión de un inmueble.',
+        icon: FileText,
+    },
+    {
+        id: 'jurisdiccion-concubinato',
+        title: 'Jurisdicción Voluntaria Concubinato',
+        description: 'Diligencias para acreditar relación de concubinato.',
+        icon: FileText,
+    },
+    {
+        id: 'ofrecimiento-pruebas',
+        title: 'Ofrecimiento de Pruebas',
+        description: 'Ofrecimiento de pruebas para juicio en curso.',
+        icon: FileText,
+    },
+    {
+        id: 'prescripcion',
+        title: 'Prescripción',
+        description: 'Demanda de prescripción adquisitiva de propiedad.',
+        icon: FileText,
+    },
     // Future templates can be added here
 ]
 

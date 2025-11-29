@@ -4,6 +4,10 @@ import { useParams, useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { ChevronLeft } from 'lucide-react'
 import { JuicioAlimentosForm } from '@/components/templates/juicio-alimentos-form'
+import { JuicioPlenarioPosesionForm } from '@/components/templates/juicio-plenario-posesion-form'
+import { JurisdiccionConcubinatoForm } from '@/components/templates/jurisdiccion-concubinato-form'
+import { OfrecimientoPruebasForm } from '@/components/templates/ofrecimiento-pruebas-form'
+import { PrescripcionForm } from '@/components/templates/prescripcion-form'
 
 export default function TemplatePage() {
     const params = useParams()
@@ -14,24 +18,21 @@ export default function TemplatePage() {
         switch (templateId) {
             case 'juicio-alimentos':
                 return <JuicioAlimentosForm />
+            case 'juicio-plenario-posesion':
+                return <JuicioPlenarioPosesionForm />
+            case 'jurisdiccion-concubinato':
+                return <JurisdiccionConcubinatoForm />
+            case 'ofrecimiento-pruebas':
+                return <OfrecimientoPruebasForm />
+            case 'prescripcion':
+                return <PrescripcionForm />
             default:
                 return <div>Plantilla no encontrada</div>
         }
     }
 
     return (
-        <div className="space-y-6 h-full flex flex-col">
-            <div className="flex items-center gap-4 flex-shrink-0">
-                <Button variant="ghost" size="icon" onClick={() => router.back()}>
-                    <ChevronLeft className="h-4 w-4" />
-                </Button>
-                <div>
-                    <h1 className="text-2xl font-bold tracking-tight capitalize">
-                        {templateId.replace('-', ' ')}
-                    </h1>
-                </div>
-            </div>
-
+        <div className="h-full flex flex-col">
             <div className="flex-1 min-h-0">
                 {renderForm()}
             </div>

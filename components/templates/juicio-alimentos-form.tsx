@@ -633,19 +633,19 @@ export function JuicioAlimentosForm() {
     }
 
     return (
-        <div className="grid lg:grid-cols-2 gap-8 h-full">
-            {/* Left Column: Form */}
-            <div className="flex flex-col overflow-hidden">
-                <div className="flex-shrink-0 mb-4">
-                    <h2 className="text-lg font-semibold">Datos del Juicio</h2>
-                    <p className="text-sm text-muted-foreground">
-                        Ingresa la información necesaria para generar la demanda.
-                    </p>
-                </div>
+        <div className="flex gap-6 h-full">
+            {/* Form Section - Left Side */}
+            <Card className="flex-1 flex flex-col h-full">
+                <CardContent className="flex-1 overflow-y-auto p-6">
+                    <div className="space-y-6">
+                        <div>
+                            <h2 className="text-2xl font-bold mb-2">Juicio de Alimentos</h2>
+                            <p className="text-sm text-muted-foreground">
+                                Completa los datos para generar la demanda
+                            </p>
+                        </div>
 
-                <div className="flex-1 overflow-y-auto pr-4 pl-1 min-h-0">
-                    <form onSubmit={form.handleSubmit(generateDocument)} className="space-y-8 pb-8">
-                    <div className="grid gap-4 md:grid-cols-2">
+                        <div className="grid gap-4 md:grid-cols-2">
                         <div className="space-y-2">
                             <Label>Nombre del Actor (Tú)</Label>
                             <Input {...form.register('actorName')} placeholder="Ej. María Pérez López" />
@@ -759,77 +759,60 @@ export function JuicioAlimentosForm() {
                         )}
                     </div>
 
-                    <div className="space-y-2">
-                        <Label>Ciudad y Estado</Label>
-                        <Input {...form.register('city')} placeholder="Ej. Tijuana, Baja California" />
+                        <div className="space-y-2">
+                            <Label>Ciudad y Estado</Label>
+                            <Input {...form.register('city')} placeholder="Ej. Tijuana, Baja California" />
+                        </div>
+
+                        <div className="flex gap-3 pt-4">
+                            <Button
+                                onClick={openInGoogleDocs}
+                                variant="outline"
+                                disabled={isGenerating}
+                                className="cursor-pointer"
+                            >
+                                {isGenerating ? (
+                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                ) : (
+                                    <ExternalLink className="mr-2 h-4 w-4" />
+                                )}
+                                Abrir en Google Docs
+                            </Button>
+                            <Button
+                                onClick={form.handleSubmit(generateDocument)}
+                                disabled={isGenerating}
+                                className="cursor-pointer"
+                            >
+                                {isGenerating ? (
+                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                ) : (
+                                    <FileText className="mr-2 h-4 w-4" />
+                                )}
+                                Generar DOCX
+                            </Button>
+                            <Button
+                                onClick={form.handleSubmit(generatePDF)}
+                                disabled={isGenerating}
+                                className="cursor-pointer"
+                            >
+                                {isGenerating ? (
+                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                ) : (
+                                    <FileDown className="mr-2 h-4 w-4" />
+                                )}
+                                Generar PDF
+                            </Button>
+                        </div>
                     </div>
+                </CardContent>
+            </Card>
 
-                    <Button
-                        type="button"
-                        onClick={openInGoogleDocs}
-                        variant="outline"
-                        className="w-full cursor-pointer mb-4"
-                        disabled={isGenerating}
-                    >
-                        {isGenerating ? (
-                            <>
-                                <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Abriendo...
-                            </>
-                        ) : (
-                            <>
-                                <ExternalLink className="mr-2 h-4 w-4" /> Abrir en Google Docs
-                            </>
-                        )}
-                    </Button>
-
-                    <div className="grid grid-cols-2 gap-4">
-                        <Button
-                            type="button"
-                            onClick={form.handleSubmit(generateDocument)}
-                            disabled={isGenerating}
-                            className="cursor-pointer"
-                        >
-                            {isGenerating ? (
-                                <>
-                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Generando...
-                                </>
-                            ) : (
-                                <>
-                                    <FileText className="mr-2 h-4 w-4" /> Generar DOCX
-                                </>
-                            )}
-                        </Button>
-                        <Button
-                            type="button"
-                            onClick={form.handleSubmit(generatePDF)}
-                            disabled={isGenerating}
-                            className="cursor-pointer"
-                        >
-                            {isGenerating ? (
-                                <>
-                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Generando...
-                                </>
-                            ) : (
-                                <>
-                                    <FileDown className="mr-2 h-4 w-4" /> Generar PDF
-                                </>
-                            )}
-                        </Button>
-                    </div>
-                    </form>
-                </div>
-            </div>
-
-            {/* Right Column: Live Preview */}
-            <div className="hidden lg:flex flex-col bg-muted/30 rounded-lg border p-4 overflow-hidden">
-                <div className="mb-4 flex items-center justify-between flex-shrink-0">
-                    <h3 className="font-semibold">Vista Previa</h3>
-                    <span className="text-xs text-muted-foreground">Se actualiza en tiempo real</span>
-                </div>
-                <div className="flex-1 overflow-y-auto pr-2 min-h-0">
+            {/* Preview Section - Right Side */}
+            <Card className="flex-1 flex flex-col h-full">
+                <CardContent className="flex-1 overflow-y-auto p-6 pl-7">
                     <LivePreview data={watchedValues as FormValues} />
-                </div>
-            </div>
+                </CardContent>
+            </Card>
         </div>
     )
 }
