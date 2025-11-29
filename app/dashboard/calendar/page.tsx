@@ -496,7 +496,7 @@ export default function CalendarPage() {
 
           .rbc-event:hover {
             transform: translateY(-2px) !important;
-            box-shadow: 0 4px 12px var(--event-glow), 0 2px 6px rgba(0, 0, 0, 0.1) !important;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15), 0 2px 6px rgba(0, 0, 0, 0.1) !important;
             filter: brightness(0.9) !important;
           }
 
