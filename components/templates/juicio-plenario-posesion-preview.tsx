@@ -41,7 +41,7 @@ export function JuicioPlenarioPosesionPreview({ data }: PreviewProps) {
     const actorNamesText = data.actorNames.map(a => a.name.toUpperCase()).join(' Y ')
 
     return (
-        <div className="live-preview-content bg-white text-black p-12 shadow-lg min-h-full" style={{ fontFamily: 'Georgia, serif' }}>
+        <div className="live-preview-content text-black p-12 shadow-lg min-h-full" style={{ fontFamily: 'Georgia, serif', backgroundColor: '#ffffff' }}>
             {/* CARÁTULA */}
             <div className="text-right mb-8">
                 <p className="font-bold">{actorNamesText || '[NOMBRE DE LOS ACTORES]'}</p>

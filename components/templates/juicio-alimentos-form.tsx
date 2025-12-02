@@ -1,7 +1,7 @@
 
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { useForm, useFieldArray } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import * as z from 'zod'
@@ -14,8 +14,6 @@ import { Document, Packer, Paragraph, TextRun, AlignmentType } from 'docx'
 import { saveAs } from 'file-saver'
 import { toast } from 'sonner'
 import { LivePreview } from './live-preview'
-import jsPDF from 'jspdf'
-import html2canvas from 'html2canvas'
 
 const formSchema = z.object({
     actorName: z.string().min(1, 'Nombre del actor requerido'),
@@ -40,6 +38,7 @@ type FormValues = z.infer<typeof formSchema>
 
 export function JuicioAlimentosForm() {
     const [isGenerating, setIsGenerating] = useState(false)
+    const printRef = useRef<HTMLDivElement>(null)
 
     const form = useForm<FormValues>({
         resolver: zodResolver(formSchema),
@@ -519,42 +518,70 @@ export function JuicioAlimentosForm() {
         }
     }
 
-    const generatePDF = async (data: FormValues) => {
-        setIsGenerating(true)
+    const generatePDF = async () => {
         try {
-            // Get the preview element
-            const previewElement = document.querySelector('.live-preview-content')
-            if (!previewElement) {
-                throw new Error('No se encontró el elemento de vista previa')
-            }
+            // Add print styles to the page
+            const styleSheet = document.createElement('style')
+            styleSheet.id = 'print-styles'
+            styleSheet.textContent = `
+                @media print {
+                    body * {
+                        visibility: hidden;
+                    }
+                    #print-content, #print-content * {
+                        visibility: visible;
+                    }
+                    #print-content {
+                        position: absolute;
+                        left: 0;
+                        top: 0;
+                        width: 100%;
+                    }
+                }
+                @page {
+                    size: letter;
+                    margin: 25.4mm;
+                }
+            `
+            document.head.appendChild(styleSheet)
 
-            // Convert to canvas
-            const canvas = await html2canvas(previewElement as HTMLElement, {
-                scale: 2,
-                useCORS: true,
-                logging: false,
-            })
+            // Trigger print
+            window.print()
 
-            // Create PDF
-            const imgData = canvas.toDataURL('image/png')
-            const pdf = new jsPDF({
-                orientation: 'portrait',
-                unit: 'mm',
-                format: 'letter',
-            })
+            // Remove styles after print
+            setTimeout(() => {
+                const styles = document.getElementById('print-styles')
+                if (styles) {
+                    document.head.removeChild(styles)
+                }
+            }, 100)
 
-            const imgWidth = 210 // Letter width in mm
-            const imgHeight = (canvas.height * imgWidth) / canvas.width
-
-            pdf.addImage(imgData, 'PNG', 0, 0, imgWidth, imgHeight)
-            pdf.save(`Demanda_Alimentos_${data.actorName.replace(/\s+/g, '_')}.pdf`)
-            toast.success('Documento PDF generado correctamente')
+            toast.success('Documento listo para imprimir/guardar como PDF')
         } catch (error) {
             console.error(error)
             toast.error('Error al generar el PDF')
-        } finally {
-            setIsGenerating(false)
         }
+    }
+
+    const autoFillForm = () => {
+        form.setValue('actorName', 'María Guadalupe Pérez López')
+        form.setValue('defendantName', 'Juan Carlos González Ramírez')
+        form.setValue('actorAddress', 'Calle Revolución #123, Col. Centro, Tijuana, B.C.')
+        form.setValue('defendantAddress', 'Av. Constitución #456, Col. Zona Río, Tijuana, B.C.')
+        form.setValue('authorizedPersons', 'Lic. Roberto Martínez García')
+        form.setValue('children', [
+            { name: 'Ana Sofía González Pérez', dob: '2018-05-15' },
+            { name: 'Carlos Emilio González Pérez', dob: '2020-08-22' }
+        ])
+        form.setValue('relationshipStartDate', '5 años')
+        form.setValue('previousAmount', '$3,000.00')
+        form.setValue('stopDate', 'marzo de 2024')
+        form.setValue('witnesses', [
+            { name: 'Claudia Fernández Torres' },
+            { name: 'Pedro Sánchez Morales' }
+        ])
+        form.setValue('city', 'Tijuana, Baja California')
+        toast.success('Formulario auto-completado')
     }
 
     const openInGoogleDocs = async () => {
@@ -638,11 +665,21 @@ export function JuicioAlimentosForm() {
             <Card className="flex-1 flex flex-col h-full">
                 <CardContent className="flex-1 overflow-y-auto p-6">
                     <div className="space-y-6">
-                        <div>
-                            <h2 className="text-2xl font-bold mb-2">Juicio de Alimentos</h2>
-                            <p className="text-sm text-muted-foreground">
-                                Completa los datos para generar la demanda
-                            </p>
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <h2 className="text-2xl font-bold mb-2">Juicio de Alimentos</h2>
+                                <p className="text-sm text-muted-foreground">
+                                    Completa los datos para generar la demanda
+                                </p>
+                            </div>
+                            <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={autoFillForm}
+                            >
+                                🧪 Auto-rellenar (Dev)
+                            </Button>
                         </div>
 
                         <div className="grid gap-4 md:grid-cols-2">
@@ -810,7 +847,9 @@ export function JuicioAlimentosForm() {
             {/* Preview Section - Right Side */}
             <Card className="flex-1 flex flex-col h-full">
                 <CardContent className="flex-1 overflow-y-auto p-6 pl-7">
-                    <LivePreview data={watchedValues as FormValues} />
+                    <div id="print-content" ref={printRef}>
+                        <LivePreview data={watchedValues as FormValues} />
+                    </div>
                 </CardContent>
             </Card>
         </div>

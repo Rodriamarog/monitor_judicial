@@ -1,5 +1,3 @@
-import { Card } from "@/components/ui/card"
-
 interface LivePreviewProps {
     data: {
         actorName: string
@@ -18,7 +16,7 @@ interface LivePreviewProps {
 
 export function LivePreview({ data }: LivePreviewProps) {
     return (
-        <Card className="bg-white text-black font-serif p-8 shadow-lg min-h-[800px] max-w-[21cm] mx-auto border-none">
+        <div className="text-black font-serif p-8 shadow-lg min-h-[800px] max-w-[21cm] mx-auto rounded-xl border" style={{ backgroundColor: '#ffffff' }}>
             <div className="space-y-4 text-sm leading-relaxed live-preview-content">
                 {/* CARÁTULA */}
                 <div className="text-right font-bold space-y-2">
@@ -198,6 +196,6 @@ export function LivePreview({ data }: LivePreviewProps) {
                     </div>
                 </div>
             </div>
-        </Card>
+        </div>
     )
 }

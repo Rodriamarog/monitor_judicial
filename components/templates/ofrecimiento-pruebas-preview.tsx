@@ -32,7 +32,7 @@ export function OfrecimientoPruebasPreview({ data }: PreviewProps) {
     let evidenceNumber = 1
 
     return (
-        <div className="live-preview-content bg-white text-black p-12 shadow-lg min-h-full" style={{ fontFamily: 'Georgia, serif' }}>
+        <div className="live-preview-content text-black p-12 shadow-lg min-h-full" style={{ fontFamily: 'Georgia, serif', backgroundColor: '#ffffff' }}>
             {/* CARÁTULA */}
             <div className="text-right mb-8">
                 <p className="font-bold">EXPEDIENTE.- {data.caseNumber || '[NÚMERO DE EXPEDIENTE]'}</p>
