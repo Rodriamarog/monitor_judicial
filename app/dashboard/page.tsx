@@ -11,9 +11,7 @@ export default async function DashboardPage() {
     data: { user },
   } = await supabase.auth.getUser()
 
-  if (!user) {
-    redirect('/login')
-  }
+  if (!user) return null // Layout already verified auth
 
   // Get user's monitored cases
   const { data: cases, error } = await supabase

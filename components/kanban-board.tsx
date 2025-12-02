@@ -76,7 +76,7 @@ export default function KanbanBoard() {
 
         setUserId(user.id)
 
-        const { data: columns, error } = await supabase
+        let { data: columns, error } = await supabase
           .from('kanban_columns')
           .select(`
             *,
@@ -89,6 +89,28 @@ export default function KanbanBoard() {
         if (error) {
           console.error('Error loading kanban data:', error)
           return
+        }
+
+        // If no columns exist, initialize defaults
+        if (!columns || columns.length === 0) {
+          console.log('📋 No columns found, initializing defaults...')
+          await supabase.rpc('initialize_default_kanban_columns', {
+            p_user_id: user.id,
+          })
+
+          // Re-fetch columns after initialization
+          const { data: newColumns } = await supabase
+            .from('kanban_columns')
+            .select(`
+              *,
+              kanban_tasks (*)
+            `)
+            .eq('user_id', user.id)
+            .is('deleted_at', null)
+            .order('position')
+
+          columns = newColumns
+          console.log('✅ Default columns initialized')
         }
 
         // Transform to UI format
@@ -337,7 +359,7 @@ export default function KanbanBoard() {
     setHasChanges(true)
   }
 
-  const handleDeleteColumn = (columnId: string) => {
+  const handleDeleteColumn = async (columnId: string) => {
     if (columns.length <= 1) {
       alert("Debe haber al menos una columna")
       return
@@ -349,8 +371,43 @@ export default function KanbanBoard() {
       }
     }
 
-    setColumns((prev) => prev.filter((col) => col.id !== columnId))
-    setHasChanges(true)
+    console.log('🗑️ Deleting column:', columnId)
+
+    try {
+      // Delete all tasks in the column from database
+      const { error: tasksError } = await supabase
+        .from('kanban_tasks')
+        .delete()
+        .eq('column_id', columnId)
+
+      if (tasksError) {
+        console.error('Error deleting tasks:', tasksError)
+        alert('Error al eliminar las tareas')
+        return
+      }
+
+      // Delete the column from database
+      const { error: columnError } = await supabase
+        .from('kanban_columns')
+        .delete()
+        .eq('id', columnId)
+        .eq('user_id', userId!)
+
+      if (columnError) {
+        console.error('Error deleting column:', columnError)
+        alert('Error al eliminar la columna')
+        return
+      }
+
+      console.log('✅ Column deleted from database')
+
+      // Update local state
+      setColumns((prev) => prev.filter((col) => col.id !== columnId))
+      setHasChanges(false) // No need to save since we already deleted
+    } catch (error) {
+      console.error('Error in handleDeleteColumn:', error)
+      alert('Error inesperado al eliminar la columna')
+    }
   }
 
   const handleColumnDoubleClick = (column: Column) => {
@@ -397,7 +454,6 @@ export default function KanbanBoard() {
                 {/* Column Header */}
                 <div className="flex items-center justify-between p-3 border-b border-border">
                   <div className="flex items-center gap-2 flex-1">
-                    <div className={`h-2 w-2 rounded-full ${column.color}`} />
                     {editingColumnId === column.id ? (
                       <Input
                         value={editingColumnTitle}

@@ -3,7 +3,9 @@
 import { useState, useEffect, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
-import { Calendar as BigCalendar, momentLocalizer, View } from 'react-big-calendar'
+import dynamic from 'next/dynamic'
+import { momentLocalizer } from 'react-big-calendar'
+import type { View } from 'react-big-calendar'
 import moment from 'moment'
 import 'moment/locale/es'
 import 'react-big-calendar/lib/css/react-big-calendar.css'
@@ -21,6 +23,19 @@ moment.updateLocale('es', {
   weekdaysShort: 'Dom_Lun_Mar_Mié_Jue_Vie_Sáb'.split('_'),
 })
 const localizer = momentLocalizer(moment)
+
+// Lazy load BigCalendar to reduce initial bundle size
+const BigCalendar = dynamic(
+  () => import('react-big-calendar').then((mod) => mod.Calendar),
+  {
+    loading: () => (
+      <div className="flex items-center justify-center h-full">
+        <Loader2 className="h-8 w-8 animate-spin" />
+      </div>
+    ),
+    ssr: false,
+  }
+)
 
 interface CalendarEvent {
   id: string

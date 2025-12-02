@@ -73,11 +73,7 @@ export default function AlertsPage() {
       setLoading(true)
 
       const { data: { user } } = await supabase.auth.getUser()
-
-      if (!user) {
-        router.push('/login')
-        return
-      }
+      if (!user) return // Layout already verified auth
 
       // Fetch user's monitored cases for the filter dropdown
       const { data: casesData } = await supabase
