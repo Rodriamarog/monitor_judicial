@@ -6,7 +6,11 @@ import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { LogOut, Loader2 } from 'lucide-react'
 
-export function SignOutButton() {
+interface SignOutButtonProps {
+  isCollapsed?: boolean
+}
+
+export function SignOutButton({ isCollapsed = false }: SignOutButtonProps) {
   const [loading, setLoading] = useState(false)
   const router = useRouter()
 
@@ -22,20 +26,20 @@ export function SignOutButton() {
   return (
     <Button
       variant="outline"
-      size="sm"
-      className="gap-2 cursor-pointer"
+      size={isCollapsed ? "icon" : "sm"}
+      className={isCollapsed ? "" : "gap-2 cursor-pointer"}
       onClick={handleSignOut}
       disabled={loading}
     >
       {loading ? (
         <>
           <Loader2 className="h-4 w-4 animate-spin" />
-          <span className="hidden sm:inline">Saliendo...</span>
+          {!isCollapsed && <span className="hidden sm:inline">Saliendo...</span>}
         </>
       ) : (
         <>
           <LogOut className="h-4 w-4" />
-          <span className="hidden sm:inline">Salir</span>
+          {!isCollapsed && <span className="hidden sm:inline">Salir</span>}
         </>
       )}
     </Button>

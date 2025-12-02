@@ -91,7 +91,7 @@ export function Sidebar({ email, tier, hasStripeCustomer }: SidebarProps) {
 
         <div className={cn('flex gap-2', isCollapsed && 'flex-col')}>
           <ThemeToggle />
-          <SignOutButton />
+          <SignOutButton isCollapsed={isCollapsed} />
         </div>
       </div>
     </div>
