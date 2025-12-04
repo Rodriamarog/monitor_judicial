@@ -646,6 +646,10 @@ export function JuicioAlimentosForm() {
                 // User not connected or needs re-authorization - initiate OAuth flow
                 toast.info('Conectando con Google Drive...')
 
+                // Store form data and return URL in sessionStorage to restore after OAuth
+                sessionStorage.setItem('pendingGoogleDocsUpload', JSON.stringify(data))
+                sessionStorage.setItem('googleOAuthReturnUrl', window.location.pathname)
+
                 const connectResponse = await fetch('/api/google/connect?feature=drive')
                 const connectData = await connectResponse.json()
 
@@ -654,9 +658,6 @@ export function JuicioAlimentosForm() {
                     setIsGenerating(false)
                     return
                 }
-
-                // Store form data in sessionStorage to restore after OAuth
-                sessionStorage.setItem('pendingGoogleDocsUpload', JSON.stringify(data))
 
                 // Redirect to Google OAuth
                 window.location.href = connectData.url

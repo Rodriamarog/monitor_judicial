@@ -52,12 +52,27 @@ export default function SettingsPage() {
     }
 
     if (googleDriveConnected === 'true') {
+      // Check if there's a pending return URL from OAuth flow
+      const returnUrl = sessionStorage.getItem('googleOAuthReturnUrl')
+      if (returnUrl) {
+        // Clear the return URL and redirect back to the form
+        sessionStorage.removeItem('googleOAuthReturnUrl')
+        router.replace(returnUrl)
+        return
+      }
+
+      // No return URL - user initiated from Settings page
+      // Clear any stale pending upload data
+      sessionStorage.removeItem('pendingGoogleDocsUpload')
       setSuccess(true)
       setTimeout(() => setSuccess(false), 5000)
       router.replace('/dashboard/settings')
     }
 
     if (googleError) {
+      // Clear any pending OAuth data on error
+      sessionStorage.removeItem('googleOAuthReturnUrl')
+      sessionStorage.removeItem('pendingGoogleDocsUpload')
       setError(`Error de Google: ${googleError}`)
       setTimeout(() => setError(null), 5000)
       router.replace('/dashboard/settings')
