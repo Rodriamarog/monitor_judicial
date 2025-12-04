@@ -1,4 +1,5 @@
 import { google } from 'googleapis';
+import { createClient as createSupabaseClient } from '@supabase/supabase-js';
 import {
   createOAuth2Client,
   getValidAccessToken,
