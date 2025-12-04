@@ -4,8 +4,8 @@ import { useState, useEffect, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import dynamic from 'next/dynamic'
-import { momentLocalizer } from 'react-big-calendar'
-import type { View } from 'react-big-calendar'
+import { momentLocalizer, Calendar } from 'react-big-calendar'
+import type { View, CalendarProps } from 'react-big-calendar'
 import moment from 'moment'
 import 'moment/locale/es'
 import 'react-big-calendar/lib/css/react-big-calendar.css'
@@ -23,19 +23,6 @@ moment.updateLocale('es', {
   weekdaysShort: 'Dom_Lun_Mar_Mié_Jue_Vie_Sáb'.split('_'),
 })
 const localizer = momentLocalizer(moment)
-
-// Lazy load BigCalendar to reduce initial bundle size
-const BigCalendar = dynamic(
-  () => import('react-big-calendar').then((mod) => mod.Calendar),
-  {
-    loading: () => (
-      <div className="flex items-center justify-center h-full">
-        <Loader2 className="h-8 w-8 animate-spin" />
-      </div>
-    ),
-    ssr: false,
-  }
-)
 
 interface CalendarEvent {
   id: string
@@ -55,6 +42,19 @@ interface BigCalendarEvent {
   end: Date
   resource: CalendarEvent
 }
+
+// Lazy load BigCalendar to reduce initial bundle size
+const BigCalendar = dynamic<CalendarProps<BigCalendarEvent, CalendarEvent>>(
+  () => import('react-big-calendar').then((mod) => mod.Calendar as any),
+  {
+    loading: () => (
+      <div className="flex items-center justify-center h-full">
+        <Loader2 className="h-8 w-8 animate-spin" />
+      </div>
+    ),
+    ssr: false,
+  }
+)
 
 // Label color mappings for kanban events
 const labelColorGradients: Record<string, { color1: string; color2: string; glow: string }> = {
