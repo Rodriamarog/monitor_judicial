@@ -55,8 +55,9 @@ export default function SettingsPage() {
       // Check if there's a pending return URL from OAuth flow
       const returnUrl = sessionStorage.getItem('googleOAuthReturnUrl')
       if (returnUrl) {
-        // Clear the return URL and redirect back to the form
+        // Clear the return URL and set flag to refresh Drive status
         sessionStorage.removeItem('googleOAuthReturnUrl')
+        sessionStorage.setItem('driveJustConnected', 'true')
         router.replace(returnUrl)
         return
       }

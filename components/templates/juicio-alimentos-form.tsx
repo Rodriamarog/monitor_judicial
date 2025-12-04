@@ -76,6 +76,15 @@ export function JuicioAlimentosForm() {
     // Check Drive connection status on mount
     useEffect(() => {
         const checkDriveStatus = async () => {
+            // Check if user just returned from OAuth
+            const justConnected = sessionStorage.getItem('driveJustConnected')
+            if (justConnected) {
+                sessionStorage.removeItem('driveJustConnected')
+                setDriveConnected(true)
+                setCheckingDrive(false)
+                return
+            }
+
             try {
                 const response = await fetch('/api/google/drive-status')
                 const data = await response.json()
