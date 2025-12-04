@@ -40,6 +40,8 @@ export function JuicioAlimentosForm() {
     const [isGenerating, setIsGenerating] = useState(false)
     const [shouldAutoUpload, setShouldAutoUpload] = useState(false)
     const [skipDriveCheck, setSkipDriveCheck] = useState(false)
+    const [driveConnected, setDriveConnected] = useState<boolean | null>(null)
+    const [checkingDrive, setCheckingDrive] = useState(true)
 
     const form = useForm<FormValues>({
         resolver: zodResolver(formSchema),
@@ -71,6 +73,23 @@ export function JuicioAlimentosForm() {
     // Watch all fields for live preview
     const watchedValues = form.watch()
 
+    // Check Drive connection status on mount
+    useEffect(() => {
+        const checkDriveStatus = async () => {
+            try {
+                const response = await fetch('/api/google/drive-status')
+                const data = await response.json()
+                setDriveConnected(data.connected && data.scope_valid)
+            } catch (error) {
+                console.error('Error checking Drive status:', error)
+                setDriveConnected(false)
+            } finally {
+                setCheckingDrive(false)
+            }
+        }
+        checkDriveStatus()
+    }, [])
+
     // Check for pending Google Docs upload after OAuth return
     useEffect(() => {
         const pendingData = sessionStorage.getItem('pendingGoogleDocsUpload')
@@ -85,6 +104,8 @@ export function JuicioAlimentosForm() {
                 sessionStorage.removeItem('pendingGoogleDocsUpload')
                 // Skip Drive check since we just completed OAuth
                 setSkipDriveCheck(true)
+                setDriveConnected(true)
+                setCheckingDrive(false)
                 // Set flag to auto-upload
                 setShouldAutoUpload(true)
                 toast.info('Conexión exitosa. Subiendo documento...')
@@ -628,8 +649,35 @@ export function JuicioAlimentosForm() {
         toast.success('Formulario auto-completado')
     }
 
+    const connectDrive = async () => {
+        try {
+            toast.info('Conectando con Google Drive...')
+
+            // Store return URL in sessionStorage
+            sessionStorage.setItem('googleOAuthReturnUrl', window.location.pathname)
+
+            const connectResponse = await fetch('/api/google/connect?feature=drive')
+            const connectData = await connectResponse.json()
+
+            if (!connectResponse.ok) {
+                toast.error('Error al iniciar la conexión con Google')
+                return
+            }
+
+            // Redirect to Google OAuth
+            window.location.href = connectData.url
+        } catch (error) {
+            console.error('Error connecting Drive:', error)
+            toast.error('Error al conectar con Google Drive')
+        }
+    }
+
     const openInGoogleDocs = async () => {
         setIsGenerating(true)
+
+        // Open blank window immediately to avoid popup blocking
+        const newWindow = window.open('about:blank', '_blank')
+
         try {
             const data = watchedValues
 
@@ -638,37 +686,12 @@ export function JuicioAlimentosForm() {
             if (!result.success) {
                 toast.error('Por favor completa todos los campos requeridos')
                 setIsGenerating(false)
+                newWindow?.close()
                 return
             }
 
-            // Check if user has Google Drive connected (skip if just returned from OAuth)
-            if (!skipDriveCheck) {
-                const checkResponse = await fetch('/api/google/drive-status')
-                const checkData = await checkResponse.json()
-
-                if (!checkData.connected || !checkData.scope_valid) {
-                    // User not connected or needs re-authorization - initiate OAuth flow
-                    toast.info('Conectando con Google Drive...')
-
-                    // Store form data and return URL in sessionStorage to restore after OAuth
-                    sessionStorage.setItem('pendingGoogleDocsUpload', JSON.stringify(data))
-                    sessionStorage.setItem('googleOAuthReturnUrl', window.location.pathname)
-
-                    const connectResponse = await fetch('/api/google/connect?feature=drive')
-                    const connectData = await connectResponse.json()
-
-                    if (!connectResponse.ok) {
-                        toast.error('Error al iniciar la conexión con Google')
-                        setIsGenerating(false)
-                        return
-                    }
-
-                    // Redirect to Google OAuth
-                    window.location.href = connectData.url
-                    return
-                }
-            } else {
-                // Reset flag after using it
+            // Reset skip flag if it was set
+            if (skipDriveCheck) {
                 setSkipDriveCheck(false)
             }
 
@@ -695,15 +718,17 @@ export function JuicioAlimentosForm() {
 
             if (!response.ok) {
                 toast.error(responseData.error || 'Error al subir a Google Docs')
+                newWindow?.close()
                 return
             }
 
-            // Open the Google Docs URL
-            if (responseData.docsUrl) {
-                window.open(responseData.docsUrl, '_blank')
+            // Navigate the opened window to Google Docs
+            if (responseData.docsUrl && newWindow) {
+                newWindow.location.href = responseData.docsUrl
                 toast.success('Documento abierto en Google Docs')
             } else {
                 toast.error('No se pudo obtener la URL del documento')
+                newWindow?.close()
             }
 
         } catch (error) {
@@ -867,23 +892,43 @@ export function JuicioAlimentosForm() {
                         </div>
 
                         <div className="flex gap-3 pt-4">
-                            <Button
-                                onClick={openInGoogleDocs}
-                                variant="outline"
-                                disabled={isGenerating}
-                                className="cursor-pointer"
-                            >
-                                {isGenerating ? (
-                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                ) : (
-                                    <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                        <path d="M14 2H6C5.46957 2 4.96086 2.21071 4.58579 2.58579C4.21071 2.96086 4 3.46957 4 4V20C4 20.5304 4.21071 21.0391 4.58579 21.4142C4.96086 21.7893 5.46957 22 6 22H18C18.5304 22 19.0391 21.7893 19.4142 21.4142C19.7893 21.0391 20 20.5304 20 20V8L14 2Z" fill="#4285F4"/>
-                                        <path d="M14 2V8H20" fill="#A1C2FA"/>
-                                        <path d="M16 13H8M16 17H8M10 9H8" stroke="white" strokeWidth="2" strokeLinecap="round"/>
-                                    </svg>
-                                )}
-                                Abrir en Google Docs
-                            </Button>
+                            {!driveConnected && !checkingDrive ? (
+                                <div className="flex flex-col gap-2 w-full">
+                                    <Button
+                                        onClick={connectDrive}
+                                        variant="outline"
+                                        className="cursor-pointer"
+                                    >
+                                        <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                            <path d="M14 2H6C5.46957 2 4.96086 2.21071 4.58579 2.58579C4.21071 2.96086 4 3.46957 4 4V20C4 20.5304 4.21071 21.0391 4.58579 21.4142C4.96086 21.7893 5.46957 22 6 22H18C18.5304 22 19.0391 21.7893 19.4142 21.4142C19.7893 21.0391 20 20.5304 20 20V8L14 2Z" fill="#4285F4"/>
+                                            <path d="M14 2V8H20" fill="#A1C2FA"/>
+                                            <path d="M16 13H8M16 17H8M10 9H8" stroke="white" strokeWidth="2" strokeLinecap="round"/>
+                                        </svg>
+                                        Conectar Google Drive
+                                    </Button>
+                                    <p className="text-xs text-muted-foreground text-center">
+                                        Conecta Google Drive para subir documentos directamente
+                                    </p>
+                                </div>
+                            ) : (
+                                <Button
+                                    onClick={openInGoogleDocs}
+                                    variant="outline"
+                                    disabled={isGenerating || checkingDrive || !driveConnected}
+                                    className="cursor-pointer"
+                                >
+                                    {isGenerating ? (
+                                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                    ) : (
+                                        <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                            <path d="M14 2H6C5.46957 2 4.96086 2.21071 4.58579 2.58579C4.21071 2.96086 4 3.46957 4 4V20C4 20.5304 4.21071 21.0391 4.58579 21.4142C4.96086 21.7893 5.46957 22 6 22H18C18.5304 22 19.0391 21.7893 19.4142 21.4142C19.7893 21.0391 20 20.5304 20 20V8L14 2Z" fill="#4285F4"/>
+                                            <path d="M14 2V8H20" fill="#A1C2FA"/>
+                                            <path d="M16 13H8M16 17H8M10 9H8" stroke="white" strokeWidth="2" strokeLinecap="round"/>
+                                        </svg>
+                                    )}
+                                    Abrir en Google Docs
+                                </Button>
+                            )}
                             <Button
                                 onClick={form.handleSubmit(generateDocument)}
                                 disabled={isGenerating}
