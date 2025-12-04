@@ -7,8 +7,9 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Alert, AlertDescription } from '@/components/ui/alert'
-import { Loader2, CheckCircle2, Calendar, RefreshCw } from 'lucide-react'
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
+import { Loader2, CheckCircle2, Calendar, RefreshCw, AlertTriangle, FileText } from 'lucide-react'
+import { Badge } from '@/components/ui/badge'
 import { Switch } from '@/components/ui/switch'
 import { SubscriptionButton } from '@/components/subscription-button'
 
@@ -20,6 +21,9 @@ export default function SettingsPage() {
   const [emailEnabled, setEmailEnabled] = useState(true)
   const [googleCalendarEnabled, setGoogleCalendarEnabled] = useState(false)
   const [googleCalendarId, setGoogleCalendarId] = useState<string | null>(null)
+  const [googleDriveEnabled, setGoogleDriveEnabled] = useState(false)
+  const [calendarScopeValid, setCalendarScopeValid] = useState(true)
+  const [driveScopeValid, setDriveScopeValid] = useState(true)
   const [syncing, setSyncing] = useState(false)
   const [connecting, setConnecting] = useState(false)
   const [disconnecting, setDisconnecting] = useState(false)
@@ -37,18 +41,24 @@ export default function SettingsPage() {
     loadProfile()
 
     // Check for OAuth callback success/error
-    const calendarSuccess = searchParams.get('calendar_success')
-    const calendarError = searchParams.get('calendar_error')
+    const googleCalendarConnected = searchParams.get('google_calendar_connected')
+    const googleDriveConnected = searchParams.get('google_drive_connected')
+    const googleError = searchParams.get('google_error')
 
-    if (calendarSuccess === 'connected') {
+    if (googleCalendarConnected === 'true') {
       setCalendarSuccess(true)
       setTimeout(() => setCalendarSuccess(false), 5000)
-      // Clean up URL
       router.replace('/dashboard/settings')
     }
 
-    if (calendarError) {
-      setError(`Error de Google Calendar: ${calendarError}`)
+    if (googleDriveConnected === 'true') {
+      setSuccess(true)
+      setTimeout(() => setSuccess(false), 5000)
+      router.replace('/dashboard/settings')
+    }
+
+    if (googleError) {
+      setError(`Error de Google: ${googleError}`)
       setTimeout(() => setError(null), 5000)
       router.replace('/dashboard/settings')
     }
@@ -65,7 +75,7 @@ export default function SettingsPage() {
 
       const { data: profile, error: profileError } = await supabase
         .from('user_profiles')
-        .select('phone, whatsapp_enabled, email_notifications_enabled, google_calendar_enabled, google_calendar_id, subscription_tier, stripe_customer_id')
+        .select('phone, whatsapp_enabled, email_notifications_enabled, google_calendar_enabled, google_calendar_id, google_drive_enabled, subscription_tier, stripe_customer_id')
         .eq('id', user.id)
         .single()
 
@@ -76,8 +86,22 @@ export default function SettingsPage() {
       setEmailEnabled(profile.email_notifications_enabled !== false)
       setGoogleCalendarEnabled(profile.google_calendar_enabled || false)
       setGoogleCalendarId(profile.google_calendar_id || null)
+      setGoogleDriveEnabled(profile.google_drive_enabled || false)
       setTier(profile.subscription_tier || 'free')
       setHasStripeCustomer(!!profile.stripe_customer_id)
+
+      // Check scope validity for Calendar and Drive
+      if (profile.google_calendar_enabled) {
+        const calendarStatus = await fetch('/api/google/calendar-status')
+        const calendarData = await calendarStatus.json()
+        setCalendarScopeValid(calendarData.scope_valid)
+      }
+
+      if (profile.google_drive_enabled) {
+        const driveStatus = await fetch('/api/google/drive-status')
+        const driveData = await driveStatus.json()
+        setDriveScopeValid(driveData.scope_valid)
+      }
     } catch (err) {
       console.error('Error loading profile:', err)
       setError('Error al cargar perfil')
@@ -129,7 +153,7 @@ export default function SettingsPage() {
     setError(null)
 
     try {
-      const response = await fetch('/api/google-calendar/connect')
+      const response = await fetch('/api/google/connect?feature=calendar')
       const data = await response.json()
 
       if (!response.ok) {
@@ -154,8 +178,10 @@ export default function SettingsPage() {
     setError(null)
 
     try {
-      const response = await fetch('/api/google-calendar/disconnect', {
+      const response = await fetch('/api/google/disconnect', {
         method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ feature: 'calendar' }),
       })
 
       if (!response.ok) {
@@ -170,6 +196,58 @@ export default function SettingsPage() {
     } catch (err) {
       console.error('Error disconnecting Google Calendar:', err)
       setError(err instanceof Error ? err.message : 'Error al desconectar calendario')
+    } finally {
+      setDisconnecting(false)
+    }
+  }
+
+  const handleConnectGoogleDrive = async () => {
+    setConnecting(true)
+    setError(null)
+
+    try {
+      const response = await fetch('/api/google/connect?feature=drive')
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to initiate OAuth')
+      }
+
+      // Redirect to Google OAuth
+      window.location.href = data.url
+    } catch (err) {
+      console.error('Error connecting Google Drive:', err)
+      setError(err instanceof Error ? err.message : 'Error al conectar Google Drive')
+      setConnecting(false)
+    }
+  }
+
+  const handleDisconnectGoogleDrive = async () => {
+    if (!confirm('¿Estás seguro de que quieres desconectar Google Drive?')) {
+      return
+    }
+
+    setDisconnecting(true)
+    setError(null)
+
+    try {
+      const response = await fetch('/api/google/disconnect', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ feature: 'drive' }),
+      })
+
+      if (!response.ok) {
+        const data = await response.json()
+        throw new Error(data.error || 'Failed to disconnect')
+      }
+
+      setGoogleDriveEnabled(false)
+      setSuccess(true)
+      setTimeout(() => setSuccess(false), 3000)
+    } catch (err) {
+      console.error('Error disconnecting Google Drive:', err)
+      setError(err instanceof Error ? err.message : 'Error al desconectar Google Drive')
     } finally {
       setDisconnecting(false)
     }
@@ -335,9 +413,22 @@ export default function SettingsPage() {
                     Sincroniza tus eventos con Google Calendar automáticamente
                   </p>
                 </div>
+                <Badge variant={googleCalendarEnabled && calendarScopeValid ? "default" : "secondary"}>
+                  {googleCalendarEnabled && calendarScopeValid ? "Conectado" : "Desconectado"}
+                </Badge>
               </div>
 
-              {!googleCalendarEnabled ? (
+              {!calendarScopeValid && googleCalendarEnabled && (
+                <Alert variant="destructive">
+                  <AlertTriangle className="h-4 w-4" />
+                  <AlertTitle>Reautorización requerida</AlertTitle>
+                  <AlertDescription>
+                    Por favor reconecta tu cuenta de Google para actualizar permisos.
+                  </AlertDescription>
+                </Alert>
+              )}
+
+              {!googleCalendarEnabled || !calendarScopeValid ? (
                 <div className="pl-4 border-l-2 border-muted space-y-4">
                   <p className="text-sm text-muted-foreground">
                     Conecta tu cuenta de Google para ver y gestionar tus eventos de calendario directamente en Monitor Judicial.
@@ -357,7 +448,7 @@ export default function SettingsPage() {
                     ) : (
                       <span className="flex items-center justify-center gap-2">
                         <Calendar className="h-4 w-4" />
-                        <span>Conectar Google Calendar</span>
+                        <span>{googleCalendarEnabled ? 'Reconectar' : 'Conectar'} Google Calendar</span>
                       </span>
                     )}
                   </Button>
@@ -419,6 +510,95 @@ export default function SettingsPage() {
 
                   <p className="text-xs text-muted-foreground">
                     Los eventos que crees en Monitor Judicial se sincronizarán automáticamente con Google Calendar.
+                  </p>
+                </div>
+              )}
+            </div>
+
+            {/* Google Drive Integration */}
+            <div className="space-y-4 pt-4 border-t">
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <Label className="text-base flex items-center gap-2">
+                    <FileText className="h-5 w-5" />
+                    Integración con Google Drive
+                  </Label>
+                  <p className="text-sm text-muted-foreground">
+                    Sube documentos generados directamente a Google Docs
+                  </p>
+                </div>
+                <Badge variant={googleDriveEnabled && driveScopeValid ? "default" : "secondary"}>
+                  {googleDriveEnabled && driveScopeValid ? "Conectado" : "Desconectado"}
+                </Badge>
+              </div>
+
+              {!driveScopeValid && googleDriveEnabled && (
+                <Alert variant="destructive">
+                  <AlertTriangle className="h-4 w-4" />
+                  <AlertTitle>Reautorización requerida</AlertTitle>
+                  <AlertDescription>
+                    Por favor reconecta tu cuenta de Google para actualizar permisos.
+                  </AlertDescription>
+                </Alert>
+              )}
+
+              {!googleDriveEnabled || !driveScopeValid ? (
+                <div className="pl-4 border-l-2 border-muted space-y-4">
+                  <p className="text-sm text-muted-foreground">
+                    Conecta tu cuenta de Google para subir documentos desde las plantillas directamente a Google Docs.
+                  </p>
+                  <Button
+                    type="button"
+                    onClick={handleConnectGoogleDrive}
+                    disabled={connecting}
+                    variant="outline"
+                    className="w-full"
+                  >
+                    {connecting ? (
+                      <span className="flex items-center justify-center gap-2">
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        <span>Conectando...</span>
+                      </span>
+                    ) : (
+                      <span className="flex items-center justify-center gap-2">
+                        <FileText className="h-4 w-4" />
+                        <span>{googleDriveEnabled ? 'Reconectar' : 'Conectar'} Google Drive</span>
+                      </span>
+                    )}
+                  </Button>
+                </div>
+              ) : (
+                <div className="pl-4 border-l-2 border-primary space-y-4">
+                  <Alert>
+                    <CheckCircle2 className="h-4 w-4 text-green-600" />
+                    <AlertDescription className="text-sm">
+                      <p className="font-semibold">✓ Conectado a Google Drive</p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Los documentos se subirán a tu Google Drive
+                      </p>
+                    </AlertDescription>
+                  </Alert>
+
+                  <Button
+                    type="button"
+                    onClick={handleDisconnectGoogleDrive}
+                    disabled={disconnecting}
+                    variant="outline"
+                    size="sm"
+                    className="w-full"
+                  >
+                    {disconnecting ? (
+                      <span className="flex items-center justify-center gap-2">
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        <span>Desconectando...</span>
+                      </span>
+                    ) : (
+                      'Desconectar'
+                    )}
+                  </Button>
+
+                  <p className="text-xs text-muted-foreground">
+                    Usa el botón "Abrir en Google Docs" en las plantillas para subir documentos automáticamente.
                   </p>
                 </div>
               )}

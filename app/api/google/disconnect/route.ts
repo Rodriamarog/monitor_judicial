@@ -4,7 +4,9 @@ import { createClient as createSupabaseClient } from '@supabase/supabase-js';
 import { stopWatchChannel } from '@/lib/google-calendar';
 
 /**
- * POST - Disconnect Google Calendar
+ * POST - Disconnect Google Calendar or Drive
+ * Body: { feature?: 'calendar' | 'drive' }
+ * If no feature specified, disconnects Calendar (legacy behavior)
  */
 export async function POST(request: NextRequest) {
   try {
@@ -17,10 +19,32 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    const body = await request.json().catch(() => ({}));
+    const feature = body.feature || 'calendar';
+
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
     const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
     const serviceSupabase = createSupabaseClient(supabaseUrl, supabaseKey);
 
+    if (feature === 'drive') {
+      // Drive disconnect - just disable the flag, keep token for Calendar
+      const { error: profileError } = await serviceSupabase
+        .from('user_profiles')
+        .update({ google_drive_enabled: false })
+        .eq('id', user.id);
+
+      if (profileError) {
+        console.error('Error updating profile:', profileError);
+        return NextResponse.json(
+          { error: 'Failed to disconnect Drive', message: profileError.message },
+          { status: 500 }
+        );
+      }
+
+      return NextResponse.json({ success: true });
+    }
+
+    // Calendar disconnect - full disconnect including stopping watch channels
     // Get user's tokens before deleting them (needed to stop watch channels)
     const { data: tokens } = await serviceSupabase
       .from('user_google_tokens')
@@ -82,17 +106,28 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Delete Google tokens
-    const { error: tokensError } = await serviceSupabase
-      .from('user_google_tokens')
-      .delete()
-      .eq('user_id', user.id);
+    // Check if Drive is still enabled before deleting tokens
+    const { data: profile } = await serviceSupabase
+      .from('user_profiles')
+      .select('google_drive_enabled')
+      .eq('id', user.id)
+      .single();
 
-    if (tokensError) {
-      console.error('Error deleting tokens:', tokensError);
+    const shouldDeleteTokens = !profile?.google_drive_enabled;
+
+    // Delete Google tokens only if Drive is also disabled
+    if (shouldDeleteTokens) {
+      const { error: tokensError } = await serviceSupabase
+        .from('user_google_tokens')
+        .delete()
+        .eq('user_id', user.id);
+
+      if (tokensError) {
+        console.error('Error deleting tokens:', tokensError);
+      }
     }
 
-    // Update user profile
+    // Update user profile to disable Calendar
     const { error: profileError } = await serviceSupabase
       .from('user_profiles')
       .update({
@@ -113,10 +148,10 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error('Error in POST /api/google-calendar/disconnect:', error);
+    console.error('Error in POST /api/google/disconnect:', error);
     return NextResponse.json(
       {
-        error: 'Failed to disconnect calendar',
+        error: 'Failed to disconnect',
         message: error instanceof Error ? error.message : 'Unknown error',
       },
       { status: 500 }

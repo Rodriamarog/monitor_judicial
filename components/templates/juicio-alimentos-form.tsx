@@ -1,7 +1,7 @@
 
 'use client'
 
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { useForm, useFieldArray } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import * as z from 'zod'
@@ -38,6 +38,7 @@ type FormValues = z.infer<typeof formSchema>
 
 export function JuicioAlimentosForm() {
     const [isGenerating, setIsGenerating] = useState(false)
+    const [shouldAutoUpload, setShouldAutoUpload] = useState(false)
 
     const form = useForm<FormValues>({
         resolver: zodResolver(formSchema),
@@ -69,10 +70,32 @@ export function JuicioAlimentosForm() {
     // Watch all fields for live preview
     const watchedValues = form.watch()
 
-    const generateDocument = async (data: FormValues) => {
-        setIsGenerating(true)
-        try {
-            const doc = new Document({
+    // Check for pending Google Docs upload after OAuth return
+    useEffect(() => {
+        const pendingData = sessionStorage.getItem('pendingGoogleDocsUpload')
+        if (pendingData) {
+            try {
+                const data = JSON.parse(pendingData)
+                // Restore form data
+                Object.keys(data).forEach(key => {
+                    form.setValue(key as any, data[key])
+                })
+                // Clear pending data
+                sessionStorage.removeItem('pendingGoogleDocsUpload')
+                // Set flag to auto-upload
+                setShouldAutoUpload(true)
+                toast.info('Conexión exitosa. Subiendo documento...')
+            } catch (error) {
+                console.error('Error restoring form data:', error)
+                sessionStorage.removeItem('pendingGoogleDocsUpload')
+            }
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [])
+
+    // Helper function to create the document structure
+    const createDocumentStructure = (data: FormValues) => {
+        return new Document({
                 sections: [{
                     properties: {},
                     children: [
@@ -505,7 +528,12 @@ export function JuicioAlimentosForm() {
                     ],
                 }],
             })
+    }
 
+    const generateDocument = async (data: FormValues) => {
+        setIsGenerating(true)
+        try {
+            const doc = createDocumentStructure(data)
             const blob = await Packer.toBlob(doc)
             saveAs(blob, `Demanda_Alimentos_${data.actorName.replace(/\s+/g, '_')}.docx`)
             toast.success('Documento DOCX generado correctamente')
@@ -600,77 +628,91 @@ export function JuicioAlimentosForm() {
     const openInGoogleDocs = async () => {
         setIsGenerating(true)
         try {
-            // First generate the DOCX
             const data = watchedValues
-            const doc = new Document({
-                sections: [{
-                    properties: {},
-                    children: [
-                        // Same content generation as generateDocument
-                        // (I'll use the same code structure)
-                        new Paragraph({
-                            alignment: AlignmentType.RIGHT,
-                            children: [
-                                new TextRun({ text: data.actorName.toUpperCase(), bold: true }),
-                            ],
-                        }),
-                        new Paragraph({ text: "" }),
-                        new Paragraph({
-                            alignment: AlignmentType.RIGHT,
-                            children: [
-                                new TextRun({ text: "VS.", bold: true }),
-                            ],
-                        }),
-                        new Paragraph({ text: "" }),
-                        new Paragraph({
-                            alignment: AlignmentType.RIGHT,
-                            children: [
-                                new TextRun({ text: data.defendantName.toUpperCase(), bold: true }),
-                            ],
-                        }),
-                        new Paragraph({ text: "" }),
-                        new Paragraph({
-                            alignment: AlignmentType.RIGHT,
-                            children: [
-                                new TextRun({ text: "JUICIO SUMARIO DE ALIMENTOS", bold: true }),
-                            ],
-                        }),
-                        // Add remaining content...
-                        new Paragraph({
-                            alignment: AlignmentType.CENTER,
-                            children: [
-                                new TextRun("(Este es un documento de ejemplo. Complete el resto del contenido según necesite.)"),
-                            ],
-                        }),
-                    ],
-                }],
-            })
 
-            // Generate blob
+            // Validate form data
+            const result = formSchema.safeParse(data)
+            if (!result.success) {
+                toast.error('Por favor completa todos los campos requeridos')
+                setIsGenerating(false)
+                return
+            }
+
+            // Check if user has Google Calendar connected
+            const checkResponse = await fetch('/api/google-calendar/status')
+            const checkData = await checkResponse.json()
+
+            if (!checkData.connected) {
+                // User not connected - initiate OAuth flow
+                toast.info('Conectando con Google Drive...')
+
+                const connectResponse = await fetch('/api/google-calendar/connect')
+                const connectData = await connectResponse.json()
+
+                if (!connectResponse.ok) {
+                    toast.error('Error al iniciar la conexión con Google')
+                    setIsGenerating(false)
+                    return
+                }
+
+                // Store form data in sessionStorage to restore after OAuth
+                sessionStorage.setItem('pendingGoogleDocsUpload', JSON.stringify(data))
+
+                // Redirect to Google OAuth
+                window.location.href = connectData.url
+                return
+            }
+
+            // User is connected - proceed with upload
+            const doc = createDocumentStructure(data)
             const blob = await Packer.toBlob(doc)
 
-            // Create a File object
-            const file = new File([blob], `Demanda_Alimentos_${data.actorName.replace(/\s+/g, '_')}.docx`, {
+            // Create FormData for API upload
+            const formData = new FormData()
+            const fileName = `Demanda_Alimentos_${data.actorName.replace(/\s+/g, '_')}.docx`
+            const file = new File([blob], fileName, {
                 type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
             })
+            formData.append('file', file)
+            formData.append('fileName', fileName)
 
-            // Upload to a temporary storage or use Google Picker API
-            // For simplicity, we'll download it and tell user to upload to Google Docs
-            saveAs(blob, `Demanda_Alimentos_${data.actorName.replace(/\s+/g, '_')}.docx`)
+            // Upload to Google Docs via API
+            const response = await fetch('/api/google-docs/upload', {
+                method: 'POST',
+                body: formData,
+            })
 
-            // Open Google Docs in new tab
-            setTimeout(() => {
-                window.open('https://docs.google.com/document/u/0/create', '_blank')
-                toast.success('Documento descargado. Súbelo a Google Docs desde la ventana abierta.')
-            }, 500)
+            const responseData = await response.json()
+
+            if (!response.ok) {
+                toast.error(responseData.error || 'Error al subir a Google Docs')
+                return
+            }
+
+            // Open the Google Docs URL
+            if (responseData.docsUrl) {
+                window.open(responseData.docsUrl, '_blank')
+                toast.success('Documento abierto en Google Docs')
+            } else {
+                toast.error('No se pudo obtener la URL del documento')
+            }
 
         } catch (error) {
-            console.error(error)
+            console.error('Error opening in Google Docs:', error)
             toast.error('Error al abrir en Google Docs')
         } finally {
             setIsGenerating(false)
+            setShouldAutoUpload(false)
         }
     }
+
+    // Auto-trigger upload after OAuth return
+    useEffect(() => {
+        if (shouldAutoUpload && !isGenerating) {
+            openInGoogleDocs()
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [shouldAutoUpload])
 
     return (
         <div className="flex gap-6 h-full">
@@ -824,7 +866,11 @@ export function JuicioAlimentosForm() {
                                 {isGenerating ? (
                                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                                 ) : (
-                                    <ExternalLink className="mr-2 h-4 w-4" />
+                                    <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                        <path d="M14 2H6C5.46957 2 4.96086 2.21071 4.58579 2.58579C4.21071 2.96086 4 3.46957 4 4V20C4 20.5304 4.21071 21.0391 4.58579 21.4142C4.96086 21.7893 5.46957 22 6 22H18C18.5304 22 19.0391 21.7893 19.4142 21.4142C19.7893 21.0391 20 20.5304 20 20V8L14 2Z" fill="#4285F4"/>
+                                        <path d="M14 2V8H20" fill="#A1C2FA"/>
+                                        <path d="M16 13H8M16 17H8M10 9H8" stroke="white" strokeWidth="2" strokeLinecap="round"/>
+                                    </svg>
                                 )}
                                 Abrir en Google Docs
                             </Button>
