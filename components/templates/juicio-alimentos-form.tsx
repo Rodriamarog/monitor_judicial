@@ -38,7 +38,6 @@ type FormValues = z.infer<typeof formSchema>
 
 export function JuicioAlimentosForm() {
     const [isGenerating, setIsGenerating] = useState(false)
-    const printRef = useRef<HTMLDivElement>(null)
 
     const form = useForm<FormValues>({
         resolver: zodResolver(formSchema),
@@ -525,19 +524,33 @@ export function JuicioAlimentosForm() {
             styleSheet.id = 'print-styles'
             styleSheet.textContent = `
                 @media print {
+                    /* Hide everything except print content */
                     body * {
                         visibility: hidden;
                     }
-                    #print-content, #print-content * {
+
+                    /* Show only the preview content */
+                    .live-preview-content,
+                    .live-preview-content * {
                         visibility: visible;
                     }
-                    #print-content {
+
+                    /* Position content properly */
+                    .live-preview-content {
                         position: absolute;
                         left: 0;
                         top: 0;
                         width: 100%;
+                        background: white !important;
+                    }
+
+                    /* Ensure proper text rendering */
+                    * {
+                        -webkit-print-color-adjust: exact;
+                        print-color-adjust: exact;
                     }
                 }
+
                 @page {
                     size: letter;
                     margin: 25.4mm;
@@ -556,7 +569,7 @@ export function JuicioAlimentosForm() {
                 }
             }, 100)
 
-            toast.success('Documento listo para imprimir/guardar como PDF')
+            toast.success('Documento listo para guardar como PDF')
         } catch (error) {
             console.error(error)
             toast.error('Error al generar el PDF')
@@ -846,10 +859,8 @@ export function JuicioAlimentosForm() {
 
             {/* Preview Section - Right Side */}
             <Card className="flex-1 flex flex-col h-full">
-                <CardContent className="flex-1 overflow-y-auto p-6 pl-7">
-                    <div id="print-content" ref={printRef}>
-                        <LivePreview data={watchedValues as FormValues} />
-                    </div>
+                <CardContent className="flex-1 overflow-y-auto p-6">
+                    <LivePreview data={watchedValues as FormValues} />
                 </CardContent>
             </Card>
         </div>

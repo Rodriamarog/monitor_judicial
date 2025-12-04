@@ -16,8 +16,8 @@ interface LivePreviewProps {
 
 export function LivePreview({ data }: LivePreviewProps) {
     return (
-        <div className="text-black font-serif p-8 shadow-lg min-h-[800px] max-w-[21cm] mx-auto rounded-xl border" style={{ backgroundColor: '#ffffff' }}>
-            <div className="space-y-4 text-sm leading-relaxed live-preview-content">
+        <div className="live-preview-content text-black font-serif min-h-full" style={{ backgroundColor: '#ffffff' }}>
+            <div className="space-y-4 text-sm leading-relaxed">
                 {/* CARÁTULA */}
                 <div className="text-right font-bold space-y-2">
                     <p className="uppercase">{data.actorName || "[NOMBRE DEL ACTOR]"}</p>
