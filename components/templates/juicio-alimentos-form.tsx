@@ -136,35 +136,35 @@ export function JuicioAlimentosForm() {
                         new Paragraph({
                             alignment: AlignmentType.RIGHT,
                             children: [
-                                new TextRun({ text: data.actorName.toUpperCase(), bold: true }),
+                                new TextRun({ text: data.actorName.toUpperCase(), bold: true, size: 24, font: "Times New Roman" }),
                             ],
                         }),
                         new Paragraph({ text: "" }),
                         new Paragraph({
                             alignment: AlignmentType.RIGHT,
                             children: [
-                                new TextRun({ text: "VS.", bold: true }),
+                                new TextRun({ text: "VS.", bold: true, size: 24, font: "Times New Roman" }),
                             ],
                         }),
                         new Paragraph({ text: "" }),
                         new Paragraph({
                             alignment: AlignmentType.RIGHT,
                             children: [
-                                new TextRun({ text: data.defendantName.toUpperCase(), bold: true }),
+                                new TextRun({ text: data.defendantName.toUpperCase(), bold: true, size: 24, font: "Times New Roman" }),
                             ],
                         }),
                         new Paragraph({ text: "" }),
                         new Paragraph({
                             alignment: AlignmentType.RIGHT,
                             children: [
-                                new TextRun({ text: "JUICIO SUMARIO DE ALIMENTOS", bold: true }),
+                                new TextRun({ text: "JUICIO SUMARIO DE ALIMENTOS", bold: true, size: 24, font: "Times New Roman" }),
                             ],
                         }),
                         new Paragraph({ text: "" }),
                         new Paragraph({
                             alignment: AlignmentType.RIGHT,
                             children: [
-                                new TextRun({ text: "I N I C I O", bold: true }),
+                                new TextRun({ text: "I N I C I O", bold: true, size: 24, font: "Times New Roman" }),
                             ],
                         }),
                         new Paragraph({ text: "" }),
@@ -173,12 +173,12 @@ export function JuicioAlimentosForm() {
                         // Judge Address
                         new Paragraph({
                             children: [
-                                new TextRun({ text: "C. JUEZ DE PRIMERA INSTANCIA", bold: true }),
+                                new TextRun({ text: "C. JUEZ DE PRIMERA INSTANCIA", bold: true, size: 24, font: "Times New Roman" }),
                             ],
                         }),
                         new Paragraph({
                             children: [
-                                new TextRun({ text: "DE LO FAMILIAR EN TURNO.", bold: true }),
+                                new TextRun({ text: "DE LO FAMILIAR EN TURNO.", bold: true, size: 24, font: "Times New Roman" }),
                             ],
                         }),
                         new Paragraph({ text: "" }),
@@ -187,19 +187,21 @@ export function JuicioAlimentosForm() {
                         new Paragraph({
                             alignment: AlignmentType.JUSTIFIED,
                             children: [
-                                new TextRun({ text: data.actorName.toUpperCase(), bold: true }),
-                                new TextRun(", mexicana, mayor de edad y en mi carácter de madre "),
-                                data.children.length === 1 ? new TextRun("de la menor ") : new TextRun("de los menores "),
+                                new TextRun({ text: data.actorName.toUpperCase(), bold: true, size: 24, font: "Times New Roman" }),
+                                new TextRun({ text: ", mexicana, mayor de edad y en mi carácter de madre ", size: 24, font: "Times New Roman" }),
+                                data.children.length === 1 ? new TextRun({ text: "de la menor ", size: 24, font: "Times New Roman" }) : new TextRun({ text: "de los menores ", size: 24, font: "Times New Roman" }),
                                 ...data.children.map((child, index) =>
                                     new TextRun({
                                         text: `${child.name.toUpperCase()}${index < data.children.length - 1 ? ", " : ""} `,
-                                        bold: true
+                                        bold: true,
+                                        size: 24,
+                                        font: "Times New Roman"
                                     })
                                 ),
-                                new TextRun(` y en ejercicio de la patria potestad ${data.children.length === 1 ? 'de dicha menor' : 'de dichos menores'}, señalando como domicilio para oír y recibir toda clase de notificaciones y documentos el ubicado en `),
-                                new TextRun({ text: data.actorAddress, bold: true }),
-                                data.authorizedPersons ? new TextRun(`, y autorizando para tal efecto en los términos del artículo 46 del Código de Procedimientos Civiles a ${data.authorizedPersons}`) : new TextRun(""),
-                                new TextRun(", ante Usted con el debido respeto comparezco a exponer:"),
+                                new TextRun({ text: ` y en ejercicio de la patria potestad ${data.children.length === 1 ? 'de dicha menor' : 'de dichos menores'}, señalando como domicilio para oír y recibir toda clase de notificaciones y documentos el ubicado en `, size: 24, font: "Times New Roman" }),
+                                new TextRun({ text: data.actorAddress, bold: true, size: 24, font: "Times New Roman" }),
+                                data.authorizedPersons ? new TextRun({ text: `, y autorizando para tal efecto en los términos del artículo 46 del Código de Procedimientos Civiles a ${data.authorizedPersons}`, size: 24, font: "Times New Roman" }) : new TextRun({ text: "", size: 24, font: "Times New Roman" }),
+                                new TextRun({ text: ", ante Usted con el debido respeto comparezco a exponer:", size: 24, font: "Times New Roman" }),
                             ],
                         }),
                         new Paragraph({ text: "" }),
@@ -208,33 +210,35 @@ export function JuicioAlimentosForm() {
                         new Paragraph({
                             alignment: AlignmentType.JUSTIFIED,
                             children: [
-                                new TextRun("Que por medio del presente escrito en la Vía Sumaria Civil y en ejercicio de la Acción de Alimentos, vengo a demandar al Sr. "),
-                                new TextRun({ text: data.defendantName.toUpperCase(), bold: true }),
-                                new TextRun(", quien tiene su domicilio particular en "),
-                                new TextRun({ text: data.defendantAddress, bold: true }),
-                                new TextRun(", por las siguientes:"),
+                                new TextRun({ text: "Que por medio del presente escrito en la Vía Sumaria Civil y en ejercicio de la Acción de Alimentos, vengo a demandar al Sr. ", size: 24, font: "Times New Roman" }),
+                                new TextRun({ text: data.defendantName.toUpperCase(), bold: true, size: 24, font: "Times New Roman" }),
+                                new TextRun({ text: ", quien tiene su domicilio particular en ", size: 24, font: "Times New Roman" }),
+                                new TextRun({ text: data.defendantAddress, bold: true, size: 24, font: "Times New Roman" }),
+                                new TextRun({ text: ", por las siguientes:", size: 24, font: "Times New Roman" }),
                             ],
                         }),
                         new Paragraph({ text: "" }),
 
                         new Paragraph({
                             alignment: AlignmentType.CENTER,
-                            children: [new TextRun({ text: "P R E S T A C I O N E S :", bold: true })],
+                            children: [new TextRun({ text: "P R E S T A C I O N E S :", bold: true, size: 24, font: "Times New Roman" })],
                         }),
                         new Paragraph({ text: "" }),
 
                         new Paragraph({
                             alignment: AlignmentType.JUSTIFIED,
                             children: [
-                                new TextRun("A).- Por el pago y el aseguramiento de una pensión alimenticia provisional, la cual deberá ser fijada de inmediato a criterio de su Señoría, a fin de satisfacer las necesidades alimenticias de la suscrita promovente y "),
-                                data.children.length === 1 ? new TextRun("de mi menor hija ") : new TextRun("de mis menores hijos "),
+                                new TextRun({ text: "A).- Por el pago y el aseguramiento de una pensión alimenticia provisional, la cual deberá ser fijada de inmediato a criterio de su Señoría, a fin de satisfacer las necesidades alimenticias de la suscrita promovente y ", size: 24, font: "Times New Roman" }),
+                                data.children.length === 1 ? new TextRun({ text: "de mi menor hija ", size: 24, font: "Times New Roman" }) : new TextRun({ text: "de mis menores hijos ", size: 24, font: "Times New Roman" }),
                                 ...data.children.map((child, index) =>
                                     new TextRun({
                                         text: `${child.name.toUpperCase()}${index < data.children.length - 1 ? ", " : ""} `,
-                                        bold: true
+                                        bold: true,
+                                        size: 24,
+                                        font: "Times New Roman"
                                     })
                                 ),
-                                new TextRun("."),
+                                new TextRun({ text: ".", size: 24, font: "Times New Roman" }),
                             ],
                         }),
                         new Paragraph({ text: "" }),
@@ -242,15 +246,17 @@ export function JuicioAlimentosForm() {
                         new Paragraph({
                             alignment: AlignmentType.JUSTIFIED,
                             children: [
-                                new TextRun("B).- Por el pago y el aseguramiento de una pensión alimenticia definitiva, que sea justa, suficiente y bastante a criterio de su Señoría para satisfacer las necesidades de la suscrita promovente y "),
-                                data.children.length === 1 ? new TextRun("de mi menor hija ") : new TextRun("de mis menores hijos "),
+                                new TextRun({ text: "B).- Por el pago y el aseguramiento de una pensión alimenticia definitiva, que sea justa, suficiente y bastante a criterio de su Señoría para satisfacer las necesidades de la suscrita promovente y ", size: 24, font: "Times New Roman" }),
+                                data.children.length === 1 ? new TextRun({ text: "de mi menor hija ", size: 24, font: "Times New Roman" }) : new TextRun({ text: "de mis menores hijos ", size: 24, font: "Times New Roman" }),
                                 ...data.children.map((child, index) =>
                                     new TextRun({
                                         text: `${child.name.toUpperCase()}${index < data.children.length - 1 ? ", " : ""} `,
-                                        bold: true
+                                        bold: true,
+                                        size: 24,
+                                        font: "Times New Roman"
                                     })
                                 ),
-                                new TextRun("."),
+                                new TextRun({ text: ".", size: 24, font: "Times New Roman" }),
                             ],
                         }),
                         new Paragraph({ text: "" }),
@@ -258,7 +264,7 @@ export function JuicioAlimentosForm() {
                         new Paragraph({
                             alignment: AlignmentType.JUSTIFIED,
                             children: [
-                                new TextRun("C).- Por el pago de los gastos y las costas que se originen en el presente juicio."),
+                                new TextRun({ text: "C).- Por el pago de los gastos y las costas que se originen en el presente juicio.", size: 24, font: "Times New Roman" }),
                             ],
                         }),
                         new Paragraph({ text: "" }),
@@ -266,14 +272,14 @@ export function JuicioAlimentosForm() {
                         new Paragraph({
                             alignment: AlignmentType.JUSTIFIED,
                             children: [
-                                new TextRun("Fundo la presente demanda en la siguiente relación de hechos y consideraciones de derecho:"),
+                                new TextRun({ text: "Fundo la presente demanda en la siguiente relación de hechos y consideraciones de derecho:", size: 24, font: "Times New Roman" }),
                             ],
                         }),
                         new Paragraph({ text: "" }),
 
                         new Paragraph({
                             alignment: AlignmentType.CENTER,
-                            children: [new TextRun({ text: "H E C H O S :", bold: true })],
+                            children: [new TextRun({ text: "H E C H O S :", bold: true, size: 24, font: "Times New Roman" })],
                         }),
                         new Paragraph({ text: "" }),
 
@@ -281,9 +287,9 @@ export function JuicioAlimentosForm() {
                         new Paragraph({
                             alignment: AlignmentType.JUSTIFIED,
                             children: [
-                                new TextRun(`1.- Hace aproximadamente ${data.relationshipStartDate} que la suscrita promovente y el ahora demandado Sr. `),
-                                new TextRun({ text: data.defendantName.toUpperCase(), bold: true }),
-                                new TextRun(" nos conocimos e iniciamos una relación de noviazgo, haciendo expresamente la aclaración de que desde un principio vivimos habiendo mantenido y sostenido de manera periódica, es decir más o menos constante y reiterada, relaciones sexuales y desde luego una serie de convivencias como pareja."),
+                                new TextRun({ text: `1.- Hace aproximadamente ${data.relationshipStartDate} que la suscrita promovente y el ahora demandado Sr. `, size: 24, font: "Times New Roman" }),
+                                new TextRun({ text: data.defendantName.toUpperCase(), bold: true, size: 24, font: "Times New Roman" }),
+                                new TextRun({ text: " nos conocimos e iniciamos una relación de noviazgo, haciendo expresamente la aclaración de que desde un principio vivimos habiendo mantenido y sostenido de manera periódica, es decir más o menos constante y reiterada, relaciones sexuales y desde luego una serie de convivencias como pareja.", size: 24, font: "Times New Roman" }),
                             ],
                         }),
                         new Paragraph({ text: "" }),
@@ -291,20 +297,20 @@ export function JuicioAlimentosForm() {
                         new Paragraph({
                             alignment: AlignmentType.JUSTIFIED,
                             children: [
-                                new TextRun("2.- Como consecuencia de la relación de noviazgo ya señalada, "),
-                                data.children.length === 1 ? new TextRun("con fecha ") : new TextRun("ocurrieron los nacimientos de "),
-                                data.children.length === 1 ? new TextRun(`${data.children[0].dob} ocurrió el nacimiento de nuestra hija menor con nombre `) : new TextRun("nuestros hijos menores con nombres "),
+                                new TextRun({ text: "2.- Como consecuencia de la relación de noviazgo ya señalada, ", size: 24, font: "Times New Roman" }),
+                                data.children.length === 1 ? new TextRun({ text: "con fecha ", size: 24, font: "Times New Roman" }) : new TextRun({ text: "ocurrieron los nacimientos de ", size: 24, font: "Times New Roman" }),
+                                data.children.length === 1 ? new TextRun({ text: `${data.children[0].dob} ocurrió el nacimiento de nuestra hija menor con nombre `, size: 24, font: "Times New Roman" }) : new TextRun({ text: "nuestros hijos menores con nombres ", size: 24, font: "Times New Roman" }),
                                 ...data.children.map((child, index) =>
                                     new TextRun({
                                         text: `${child.name.toUpperCase()}${data.children.length > 1 ? ` (nacido el ${child.dob})` : ''}${index < data.children.length - 1 ? ", " : ""} `,
                                         bold: true
                                     })
                                 ),
-                                new TextRun(", tal y como se acredita con la exhibición que me permito realizar de "),
-                                data.children.length === 1 ? new TextRun("la respectiva acta de nacimiento debidamente certificada, reconocida") : new TextRun("las respectivas actas de nacimiento debidamente certificadas, reconocidas"),
-                                new TextRun(" por la parte demandada Sr. "),
-                                new TextRun({ text: data.defendantName.toUpperCase(), bold: true }),
-                                new TextRun("."),
+                                new TextRun({ text: ", tal y como se acredita con la exhibición que me permito realizar de ", size: 24, font: "Times New Roman" }),
+                                data.children.length === 1 ? new TextRun({ text: "la respectiva acta de nacimiento debidamente certificada, reconocida", size: 24, font: "Times New Roman" }) : new TextRun({ text: "las respectivas actas de nacimiento debidamente certificadas, reconocidas", size: 24, font: "Times New Roman" }),
+                                new TextRun({ text: " por la parte demandada Sr. ", size: 24, font: "Times New Roman" }),
+                                new TextRun({ text: data.defendantName.toUpperCase(), bold: true, size: 24, font: "Times New Roman" }),
+                                new TextRun({ text: ".", size: 24, font: "Times New Roman" }),
                             ],
                         }),
                         new Paragraph({ text: "" }),
@@ -312,7 +318,7 @@ export function JuicioAlimentosForm() {
                         new Paragraph({
                             alignment: AlignmentType.JUSTIFIED,
                             children: [
-                                new TextRun(`3.- He de mencionar que si bien es cierto el demandado Sr. ${data.defendantName.toUpperCase()} no ha dejado a la suscrita y a ${data.children.length === 1 ? 'nuestra menor hija' : 'nuestros menores hijos'} en completo estado de abandono, también lo es que sus aportaciones no han sido bastantes y suficientes ni con la periodicidad adecuadas para el debido sostenimiento de nuestro hogar y sobre todo por lo que a la pensión alimenticia se refiere; por lo que la situación para la suscrita y ${data.children.length === 1 ? 'nuestra menor hija' : 'nuestros menores hijos'} ha sido muy difícil y complicada.`),
+                                new TextRun({ text: `3.- He de mencionar que si bien es cierto el demandado Sr. ${data.defendantName.toUpperCase()} no ha dejado a la suscrita y a ${data.children.length === 1 ? 'nuestra menor hija' : 'nuestros menores hijos'} en completo estado de abandono, también lo es que sus aportaciones no han sido bastantes y suficientes ni con la periodicidad adecuadas para el debido sostenimiento de nuestro hogar y sobre todo por lo que a la pensión alimenticia se refiere; por lo que la situación para la suscrita y ${data.children.length === 1 ? 'nuestra menor hija' : 'nuestros menores hijos'} ha sido muy difícil y complicada.`, size: 24, font: "Times New Roman" }),
                             ],
                         }),
                         new Paragraph({ text: "" }),
@@ -320,7 +326,7 @@ export function JuicioAlimentosForm() {
                         new Paragraph({
                             alignment: AlignmentType.JUSTIFIED,
                             children: [
-                                new TextRun(`4.- En efecto, en un principio el ahora demandado única y exclusivamente me entregaba la cantidad de ${data.previousAmount} Pesos Moneda Nacional mensuales, y en últimas fechas mantiene periodos de hasta dos meses o más de tiempo sin que me haga aportación alguna, lo que impide que la suscrita pueda proveer lo suficiente al mantenimiento del hogar que contengo constituido con ${data.children.length === 1 ? 'nuestra menor hija' : 'nuestros menores hijos'} y sobre todo por cuanto hace a todo lo que incluye el concepto alimentos, ya que me es muy difícil cubrir comidas, vestido, escuelas, medicinas, renta, transportación, esparcimiento y otros aspectos con las pocas aportaciones del demandado y con lo que la suscrita gano por mi trabajo.`),
+                                new TextRun({ text: `4.- En efecto, en un principio el ahora demandado única y exclusivamente me entregaba la cantidad de ${data.previousAmount} Pesos Moneda Nacional mensuales, y en últimas fechas mantiene periodos de hasta dos meses o más de tiempo sin que me haga aportación alguna, lo que impide que la suscrita pueda proveer lo suficiente al mantenimiento del hogar que contengo constituido con ${data.children.length === 1 ? 'nuestra menor hija' : 'nuestros menores hijos'} y sobre todo por cuanto hace a todo lo que incluye el concepto alimentos, ya que me es muy difícil cubrir comidas, vestido, escuelas, medicinas, renta, transportación, esparcimiento y otros aspectos con las pocas aportaciones del demandado y con lo que la suscrita gano por mi trabajo.`, size: 24, font: "Times New Roman" }),
                             ],
                         }),
                         new Paragraph({ text: "" }),
@@ -328,9 +334,9 @@ export function JuicioAlimentosForm() {
                         new Paragraph({
                             alignment: AlignmentType.JUSTIFIED,
                             children: [
-                                new TextRun(`5.- Es el caso, que desde ${data.stopDate} el ahora demandado Sr. `),
-                                new TextRun({ text: data.defendantName.toUpperCase(), bold: true }),
-                                new TextRun(` ha procedido a suspender todo tipo de ayuda, sobre todo la económica, tanto de la suscrita como de ${data.children.length === 1 ? 'nuestra menor hija' : 'nuestros menores hijos'}, dejando de aportar cantidad alguna para los alimentos.`),
+                                new TextRun({ text: `5.- Es el caso, que desde ${data.stopDate} el ahora demandado Sr. `, size: 24, font: "Times New Roman" }),
+                                new TextRun({ text: data.defendantName.toUpperCase(), bold: true, size: 24, font: "Times New Roman" }),
+                                new TextRun({ text: ` ha procedido a suspender todo tipo de ayuda, sobre todo la económica, tanto de la suscrita como de ${data.children.length === 1 ? 'nuestra menor hija' : 'nuestros menores hijos'}, dejando de aportar cantidad alguna para los alimentos.`, size: 24, font: "Times New Roman" }),
                             ],
                         }),
                         new Paragraph({ text: "" }),
@@ -338,7 +344,7 @@ export function JuicioAlimentosForm() {
                         new Paragraph({
                             alignment: AlignmentType.JUSTIFIED,
                             children: [
-                                new TextRun("6.- En virtud de lo narrado con anterioridad y tomando en consideración que desde la fecha indicada el demandado se ha abstenido de proporcionar cantidad alguna para nuestro sostenimiento, es por lo que me veo en la imperiosa necesidad de plantearle la presente demanda solicitando a su Señoría se fije a la brevedad posible la pensión alimenticia que en derecho proceda."),
+                                new TextRun({ text: "6.- En virtud de lo narrado con anterioridad y tomando en consideración que desde la fecha indicada el demandado se ha abstenido de proporcionar cantidad alguna para nuestro sostenimiento, es por lo que me veo en la imperiosa necesidad de plantearle la presente demanda solicitando a su Señoría se fije a la brevedad posible la pensión alimenticia que en derecho proceda.", size: 24, font: "Times New Roman" }),
                             ],
                         }),
                         new Paragraph({ text: "" }),
@@ -346,14 +352,14 @@ export function JuicioAlimentosForm() {
                         // OFRECIMIENTO DE PRUEBAS
                         new Paragraph({
                             alignment: AlignmentType.CENTER,
-                            children: [new TextRun({ text: "OFRECIMIENTO DE PRUEBAS", bold: true })],
+                            children: [new TextRun({ text: "OFRECIMIENTO DE PRUEBAS", bold: true, size: 24, font: "Times New Roman" })],
                         }),
                         new Paragraph({ text: "" }),
 
                         new Paragraph({
                             alignment: AlignmentType.JUSTIFIED,
                             children: [
-                                new TextRun("En este apartado ofrezco como pruebas de mi parte, mismas que relaciono con todos y cada uno de los puntos de hechos de mi demanda, en los términos del artículo 287 del Código de Procedimientos Civiles vigente, las siguientes:"),
+                                new TextRun({ text: "En este apartado ofrezco como pruebas de mi parte, mismas que relaciono con todos y cada uno de los puntos de hechos de mi demanda, en los términos del artículo 287 del Código de Procedimientos Civiles vigente, las siguientes:", size: 24, font: "Times New Roman" }),
                             ],
                         }),
                         new Paragraph({ text: "" }),
@@ -361,9 +367,9 @@ export function JuicioAlimentosForm() {
                         new Paragraph({
                             alignment: AlignmentType.JUSTIFIED,
                             children: [
-                                new TextRun("1.- LA CONFESIONAL DIRECTA O PROVOCADA a cargo de la parte demandada, el Sr. "),
-                                new TextRun({ text: data.defendantName.toUpperCase(), bold: true }),
-                                new TextRun(", quien deberá absolver personalmente y no por medio de apoderado legal alguno el pliego de posiciones que en sobre cerrado se acompaña, el día y hora que se señale para tal efecto, apercibido de ser declarado confeso si no comparece sin justa causa en los términos de Ley. Esta prueba la relaciono con los puntos 1, 2, 3, 4, 5 y 6 de los hechos de mi demanda, en los términos del artículo 287 del Código Adjetivo."),
+                                new TextRun({ text: "1.- LA CONFESIONAL DIRECTA O PROVOCADA a cargo de la parte demandada, el Sr. ", size: 24, font: "Times New Roman" }),
+                                new TextRun({ text: data.defendantName.toUpperCase(), bold: true, size: 24, font: "Times New Roman" }),
+                                new TextRun({ text: ", quien deberá absolver personalmente y no por medio de apoderado legal alguno el pliego de posiciones que en sobre cerrado se acompaña, el día y hora que se señale para tal efecto, apercibido de ser declarado confeso si no comparece sin justa causa en los términos de Ley. Esta prueba la relaciono con los puntos 1, 2, 3, 4, 5 y 6 de los hechos de mi demanda, en los términos del artículo 287 del Código Adjetivo.", size: 24, font: "Times New Roman" }),
                             ],
                         }),
                         new Paragraph({ text: "" }),
@@ -371,10 +377,10 @@ export function JuicioAlimentosForm() {
                         new Paragraph({
                             alignment: AlignmentType.JUSTIFIED,
                             children: [
-                                new TextRun("2.- LA TESTIMONIAL consistente en la declaración de "),
-                                data.witnesses.length === 1 ? new TextRun("un testigo") : new TextRun(`${data.witnesses.length} testigos`),
-                                new TextRun(" a quienes les constan los hechos materia de la presente demanda y a quienes me comprometo a presentar ante este H. Juzgado el día y hora que se señale para el desahogo de dicha probanza, "),
-                                data.witnesses.length === 1 ? new TextRun("es: ") : new TextRun("ellos son:"),
+                                new TextRun({ text: "2.- LA TESTIMONIAL consistente en la declaración de ", size: 24, font: "Times New Roman" }),
+                                data.witnesses.length === 1 ? new TextRun({ text: "un testigo", size: 24, font: "Times New Roman" }) : new TextRun({ text: `${data.witnesses.length} testigos`, size: 24, font: "Times New Roman" }),
+                                new TextRun({ text: " a quienes les constan los hechos materia de la presente demanda y a quienes me comprometo a presentar ante este H. Juzgado el día y hora que se señale para el desahogo de dicha probanza, ", size: 24, font: "Times New Roman" }),
+                                data.witnesses.length === 1 ? new TextRun({ text: "es: ", size: 24, font: "Times New Roman" }) : new TextRun({ text: "ellos son:", size: 24, font: "Times New Roman" }),
                             ],
                         }),
                         new Paragraph({ text: "" }),
@@ -383,7 +389,7 @@ export function JuicioAlimentosForm() {
                             new Paragraph({
                                 alignment: AlignmentType.JUSTIFIED,
                                 children: [
-                                    new TextRun(`        ${String.fromCharCode(97 + index)}).- ${w.name.toUpperCase()}`),
+                                    new TextRun({ text: `        ${String.fromCharCode(97 + index)}).- ${w.name.toUpperCase()}`, size: 24, font: "Times New Roman" }),
                                 ],
                             })
                         ),
@@ -392,7 +398,7 @@ export function JuicioAlimentosForm() {
                         new Paragraph({
                             alignment: AlignmentType.JUSTIFIED,
                             children: [
-                                new TextRun("Esta prueba la relaciono con los puntos 1, 2, 3, 4, 5 y 6 de los hechos de mi demanda, en los términos del artículo 287 del Código Adjetivo."),
+                                new TextRun({ text: "Esta prueba la relaciono con los puntos 1, 2, 3, 4, 5 y 6 de los hechos de mi demanda, en los términos del artículo 287 del Código Adjetivo.", size: 24, font: "Times New Roman" }),
                             ],
                         }),
                         new Paragraph({ text: "" }),
@@ -400,15 +406,17 @@ export function JuicioAlimentosForm() {
                         new Paragraph({
                             alignment: AlignmentType.JUSTIFIED,
                             children: [
-                                new TextRun("3.- LA DOCUMENTAL PUBLICA consistente en "),
-                                data.children.length === 1 ? new TextRun("la acta de nacimiento de mi menor hija ") : new TextRun("las actas de nacimiento de mis menores hijos "),
+                                new TextRun({ text: "3.- LA DOCUMENTAL PUBLICA consistente en ", size: 24, font: "Times New Roman" }),
+                                data.children.length === 1 ? new TextRun({ text: "la acta de nacimiento de mi menor hija ", size: 24, font: "Times New Roman" }) : new TextRun({ text: "las actas de nacimiento de mis menores hijos ", size: 24, font: "Times New Roman" }),
                                 ...data.children.map((child, index) =>
                                     new TextRun({
                                         text: `${child.name.toUpperCase()}${index < data.children.length - 1 ? ", " : ""} `,
-                                        bold: true
+                                        bold: true,
+                                        size: 24,
+                                        font: "Times New Roman"
                                     })
                                 ),
-                                new TextRun("que se acompañan con la presente demanda. Esta prueba la relaciono con los puntos 1, 2, 3, 4, 5 y 6 de los hechos de mi demanda, en los términos del artículo 287 del Código Adjetivo."),
+                                new TextRun({ text: "que se acompañan con la presente demanda. Esta prueba la relaciono con los puntos 1, 2, 3, 4, 5 y 6 de los hechos de mi demanda, en los términos del artículo 287 del Código Adjetivo.", size: 24, font: "Times New Roman" }),
                             ],
                         }),
                         new Paragraph({ text: "" }),
@@ -416,7 +424,7 @@ export function JuicioAlimentosForm() {
                         new Paragraph({
                             alignment: AlignmentType.JUSTIFIED,
                             children: [
-                                new TextRun("4.- PRESUNCIONAL LEGAL Y HUMANA consistente en todo lo actuado y que se llegue a actuar en el presente expediente y hasta en tanto beneficie a mis intereses. Esta prueba la relaciono con los puntos 1, 2, 3, 4, 5 y 6 de los hechos de mi demanda, en los términos del artículo 287 del Código Adjetivo."),
+                                new TextRun({ text: "4.- PRESUNCIONAL LEGAL Y HUMANA consistente en todo lo actuado y que se llegue a actuar en el presente expediente y hasta en tanto beneficie a mis intereses. Esta prueba la relaciono con los puntos 1, 2, 3, 4, 5 y 6 de los hechos de mi demanda, en los términos del artículo 287 del Código Adjetivo.", size: 24, font: "Times New Roman" }),
                             ],
                         }),
                         new Paragraph({ text: "" }),
@@ -424,7 +432,7 @@ export function JuicioAlimentosForm() {
                         new Paragraph({
                             alignment: AlignmentType.JUSTIFIED,
                             children: [
-                                new TextRun("5.- LA INSTRUMENTAL PUBLICA DE ACTUACIONES consistente en todo lo actuado y que se llegue a actuar en el presente expediente y hasta en tanto beneficie a mis intereses. Esta prueba la relaciono con los puntos 1, 2, 3, 4, 5 y 6 de los hechos de mi demanda, en los términos del artículo 287 del Código Adjetivo."),
+                                new TextRun({ text: "5.- LA INSTRUMENTAL PUBLICA DE ACTUACIONES consistente en todo lo actuado y que se llegue a actuar en el presente expediente y hasta en tanto beneficie a mis intereses. Esta prueba la relaciono con los puntos 1, 2, 3, 4, 5 y 6 de los hechos de mi demanda, en los términos del artículo 287 del Código Adjetivo.", size: 24, font: "Times New Roman" }),
                             ],
                         }),
                         new Paragraph({ text: "" }),
@@ -432,16 +440,16 @@ export function JuicioAlimentosForm() {
                         // CAPITULO ESPECIAL
                         new Paragraph({
                             alignment: AlignmentType.CENTER,
-                            children: [new TextRun({ text: "CAPITULO ESPECIAL", bold: true })],
+                            children: [new TextRun({ text: "CAPITULO ESPECIAL", bold: true, size: 24, font: "Times New Roman" })],
                         }),
                         new Paragraph({ text: "" }),
 
                         new Paragraph({
                             alignment: AlignmentType.JUSTIFIED,
                             children: [
-                                new TextRun("En este apartado y con fundamento en lo dispuesto por los artículos 312 Fracciones I y II, 314 y demás relativos del Código Civil en vigor, en relación con los artículos 214, 925, 926, 927, 929, 930 y demás relativos del Código de Procedimientos Civiles vigente en el Estado, solicito se fije de inmediato y a manera de medida provisional una pensión alimenticia que sea bastante y suficiente a cubrir las necesidades que por ese concepto tenemos tanto la suscrita como "),
-                                data.children.length === 1 ? new TextRun("mi menor hija") : new TextRun("mis menores hijos"),
-                                new TextRun("."),
+                                new TextRun({ text: "En este apartado y con fundamento en lo dispuesto por los artículos 312 Fracciones I y II, 314 y demás relativos del Código Civil en vigor, en relación con los artículos 214, 925, 926, 927, 929, 930 y demás relativos del Código de Procedimientos Civiles vigente en el Estado, solicito se fije de inmediato y a manera de medida provisional una pensión alimenticia que sea bastante y suficiente a cubrir las necesidades que por ese concepto tenemos tanto la suscrita como ", size: 24, font: "Times New Roman" }),
+                                data.children.length === 1 ? new TextRun({ text: "mi menor hija", size: 24, font: "Times New Roman" }) : new TextRun({ text: "mis menores hijos", size: 24, font: "Times New Roman" }),
+                                new TextRun({ text: ".", size: 24, font: "Times New Roman" }),
                             ],
                         }),
                         new Paragraph({ text: "" }),
@@ -449,14 +457,14 @@ export function JuicioAlimentosForm() {
                         // CAPITULO DE DERECHO
                         new Paragraph({
                             alignment: AlignmentType.CENTER,
-                            children: [new TextRun({ text: "CAPITULO DE DERECHO", bold: true })],
+                            children: [new TextRun({ text: "CAPITULO DE DERECHO", bold: true, size: 24, font: "Times New Roman" })],
                         }),
                         new Paragraph({ text: "" }),
 
                         new Paragraph({
                             alignment: AlignmentType.JUSTIFIED,
                             children: [
-                                new TextRun("Son aplicables en cuanto al fondo del presente asunto lo dispuesto por los artículos 298, 299, 300, 305, 306, 308, 312, 313, 314, 318, 320 y demás relativos del Código Civil en vigor."),
+                                new TextRun({ text: "Son aplicables en cuanto al fondo del presente asunto lo dispuesto por los artículos 298, 299, 300, 305, 306, 308, 312, 313, 314, 318, 320 y demás relativos del Código Civil en vigor.", size: 24, font: "Times New Roman" }),
                             ],
                         }),
                         new Paragraph({ text: "" }),
@@ -464,7 +472,7 @@ export function JuicioAlimentosForm() {
                         new Paragraph({
                             alignment: AlignmentType.JUSTIFIED,
                             children: [
-                                new TextRun("En cuanto al Procedimiento lo rige lo establecido por los artículos del 424 al 435 del Código De Procedimientos Civiles vigente en el Estado."),
+                                new TextRun({ text: "En cuanto al Procedimiento lo rige lo establecido por los artículos del 424 al 435 del Código De Procedimientos Civiles vigente en el Estado.", size: 24, font: "Times New Roman" }),
                             ],
                         }),
                         new Paragraph({ text: "" }),
@@ -472,7 +480,7 @@ export function JuicioAlimentosForm() {
                         new Paragraph({
                             alignment: AlignmentType.JUSTIFIED,
                             children: [
-                                new TextRun("Por lo anteriormente expuesto y fundado a Usted C. Juez de lo Civil en turno atentamente pido se sirva:"),
+                                new TextRun({ text: "Por lo anteriormente expuesto y fundado a Usted C. Juez de lo Civil en turno atentamente pido se sirva:", size: 24, font: "Times New Roman" }),
                             ],
                         }),
                         new Paragraph({ text: "" }),
@@ -480,9 +488,9 @@ export function JuicioAlimentosForm() {
                         new Paragraph({
                             alignment: AlignmentType.JUSTIFIED,
                             children: [
-                                new TextRun("PRIMERO.- Tenerme por presentada con este escrito y documentos anexos demandando al Sr. "),
-                                new TextRun({ text: data.defendantName.toUpperCase(), bold: true }),
-                                new TextRun(" por las prestaciones que se reclaman."),
+                                new TextRun({ text: "PRIMERO.- Tenerme por presentada con este escrito y documentos anexos demandando al Sr. ", size: 24, font: "Times New Roman" }),
+                                new TextRun({ text: data.defendantName.toUpperCase(), bold: true, size: 24, font: "Times New Roman" }),
+                                new TextRun({ text: " por las prestaciones que se reclaman.", size: 24, font: "Times New Roman" }),
                             ],
                         }),
                         new Paragraph({ text: "" }),
@@ -490,7 +498,7 @@ export function JuicioAlimentosForm() {
                         new Paragraph({
                             alignment: AlignmentType.JUSTIFIED,
                             children: [
-                                new TextRun("SEGUNDO.- Admitir la demanda en la vía y forma propuesta ordenando el emplazamiento de la parte demandada en los términos de ley."),
+                                new TextRun({ text: "SEGUNDO.- Admitir la demanda en la vía y forma propuesta ordenando el emplazamiento de la parte demandada en los términos de ley.", size: 24, font: "Times New Roman" }),
                             ],
                         }),
                         new Paragraph({ text: "" }),
@@ -498,7 +506,7 @@ export function JuicioAlimentosForm() {
                         new Paragraph({
                             alignment: AlignmentType.JUSTIFIED,
                             children: [
-                                new TextRun("TERCERO.- Por ofrecidas las pruebas que se indican, mismas que pido se manden desahogar en la audiencia respectiva."),
+                                new TextRun({ text: "TERCERO.- Por ofrecidas las pruebas que se indican, mismas que pido se manden desahogar en la audiencia respectiva.", size: 24, font: "Times New Roman" }),
                             ],
                         }),
                         new Paragraph({ text: "" }),
@@ -506,9 +514,9 @@ export function JuicioAlimentosForm() {
                         new Paragraph({
                             alignment: AlignmentType.JUSTIFIED,
                             children: [
-                                new TextRun("CUARTO.- Dictar proveído en el que se fije la pensión alimenticia provisional y en su oportunidad la definitiva que sea bastante y suficiente para garantizar las necesidades alimenticias de la suscrita actora y "),
-                                data.children.length === 1 ? new TextRun("nuestra menor hija") : new TextRun("nuestros menores hijos"),
-                                new TextRun(", ordenando su aseguramiento en los términos solicitados."),
+                                new TextRun({ text: "CUARTO.- Dictar proveído en el que se fije la pensión alimenticia provisional y en su oportunidad la definitiva que sea bastante y suficiente para garantizar las necesidades alimenticias de la suscrita actora y ", size: 24, font: "Times New Roman" }),
+                                data.children.length === 1 ? new TextRun({ text: "nuestra menor hija", size: 24, font: "Times New Roman" }) : new TextRun({ text: "nuestros menores hijos", size: 24, font: "Times New Roman" }),
+                                new TextRun({ text: ", ordenando su aseguramiento en los términos solicitados.", size: 24, font: "Times New Roman" }),
                             ],
                         }),
                         new Paragraph({ text: "" }),
@@ -516,7 +524,7 @@ export function JuicioAlimentosForm() {
                         new Paragraph({
                             alignment: AlignmentType.JUSTIFIED,
                             children: [
-                                new TextRun("QUINTO.- En su oportunidad dictar Sentencia Definitiva en la que se condene al demandado al pago de las prestaciones reclamadas."),
+                                new TextRun({ text: "QUINTO.- En su oportunidad dictar Sentencia Definitiva en la que se condene al demandado al pago de las prestaciones reclamadas.", size: 24, font: "Times New Roman" }),
                             ],
                         }),
                         new Paragraph({ text: "" }),
@@ -526,14 +534,14 @@ export function JuicioAlimentosForm() {
                         new Paragraph({
                             alignment: AlignmentType.CENTER,
                             children: [
-                                new TextRun("PROTESTO LO NECESARIO"),
+                                new TextRun({ text: "PROTESTO LO NECESARIO", size: 24, font: "Times New Roman" }),
                             ],
                         }),
                         new Paragraph({ text: "" }),
                         new Paragraph({
                             alignment: AlignmentType.CENTER,
                             children: [
-                                new TextRun(`${data.city}, al día de su presentación.`),
+                                new TextRun({ text: `${data.city}, al día de su presentación.`, size: 24, font: "Times New Roman" }),
                             ],
                         }),
                         new Paragraph({ text: "" }),
@@ -542,20 +550,20 @@ export function JuicioAlimentosForm() {
                         new Paragraph({
                             alignment: AlignmentType.CENTER,
                             children: [
-                                new TextRun("_____________________________"),
+                                new TextRun({ text: "_____________________________", size: 24, font: "Times New Roman" }),
                             ],
                         }),
                         new Paragraph({
                             alignment: AlignmentType.CENTER,
                             children: [
-                                new TextRun(data.actorName.toUpperCase()),
+                                new TextRun({ text: data.actorName.toUpperCase(), size: 24, font: "Times New Roman" }),
                             ],
                         }),
                         new Paragraph({ text: "" }),
                         new Paragraph({
                             alignment: AlignmentType.CENTER,
                             children: [
-                                new TextRun("ABOGADO PROCURADOR"),
+                                new TextRun({ text: "ABOGADO PROCURADOR", size: 24, font: "Times New Roman" }),
                             ],
                         }),
                     ],
