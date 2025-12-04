@@ -3,7 +3,7 @@ import { createClient } from '@/lib/supabase/server';
 import { getAuthUrl } from '@/lib/google-oauth';
 
 /**
- * Initiate Google OAuth flow for Calendar or Drive
+ * Initiate Google OAuth flow (enables both Calendar and Drive)
  */
 export async function GET(request: NextRequest) {
   try {
@@ -16,10 +16,6 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Get 'feature' query param to track what triggered OAuth
-    const { searchParams } = new URL(request.url);
-    const feature = searchParams.get('feature') || 'calendar'; // 'calendar' or 'drive'
-
     // Determine redirect URI based on environment
     const baseUrl =
       process.env.NEXT_PUBLIC_APP_URL ||
@@ -27,9 +23,9 @@ export async function GET(request: NextRequest) {
       'http://localhost:3000';
     const redirectUri = `${baseUrl}/api/google/auth`;
 
-    // Include feature in state so callback knows what to enable
+    // Encode user ID in state for callback
     const state = Buffer.from(
-      JSON.stringify({ userId: user.id, feature })
+      JSON.stringify({ userId: user.id })
     ).toString('base64');
 
     const authUrl = getAuthUrl(redirectUri, state);

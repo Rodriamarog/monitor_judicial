@@ -33,13 +33,11 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Decode state to get user ID and feature
+    // Decode state to get user ID
     let userId: string;
-    let feature: string;
     try {
       const stateData = JSON.parse(Buffer.from(state, 'base64').toString());
       userId = stateData.userId;
-      feature = stateData.feature || 'calendar';
     } catch {
       return NextResponse.redirect(
         new URL('/dashboard/settings?google_error=invalid_state', request.url)
@@ -98,116 +96,89 @@ export async function GET(request: NextRequest) {
       expires_at: expiresAt,
     };
 
-    // Handle based on feature
-    if (feature === 'drive') {
-      // Drive authorization - just enable Drive
-      const { error: profileError } = await supabase
-        .from('user_profiles')
-        .update({
-          google_drive_enabled: true,
-        })
-        .eq('id', userId);
+    // Unified Google authorization - enable both Calendar and Drive
+    // Get user's calendar info
+    const calendarInfo = await getUserCalendarInfo(
+      tokenData,
+      supabaseUrl,
+      supabaseKey,
+      userId
+    );
 
-      if (profileError) {
-        console.error('Error updating profile for Drive:', profileError);
-      }
-
-      // Redirect to Settings with success message
+    if (!calendarInfo.success) {
+      console.error('Failed to get calendar info:', calendarInfo.error);
       return NextResponse.redirect(
-        new URL('/dashboard/settings?google_drive_connected=true', request.url)
+        new URL('/dashboard/settings?google_error=calendar_info_failed', request.url)
       );
     }
 
-    if (feature === 'calendar') {
-      // Calendar authorization - full Calendar setup
+    // Update user profile - enable BOTH Calendar and Drive
+    const { error: profileError } = await supabase
+      .from('user_profiles')
+      .update({
+        google_calendar_enabled: true,
+        google_calendar_id: calendarInfo.calendarId || 'primary',
+        google_drive_enabled: true,
+      })
+      .eq('id', userId);
 
-      // Get user's calendar info
-      const calendarInfo = await getUserCalendarInfo(
+    if (profileError) {
+      console.error('Error updating profile:', profileError);
+    }
+
+    // Perform initial sync from Google Calendar
+    try {
+      await syncFromGoogle(
         tokenData,
+        calendarInfo.calendarId || 'primary',
+        null, // No sync token for initial sync
+        supabaseUrl,
+        supabaseKey,
+        userId
+      );
+    } catch (syncError) {
+      console.error('Error during initial sync:', syncError);
+      // Don't fail the OAuth flow if sync fails
+    }
+
+    // Create watch channel for push notifications
+    try {
+      // Mark any existing active channels as stopped before creating new one
+      const { error: updateError } = await supabase
+        .from('calendar_watch_channels')
+        .update({ status: 'stopped' })
+        .eq('user_id', userId)
+        .eq('calendar_id', calendarInfo.calendarId || 'primary')
+        .eq('status', 'active');
+
+      if (updateError) {
+        console.error('Error marking old channels as stopped:', updateError);
+      }
+
+      const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+      const webhookUrl = `${appUrl}/api/google-calendar/webhook`;
+
+      const watchResult = await createWatchChannel(
+        tokenData,
+        calendarInfo.calendarId || 'primary',
+        webhookUrl,
         supabaseUrl,
         supabaseKey,
         userId
       );
 
-      if (!calendarInfo.success) {
-        console.error('Failed to get calendar info:', calendarInfo.error);
-        return NextResponse.redirect(
-          new URL('/dashboard/settings?google_error=calendar_info_failed', request.url)
-        );
+      if (watchResult.success) {
+        console.log('✅ Watch channel created:', watchResult.channelId);
+      } else {
+        console.error('Failed to create watch channel:', watchResult.error);
       }
-
-      // Update user profile
-      const { error: profileError } = await supabase
-        .from('user_profiles')
-        .update({
-          google_calendar_enabled: true,
-          google_calendar_id: calendarInfo.calendarId || 'primary',
-        })
-        .eq('id', userId);
-
-      if (profileError) {
-        console.error('Error updating profile:', profileError);
-      }
-
-      // Perform initial sync from Google Calendar
-      try {
-        await syncFromGoogle(
-          tokenData,
-          calendarInfo.calendarId || 'primary',
-          null, // No sync token for initial sync
-          supabaseUrl,
-          supabaseKey,
-          userId
-        );
-      } catch (syncError) {
-        console.error('Error during initial sync:', syncError);
-        // Don't fail the OAuth flow if sync fails
-      }
-
-      // Create watch channel for push notifications
-      try {
-        // Mark any existing active channels as stopped before creating new one
-        const { error: updateError } = await supabase
-          .from('calendar_watch_channels')
-          .update({ status: 'stopped' })
-          .eq('user_id', userId)
-          .eq('calendar_id', calendarInfo.calendarId || 'primary')
-          .eq('status', 'active');
-
-        if (updateError) {
-          console.error('Error marking old channels as stopped:', updateError);
-        }
-
-        const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
-        const webhookUrl = `${appUrl}/api/google-calendar/webhook`;
-
-        const watchResult = await createWatchChannel(
-          tokenData,
-          calendarInfo.calendarId || 'primary',
-          webhookUrl,
-          supabaseUrl,
-          supabaseKey,
-          userId
-        );
-
-        if (watchResult.success) {
-          console.log('✅ Watch channel created:', watchResult.channelId);
-        } else {
-          console.error('Failed to create watch channel:', watchResult.error);
-        }
-      } catch (watchError) {
-        console.error('Error creating watch channel:', watchError);
-      }
-
-      // Redirect to settings with success message
-      return NextResponse.redirect(
-        new URL('/dashboard/settings?google_calendar_connected=true', request.url)
-      );
+    } catch (watchError) {
+      console.error('Error creating watch channel:', watchError);
     }
 
-    // Default: redirect to settings
+    // Redirect to settings with success message
     return NextResponse.redirect(
-      new URL('/dashboard/settings', request.url)
+      new URL('/dashboard/settings?google_connected=true', request.url)
     );
   } catch (error) {
     console.error('Error in Google OAuth callback:', error);

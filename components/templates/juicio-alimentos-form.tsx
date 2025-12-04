@@ -38,10 +38,8 @@ type FormValues = z.infer<typeof formSchema>
 
 export function JuicioAlimentosForm() {
     const [isGenerating, setIsGenerating] = useState(false)
-    const [shouldAutoUpload, setShouldAutoUpload] = useState(false)
-    const [skipDriveCheck, setSkipDriveCheck] = useState(false)
-    const [driveConnected, setDriveConnected] = useState<boolean | null>(null)
-    const [checkingDrive, setCheckingDrive] = useState(true)
+    const [googleConnected, setGoogleConnected] = useState<boolean | null>(null)
+    const [checkingGoogle, setCheckingGoogle] = useState(true)
 
     const form = useForm<FormValues>({
         resolver: zodResolver(formSchema),
@@ -73,58 +71,23 @@ export function JuicioAlimentosForm() {
     // Watch all fields for live preview
     const watchedValues = form.watch()
 
-    // Check Drive connection status on mount
+    // Check Google connection status on mount
     useEffect(() => {
-        const checkDriveStatus = async () => {
-            // Check if user just returned from OAuth
-            const justConnected = sessionStorage.getItem('driveJustConnected')
-            if (justConnected) {
-                sessionStorage.removeItem('driveJustConnected')
-                setDriveConnected(true)
-                setCheckingDrive(false)
-                return
-            }
-
+        const checkGoogleStatus = async () => {
             try {
-                const response = await fetch('/api/google/drive-status')
+                const response = await fetch('/api/google/status')
                 const data = await response.json()
-                setDriveConnected(data.connected && data.scope_valid)
+                setGoogleConnected(data.connected && data.scope_valid)
             } catch (error) {
-                console.error('Error checking Drive status:', error)
-                setDriveConnected(false)
+                console.error('Error checking Google status:', error)
+                setGoogleConnected(false)
             } finally {
-                setCheckingDrive(false)
+                setCheckingGoogle(false)
             }
         }
-        checkDriveStatus()
+        checkGoogleStatus()
     }, [])
 
-    // Check for pending Google Docs upload after OAuth return
-    useEffect(() => {
-        const pendingData = sessionStorage.getItem('pendingGoogleDocsUpload')
-        if (pendingData) {
-            try {
-                const data = JSON.parse(pendingData)
-                // Restore form data
-                Object.keys(data).forEach(key => {
-                    form.setValue(key as any, data[key])
-                })
-                // Clear pending data
-                sessionStorage.removeItem('pendingGoogleDocsUpload')
-                // Skip Drive check since we just completed OAuth
-                setSkipDriveCheck(true)
-                setDriveConnected(true)
-                setCheckingDrive(false)
-                // Set flag to auto-upload
-                setShouldAutoUpload(true)
-                toast.info('Conexión exitosa. Subiendo documento...')
-            } catch (error) {
-                console.error('Error restoring form data:', error)
-                sessionStorage.removeItem('pendingGoogleDocsUpload')
-            }
-        }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [])
 
     // Helper function to create the document structure
     const createDocumentStructure = (data: FormValues) => {
@@ -666,29 +629,6 @@ export function JuicioAlimentosForm() {
         toast.success('Formulario auto-completado')
     }
 
-    const connectDrive = async () => {
-        try {
-            toast.info('Conectando con Google Drive...')
-
-            // Store return URL in sessionStorage
-            sessionStorage.setItem('googleOAuthReturnUrl', window.location.pathname)
-
-            const connectResponse = await fetch('/api/google/connect?feature=drive')
-            const connectData = await connectResponse.json()
-
-            if (!connectResponse.ok) {
-                toast.error('Error al iniciar la conexión con Google')
-                return
-            }
-
-            // Redirect to Google OAuth
-            window.location.href = connectData.url
-        } catch (error) {
-            console.error('Error connecting Drive:', error)
-            toast.error('Error al conectar con Google Drive')
-        }
-    }
-
     const openInGoogleDocs = async () => {
         setIsGenerating(true)
 
@@ -705,11 +645,6 @@ export function JuicioAlimentosForm() {
                 setIsGenerating(false)
                 newWindow?.close()
                 return
-            }
-
-            // Reset skip flag if it was set
-            if (skipDriveCheck) {
-                setSkipDriveCheck(false)
             }
 
             // User is connected - proceed with upload
@@ -753,18 +688,8 @@ export function JuicioAlimentosForm() {
             toast.error('Error al abrir en Google Docs')
         } finally {
             setIsGenerating(false)
-            setShouldAutoUpload(false)
-            setSkipDriveCheck(false)
         }
     }
-
-    // Auto-trigger upload after OAuth return
-    useEffect(() => {
-        if (shouldAutoUpload && !isGenerating) {
-            openInGoogleDocs()
-        }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [shouldAutoUpload])
 
     return (
         <div className="flex gap-6 h-full">
@@ -909,10 +834,10 @@ export function JuicioAlimentosForm() {
                         </div>
 
                         <div className="flex gap-3 pt-4">
-                            {!driveConnected && !checkingDrive ? (
+                            {!googleConnected && !checkingGoogle ? (
                                 <div className="flex flex-col gap-2 w-full">
                                     <Button
-                                        onClick={connectDrive}
+                                        onClick={() => window.location.href = '/dashboard/settings'}
                                         variant="outline"
                                         className="cursor-pointer"
                                     >
@@ -921,17 +846,17 @@ export function JuicioAlimentosForm() {
                                             <path d="M14 2V8H20" fill="#A1C2FA"/>
                                             <path d="M16 13H8M16 17H8M10 9H8" stroke="white" strokeWidth="2" strokeLinecap="round"/>
                                         </svg>
-                                        Conectar Google Drive
+                                        Conectar Google en Configuración
                                     </Button>
                                     <p className="text-xs text-muted-foreground text-center">
-                                        Conecta Google Drive para subir documentos directamente
+                                        Ve a Configuración para conectar Google y subir documentos
                                     </p>
                                 </div>
                             ) : (
                                 <Button
                                     onClick={openInGoogleDocs}
                                     variant="outline"
-                                    disabled={isGenerating || checkingDrive || !driveConnected}
+                                    disabled={isGenerating || checkingGoogle || !googleConnected}
                                     className="cursor-pointer"
                                 >
                                     {isGenerating ? (
