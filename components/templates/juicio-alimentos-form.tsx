@@ -638,15 +638,15 @@ export function JuicioAlimentosForm() {
                 return
             }
 
-            // Check if user has Google Calendar connected
-            const checkResponse = await fetch('/api/google-calendar/status')
+            // Check if user has Google Drive connected
+            const checkResponse = await fetch('/api/google/drive-status')
             const checkData = await checkResponse.json()
 
-            if (!checkData.connected) {
-                // User not connected - initiate OAuth flow
+            if (!checkData.connected || !checkData.scope_valid) {
+                // User not connected or needs re-authorization - initiate OAuth flow
                 toast.info('Conectando con Google Drive...')
 
-                const connectResponse = await fetch('/api/google-calendar/connect')
+                const connectResponse = await fetch('/api/google/connect?feature=drive')
                 const connectData = await connectResponse.json()
 
                 if (!connectResponse.ok) {
