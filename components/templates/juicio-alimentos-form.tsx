@@ -39,6 +39,7 @@ type FormValues = z.infer<typeof formSchema>
 export function JuicioAlimentosForm() {
     const [isGenerating, setIsGenerating] = useState(false)
     const [shouldAutoUpload, setShouldAutoUpload] = useState(false)
+    const [skipDriveCheck, setSkipDriveCheck] = useState(false)
 
     const form = useForm<FormValues>({
         resolver: zodResolver(formSchema),
@@ -82,6 +83,8 @@ export function JuicioAlimentosForm() {
                 })
                 // Clear pending data
                 sessionStorage.removeItem('pendingGoogleDocsUpload')
+                // Skip Drive check since we just completed OAuth
+                setSkipDriveCheck(true)
                 // Set flag to auto-upload
                 setShouldAutoUpload(true)
                 toast.info('Conexión exitosa. Subiendo documento...')
@@ -638,30 +641,35 @@ export function JuicioAlimentosForm() {
                 return
             }
 
-            // Check if user has Google Drive connected
-            const checkResponse = await fetch('/api/google/drive-status')
-            const checkData = await checkResponse.json()
+            // Check if user has Google Drive connected (skip if just returned from OAuth)
+            if (!skipDriveCheck) {
+                const checkResponse = await fetch('/api/google/drive-status')
+                const checkData = await checkResponse.json()
 
-            if (!checkData.connected || !checkData.scope_valid) {
-                // User not connected or needs re-authorization - initiate OAuth flow
-                toast.info('Conectando con Google Drive...')
+                if (!checkData.connected || !checkData.scope_valid) {
+                    // User not connected or needs re-authorization - initiate OAuth flow
+                    toast.info('Conectando con Google Drive...')
 
-                // Store form data and return URL in sessionStorage to restore after OAuth
-                sessionStorage.setItem('pendingGoogleDocsUpload', JSON.stringify(data))
-                sessionStorage.setItem('googleOAuthReturnUrl', window.location.pathname)
+                    // Store form data and return URL in sessionStorage to restore after OAuth
+                    sessionStorage.setItem('pendingGoogleDocsUpload', JSON.stringify(data))
+                    sessionStorage.setItem('googleOAuthReturnUrl', window.location.pathname)
 
-                const connectResponse = await fetch('/api/google/connect?feature=drive')
-                const connectData = await connectResponse.json()
+                    const connectResponse = await fetch('/api/google/connect?feature=drive')
+                    const connectData = await connectResponse.json()
 
-                if (!connectResponse.ok) {
-                    toast.error('Error al iniciar la conexión con Google')
-                    setIsGenerating(false)
+                    if (!connectResponse.ok) {
+                        toast.error('Error al iniciar la conexión con Google')
+                        setIsGenerating(false)
+                        return
+                    }
+
+                    // Redirect to Google OAuth
+                    window.location.href = connectData.url
                     return
                 }
-
-                // Redirect to Google OAuth
-                window.location.href = connectData.url
-                return
+            } else {
+                // Reset flag after using it
+                setSkipDriveCheck(false)
             }
 
             // User is connected - proceed with upload
@@ -704,6 +712,7 @@ export function JuicioAlimentosForm() {
         } finally {
             setIsGenerating(false)
             setShouldAutoUpload(false)
+            setSkipDriveCheck(false)
         }
     }
 
