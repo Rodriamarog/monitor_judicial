@@ -901,7 +901,7 @@ export function JuicioAlimentosForm() {
             </Card>
 
             {/* Preview Section - Right Side */}
-            <Card className="flex-1 flex flex-col h-full">
+            <Card className="flex-1 flex flex-col h-full bg-white dark:bg-white">
                 <CardContent className="flex-1 overflow-y-auto p-6">
                     <LivePreview data={watchedValues as FormValues} />
                 </CardContent>
