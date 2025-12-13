@@ -14,6 +14,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Menu,
+  BookOpen,
 } from 'lucide-react'
 import { SubscriptionButton } from '@/components/subscription-button'
 import { SignOutButton } from '@/components/sign-out-button'
@@ -33,6 +34,7 @@ const navItems = [
   { href: '/dashboard/calendar', label: 'Calendario', icon: Calendar },
   { href: '/dashboard/proyectos', label: 'Proyectos', icon: Kanban },
   { href: '/dashboard/machotes', label: 'Machotes', icon: FileText },
+  { href: '/dashboard/tesis', label: 'Buscador de Tesis', icon: BookOpen },
   { href: '/dashboard/settings', label: 'Configuración', icon: Settings },
 ]
 
