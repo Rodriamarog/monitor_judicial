@@ -295,7 +295,7 @@ export default function CalendarPage() {
   }
 
   return (
-    <div className="h-[calc(100vh-5rem)] flex flex-col">
+    <div className="h-full flex flex-col">
       {/* Calendar - Full Height */}
       <div className="flex-1 p-6">
         <style jsx global>{`

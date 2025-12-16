@@ -70,9 +70,10 @@ export default function BuscadorTesisPage() {
   const [totalCount, setTotalCount] = useState(0)
   const [pageInput, setPageInput] = useState('')
 
-  // Load filter options on mount
+  // Load filter options and initial results on mount
   useEffect(() => {
     loadFilterOptions()
+    performSearch(1) // Load initial results
   }, [])
 
   const loadFilterOptions = async () => {

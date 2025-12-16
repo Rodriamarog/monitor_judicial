@@ -15,6 +15,7 @@ import {
   ChevronRight,
   Menu,
   BookOpen,
+  Sparkles,
 } from 'lucide-react'
 import { SubscriptionButton } from '@/components/subscription-button'
 import { SignOutButton } from '@/components/sign-out-button'
@@ -35,6 +36,7 @@ const navItems = [
   { href: '/dashboard/proyectos', label: 'Proyectos', icon: Kanban },
   { href: '/dashboard/machotes', label: 'Machotes', icon: FileText },
   { href: '/dashboard/tesis', label: 'Buscador de Tesis', icon: BookOpen },
+  { href: '/dashboard/ai-assistant', label: 'Asistente Legal IA', icon: Sparkles },
   { href: '/dashboard/settings', label: 'Configuración', icon: Settings },
 ]
 

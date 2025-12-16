@@ -437,22 +437,22 @@ export default function KanbanBoard() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-screen">
+      <div className="flex items-center justify-center min-h-[400px]">
         <Loader2 className="h-8 w-8 animate-spin" />
       </div>
     )
   }
 
   return (
-    <div className="flex flex-col h-screen">
+    <div className="flex flex-col h-full">
       {/* Board */}
-      <div className="flex-1 overflow-x-auto px-6 pt-0 pb-12">
+      <div className="flex-1 overflow-x-auto">
         <DragDropContext onDragEnd={onDragEnd}>
           <div className="flex gap-4 h-full relative">
             {columns.map((column) => (
               <div key={column.id} className="flex flex-col w-80 min-w-80 bg-secondary/50 rounded-lg">
                 {/* Column Header */}
-                <div className="flex items-center justify-between p-3 border-b border-border">
+                <div className="flex items-center justify-between p-2 border-b border-border">
                   <div className="flex items-center gap-2 flex-1">
                     {editingColumnId === column.id ? (
                       <Input
@@ -504,7 +504,7 @@ export default function KanbanBoard() {
                     <div
                       ref={provided.innerRef}
                       {...provided.droppableProps}
-                      className={`flex-1 p-2 space-y-2 overflow-y-auto transition-colors ${
+                      className={`flex-1 p-1 space-y-1 overflow-y-auto transition-colors ${
                         snapshot.isDraggingOver ? "bg-muted/50" : ""
                       }`}
                     >
@@ -527,7 +527,7 @@ export default function KanbanBoard() {
                 </Droppable>
 
                 {/* Add Task Button */}
-                <div className="p-2 border-t border-border">
+                <div className="p-1 border-t border-border">
                   <Button
                     variant="ghost"
                     className="w-full justify-start text-muted-foreground hover:text-foreground"
