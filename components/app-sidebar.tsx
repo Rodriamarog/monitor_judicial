@@ -22,7 +22,7 @@ import {
 } from "lucide-react"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { SignOutButton } from "@/components/sign-out-button"
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
+import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "@/components/ui/sheet"
 import { Button } from "@/components/ui/button"
 
 interface NavItem {
@@ -163,6 +163,7 @@ export function AppSidebar({ email, tier, hasStripeCustomer }: AppSidebarProps) 
             </Button>
           </SheetTrigger>
           <SheetContent side="left" className="p-0 w-[280px]">
+            <SheetTitle className="sr-only">Menú de navegación</SheetTitle>
             <SidebarContent />
           </SheetContent>
         </Sheet>
