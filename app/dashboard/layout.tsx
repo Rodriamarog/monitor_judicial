@@ -1,6 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
-import { Sidebar } from '@/components/sidebar'
+import { AppSidebar } from '@/components/app-sidebar'
 import { DashboardMain } from '@/components/dashboard-main'
 
 export default async function DashboardLayout({
@@ -27,13 +27,12 @@ export default async function DashboardLayout({
 
   return (
     <div className="flex h-screen bg-background overflow-hidden">
-      <Sidebar
+      <AppSidebar
         email={profile?.email || user.email || ''}
         tier={profile?.subscription_tier || 'free'}
         hasStripeCustomer={!!profile?.stripe_customer_id}
       />
 
-      {/* Main Content */}
       {/* Main Content */}
       <DashboardMain>
         {children}

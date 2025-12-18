@@ -1,105 +1,47 @@
 @import "tailwindcss";
 @import "tw-animate-css";
-@import "react-big-calendar/lib/css/react-big-calendar.css";
 
-@custom-variant dark (&:is(.dark *));
-
-@layer base {
-  :root {
-    /* Slate Modern Theme - Light Mode */
-    --background: oklch(0.99 0.002 240);
-    --foreground: oklch(0.2 0.01 240);
-    --card: oklch(1 0 0);
-    --card-foreground: oklch(0.2 0.01 240);
-    --popover: oklch(1 0 0);
-    --popover-foreground: oklch(0.2 0.01 240);
-    --primary: oklch(0.34 0.015 240);
-    --primary-foreground: oklch(0.99 0.002 240);
-    --secondary: oklch(0.96 0.003 240);
-    --secondary-foreground: oklch(0.34 0.015 240);
-    --muted: oklch(0.96 0.003 240);
-    --muted-foreground: oklch(0.55 0.015 240);
-    --accent: oklch(0.91 0.005 240);
-    --accent-foreground: oklch(0.34 0.015 240);
-    --destructive: oklch(0.577 0.245 27.325);
-    --destructive-foreground: oklch(0.99 0.002 240);
-    --border: oklch(0.91 0.005 240);
-    --input: oklch(0.91 0.005 240);
-    --ring: oklch(0.45 0.015 240);
-    --chart-1: oklch(0.55 0.12 240);
-    --chart-2: oklch(0.61 0.10 240);
-    --chart-3: oklch(0.71 0.08 240);
-    --chart-4: oklch(0.81 0.06 240);
-    --chart-5: oklch(0.91 0.04 240);
-    --radius: 0.5rem;
-    --sidebar: oklch(0.99 0.002 240);
-    --sidebar-foreground: oklch(0.2 0.01 240);
-    --sidebar-primary: oklch(0.34 0.015 240);
-    --sidebar-primary-foreground: oklch(0.99 0.002 240);
-    --sidebar-accent: oklch(0.96 0.003 240);
-    --sidebar-accent-foreground: oklch(0.34 0.015 240);
-    --sidebar-border: oklch(0.91 0.005 240);
-    --sidebar-ring: oklch(0.45 0.015 240);
-    --shadow-color: oklch(0.2 0.01 240);
-    --shadow-opacity: 0.08;
-    --shadow-blur: 4px;
-    --shadow-spread: 0px;
-    --shadow-offset-x: 0;
-    --shadow-offset-y: 2px;
-    --letter-spacing: 0em;
-    --spacing: 0.25rem;
-  }
-
-  .dark {
-    /* Slate Modern Theme - Dark Mode */
-    --background: oklch(0.15 0.008 240);
-    --foreground: oklch(0.96 0.003 240);
-    --card: oklch(0.2 0.01 240);
-    --card-foreground: oklch(0.96 0.003 240);
-    --popover: oklch(0.2 0.01 240);
-    --popover-foreground: oklch(0.96 0.003 240);
-    --primary: oklch(0.81 0.008 240);
-    --primary-foreground: oklch(0.2 0.01 240);
-    --secondary: oklch(0.25 0.01 240);
-    --secondary-foreground: oklch(0.96 0.003 240);
-    --muted: oklch(0.25 0.01 240);
-    --muted-foreground: oklch(0.61 0.015 240);
-    --accent: oklch(0.34 0.015 240);
-    --accent-foreground: oklch(0.96 0.003 240);
-    --destructive: oklch(0.704 0.191 22.216);
-    --destructive-foreground: oklch(0.96 0.003 240);
-    --border: oklch(0.3 0.012 240);
-    --input: oklch(0.34 0.015 240);
-    --ring: oklch(0.55 0.015 240);
-    --chart-1: oklch(0.55 0.12 240);
-    --chart-2: oklch(0.61 0.10 240);
-    --chart-3: oklch(0.71 0.08 240);
-    --chart-4: oklch(0.81 0.06 240);
-    --chart-5: oklch(0.91 0.04 240);
-    --radius: 0.5rem;
-    --sidebar: oklch(0.2 0.01 240);
-    --sidebar-foreground: oklch(0.96 0.003 240);
-    --sidebar-primary: oklch(0.81 0.008 240);
-    --sidebar-primary-foreground: oklch(0.2 0.01 240);
-    --sidebar-accent: oklch(0.25 0.01 240);
-    --sidebar-accent-foreground: oklch(0.96 0.003 240);
-    --sidebar-border: oklch(0.3 0.012 240);
-    --sidebar-ring: oklch(0.55 0.015 240);
-    --shadow-color: oklch(0 0 0);
-    --shadow-opacity: 0.2;
-    --shadow-blur: 6px;
-    --shadow-spread: 0px;
-    --shadow-offset-x: 0;
-    --shadow-offset-y: 2px;
-    --letter-spacing: 0em;
-    --spacing: 0.25rem;
-  }
-  body {
-    letter-spacing: var(--tracking-normal);
-  }
+/* Amber Minimal theme from shadcn - light mode only */
+:root {
+  --background: oklch(0.985 0.001 85);
+  --foreground: oklch(0.145 0.004 49);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.145 0.004 49);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.145 0.004 49);
+  --primary: oklch(0.769 0.188 70.08);
+  --primary-foreground: oklch(0.145 0.004 49);
+  --secondary: oklch(0.965 0.001 85);
+  --secondary-foreground: oklch(0.145 0.004 49);
+  --muted: oklch(0.965 0.001 85);
+  --muted-foreground: oklch(0.45 0.016 49);
+  --accent: oklch(0.965 0.001 85);
+  --accent-foreground: oklch(0.145 0.004 49);
+  --destructive: oklch(0.577 0.245 27.325);
+  --destructive-foreground: oklch(0.985 0 0);
+  --border: oklch(0.91 0.004 85);
+  --input: oklch(0.91 0.004 85);
+  --ring: oklch(0.769 0.188 70.08);
+  --chart-1: oklch(0.769 0.188 70.08);
+  --chart-2: oklch(0.666 0.179 58);
+  --chart-3: oklch(0.553 0.195 38);
+  --chart-4: oklch(0.828 0.189 84.429);
+  --chart-5: oklch(0.901 0.153 98);
+  --radius: 0.625rem;
+  --sidebar: oklch(0.985 0.001 85);
+  --sidebar-foreground: oklch(0.145 0.004 49);
+  --sidebar-primary: oklch(0.769 0.188 70.08);
+  --sidebar-primary-foreground: oklch(0.145 0.004 49);
+  --sidebar-accent: oklch(0.955 0.014 85);
+  --sidebar-accent-foreground: oklch(0.145 0.004 49);
+  --sidebar-border: oklch(0.91 0.004 85);
+  --sidebar-ring: oklch(0.769 0.188 70.08);
+  --sidebar-muted: oklch(0.45 0.016 49);
 }
 
 @theme inline {
+  --font-sans: "Geist", "Geist Fallback";
+  --font-mono: "Geist Mono", "Geist Mono Fallback";
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -119,169 +61,24 @@
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
-  --font-sans: Inter, sans-serif;
-  --font-mono: JetBrains Mono, monospace;
-  --font-serif: Source Serif 4, serif;
-  --radius: 0.375rem;
-  --tracking-tighter: calc(var(--tracking-normal) - 0.05em);
-  --tracking-tight: calc(var(--tracking-normal) - 0.025em);
-  --tracking-wide: calc(var(--tracking-normal) + 0.025em);
-  --tracking-wider: calc(var(--tracking-normal) + 0.05em);
-  --tracking-widest: calc(var(--tracking-normal) + 0.1em);
-  --tracking-normal: var(--tracking-normal);
-  --shadow-2xl: var(--shadow-2xl);
-  --shadow-xl: var(--shadow-xl);
-  --shadow-lg: var(--shadow-lg);
-  --shadow-md: var(--shadow-md);
-  --shadow: var(--shadow);
-  --shadow-sm: var(--shadow-sm);
-  --shadow-xs: var(--shadow-xs);
-  --shadow-2xs: var(--shadow-2xs);
-  --spacing: var(--spacing);
-  --letter-spacing: var(--letter-spacing);
-  --shadow-offset-y: var(--shadow-offset-y);
-  --shadow-offset-x: var(--shadow-offset-x);
-  --shadow-spread: var(--shadow-spread);
-  --shadow-blur: var(--shadow-blur);
-  --shadow-opacity: var(--shadow-opacity);
-  --color-shadow-color: var(--shadow-color);
-  --color-sidebar-ring: var(--sidebar-ring);
-  --color-sidebar-border: var(--sidebar-border);
-  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
-  --color-sidebar-accent: var(--sidebar-accent);
-  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
-  --color-sidebar-primary: var(--sidebar-primary);
-  --color-sidebar-foreground: var(--sidebar-foreground);
-  --color-sidebar: var(--sidebar);
-  --color-chart-5: var(--chart-5);
-  --color-chart-4: var(--chart-4);
-  --color-chart-3: var(--chart-3);
-  --color-chart-2: var(--chart-2);
   --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
-}
-
-@layer base {
-  * {
-    @apply border-border;
-  }
-  body {
-    @apply bg-background text-foreground;
-  }
-}
-
-:root {
-  --background: oklch(1.0000 0 0);
-  --foreground: oklch(0.2686 0 0);
-  --card: oklch(1.0000 0 0);
-  --card-foreground: oklch(0.2686 0 0);
-  --popover: oklch(1.0000 0 0);
-  --popover-foreground: oklch(0.2686 0 0);
-  --primary: oklch(0.7686 0.1647 70.0804);
-  --primary-foreground: oklch(0 0 0);
-  --secondary: oklch(0.9670 0.0029 264.5419);
-  --secondary-foreground: oklch(0.4461 0.0263 256.8018);
-  --muted: oklch(0.9846 0.0017 247.8389);
-  --muted-foreground: oklch(0.5510 0.0234 264.3637);
-  --accent: oklch(0.9869 0.0214 95.2774);
-  --accent-foreground: oklch(0.4732 0.1247 46.2007);
-  --destructive: oklch(0.6368 0.2078 25.3313);
-  --destructive-foreground: oklch(1.0000 0 0);
-  --border: oklch(0.9276 0.0058 264.5313);
-  --input: oklch(0.9276 0.0058 264.5313);
-  --ring: oklch(0.7686 0.1647 70.0804);
-  --chart-1: oklch(0.7686 0.1647 70.0804);
-  --chart-2: oklch(0.6658 0.1574 58.3183);
-  --chart-3: oklch(0.5553 0.1455 48.9975);
-  --chart-4: oklch(0.4732 0.1247 46.2007);
-  --chart-5: oklch(0.4137 0.1054 45.9038);
-  --radius: 0.375rem;
-  --sidebar: oklch(0.9846 0.0017 247.8389);
-  --sidebar-foreground: oklch(0.2686 0 0);
-  --sidebar-primary: oklch(0.7686 0.1647 70.0804);
-  --sidebar-primary-foreground: oklch(1.0000 0 0);
-  --sidebar-accent: oklch(0.9869 0.0214 95.2774);
-  --sidebar-accent-foreground: oklch(0.4732 0.1247 46.2007);
-  --sidebar-border: oklch(0.9276 0.0058 264.5313);
-  --sidebar-ring: oklch(0.7686 0.1647 70.0804);
-  --font-sans: Inter, sans-serif;
-  --font-serif: Source Serif 4, serif;
-  --font-mono: JetBrains Mono, monospace;
-  --shadow-color: hsl(0 0% 0%);
-  --shadow-opacity: 0.1;
-  --shadow-blur: 8px;
-  --shadow-spread: -1px;
-  --shadow-offset-x: 0px;
-  --shadow-offset-y: 4px;
-  --letter-spacing: 0em;
-  --spacing: 0.25rem;
-  --shadow-2xs: 0px 4px 8px -1px hsl(0 0% 0% / 0.05);
-  --shadow-xs: 0px 4px 8px -1px hsl(0 0% 0% / 0.05);
-  --shadow-sm: 0px 4px 8px -1px hsl(0 0% 0% / 0.10), 0px 1px 2px -2px hsl(0 0% 0% / 0.10);
-  --shadow: 0px 4px 8px -1px hsl(0 0% 0% / 0.10), 0px 1px 2px -2px hsl(0 0% 0% / 0.10);
-  --shadow-md: 0px 4px 8px -1px hsl(0 0% 0% / 0.10), 0px 2px 4px -2px hsl(0 0% 0% / 0.10);
-  --shadow-lg: 0px 4px 8px -1px hsl(0 0% 0% / 0.10), 0px 4px 6px -2px hsl(0 0% 0% / 0.10);
-  --shadow-xl: 0px 4px 8px -1px hsl(0 0% 0% / 0.10), 0px 8px 10px -2px hsl(0 0% 0% / 0.10);
-  --shadow-2xl: 0px 4px 8px -1px hsl(0 0% 0% / 0.25);
-  --tracking-normal: 0em;
-}
-
-.dark {
-  --background: oklch(0.2046 0 0);
-  --foreground: oklch(0.9219 0 0);
-  --card: oklch(0.2686 0 0);
-  --card-foreground: oklch(0.9219 0 0);
-  --popover: oklch(0.2686 0 0);
-  --popover-foreground: oklch(0.9219 0 0);
-  --primary: oklch(0.7686 0.1647 70.0804);
-  --primary-foreground: oklch(0 0 0);
-  --secondary: oklch(0.2686 0 0);
-  --secondary-foreground: oklch(0.9219 0 0);
-  --muted: oklch(0.2393 0 0);
-  --muted-foreground: oklch(0.7155 0 0);
-  --accent: oklch(0.4732 0.1247 46.2007);
-  --accent-foreground: oklch(0.9243 0.1151 95.7459);
-  --destructive: oklch(0.6368 0.2078 25.3313);
-  --destructive-foreground: oklch(1.0000 0 0);
-  --border: oklch(0.3715 0 0);
-  --input: oklch(0.3715 0 0);
-  --ring: oklch(0.7686 0.1647 70.0804);
-  --chart-1: oklch(0.8369 0.1644 84.4286);
-  --chart-2: oklch(0.6658 0.1574 58.3183);
-  --chart-3: oklch(0.4732 0.1247 46.2007);
-  --chart-4: oklch(0.5553 0.1455 48.9975);
-  --chart-5: oklch(0.4732 0.1247 46.2007);
-  --radius: 0.375rem;
-  --sidebar: oklch(0.1684 0 0);
-  --sidebar-foreground: oklch(0.9219 0 0);
-  --sidebar-primary: oklch(0.7686 0.1647 70.0804);
-  --sidebar-primary-foreground: oklch(1.0000 0 0);
-  --sidebar-accent: oklch(0.4732 0.1247 46.2007);
-  --sidebar-accent-foreground: oklch(0.9243 0.1151 95.7459);
-  --sidebar-border: oklch(0.3715 0 0);
-  --sidebar-ring: oklch(0.7686 0.1647 70.0804);
-  --font-sans: Inter, sans-serif;
-  --font-serif: Source Serif 4, serif;
-  --font-mono: JetBrains Mono, monospace;
-  --shadow-color: hsl(0 0% 0%);
-  --shadow-opacity: 0.1;
-  --shadow-blur: 8px;
-  --shadow-spread: -1px;
-  --shadow-offset-x: 0px;
-  --shadow-offset-y: 4px;
-  --letter-spacing: 0em;
-  --spacing: 0.25rem;
-  --shadow-2xs: 0px 4px 8px -1px hsl(0 0% 0% / 0.05);
-  --shadow-xs: 0px 4px 8px -1px hsl(0 0% 0% / 0.05);
-  --shadow-sm: 0px 4px 8px -1px hsl(0 0% 0% / 0.10), 0px 1px 2px -2px hsl(0 0% 0% / 0.10);
-  --shadow: 0px 4px 8px -1px hsl(0 0% 0% / 0.10), 0px 1px 2px -2px hsl(0 0% 0% / 0.10);
-  --shadow-md: 0px 4px 8px -1px hsl(0 0% 0% / 0.10), 0px 2px 4px -2px hsl(0 0% 0% / 0.10);
-  --shadow-lg: 0px 4px 8px -1px hsl(0 0% 0% / 0.10), 0px 4px 6px -2px hsl(0 0% 0% / 0.10);
-  --shadow-xl: 0px 4px 8px -1px hsl(0 0% 0% / 0.10), 0px 8px 10px -2px hsl(0 0% 0% / 0.10);
-  --shadow-2xl: 0px 4px 8px -1px hsl(0 0% 0% / 0.25);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-muted: var(--sidebar-muted);
 }
 
 @layer base {
@@ -291,296 +88,4 @@
   body {
     @apply bg-background text-foreground;
   }
-}
-
-/* Neumorphic Design Utilities */
-@layer components {
-  .neuro-raised {
-    background: hsl(var(--background));
-    box-shadow:
-      8px 8px 16px rgba(163, 177, 198, 0.6),
-      -8px -8px 16px rgba(255, 255, 255, 0.5);
-  }
-
-  .neuro-pressed {
-    background: hsl(var(--background));
-    box-shadow:
-      inset 8px 8px 16px rgba(163, 177, 198, 0.6),
-      inset -8px -8px 16px rgba(255, 255, 255, 0.5);
-  }
-
-  .neuro-flat {
-    background: hsl(var(--background));
-    box-shadow:
-      4px 4px 8px rgba(163, 177, 198, 0.4),
-      -4px -4px 8px rgba(255, 255, 255, 0.4);
-  }
-
-  .dark .neuro-raised {
-    box-shadow:
-      8px 8px 16px rgba(0, 0, 0, 0.4),
-      -8px -8px 16px rgba(255, 255, 255, 0.05);
-  }
-
-  .dark .neuro-pressed {
-    box-shadow:
-      inset 8px 8px 16px rgba(0, 0, 0, 0.4),
-      inset -8px -8px 16px rgba(255, 255, 255, 0.05);
-  }
-
-  .dark .neuro-flat {
-    box-shadow:
-      4px 4px 8px rgba(0, 0, 0, 0.3),
-      -4px -4px 8px rgba(255, 255, 255, 0.03);
-  }
-
-  /* Neumorphic Button Styles */
-  .neuro-btn {
-    background: hsl(var(--background));
-    box-shadow:
-      8px 8px 16px rgba(163, 177, 198, 0.6),
-      -8px -8px 16px rgba(255, 255, 255, 0.5);
-    border-radius: 1rem;
-    padding: 0.75rem 1.5rem;
-    font-weight: 500;
-    transition-property: all;
-    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
-    transition-duration: 200ms;
-  }
-
-  .neuro-btn:hover {
-    box-shadow:
-      12px 12px 20px rgba(163, 177, 198, 0.7),
-      -12px -12px 20px rgba(255, 255, 255, 0.6);
-  }
-
-  .neuro-btn:active {
-    background: hsl(var(--background));
-    box-shadow:
-      inset 8px 8px 16px rgba(163, 177, 198, 0.6),
-      inset -8px -8px 16px rgba(255, 255, 255, 0.5);
-  }
-
-  .dark .neuro-btn {
-    box-shadow:
-      8px 8px 16px rgba(0, 0, 0, 0.4),
-      -8px -8px 16px rgba(255, 255, 255, 0.05);
-  }
-
-  .dark .neuro-btn:hover {
-    box-shadow:
-      12px 12px 20px rgba(0, 0, 0, 0.5),
-      -12px -12px 20px rgba(255, 255, 255, 0.08);
-  }
-
-  .dark .neuro-btn:active {
-    box-shadow:
-      inset 8px 8px 16px rgba(0, 0, 0, 0.4),
-      inset -8px -8px 16px rgba(255, 255, 255, 0.05);
-  }
-
-  /* Neumorphic Card Styles */
-  .neuro-card {
-    background: hsl(var(--background));
-    box-shadow:
-      8px 8px 16px rgba(163, 177, 198, 0.6),
-      -8px -8px 16px rgba(255, 255, 255, 0.5);
-    border-radius: 1.5rem;
-    padding: 1.5rem;
-    transition-property: all;
-    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
-    transition-duration: 300ms;
-  }
-
-  .neuro-card:hover {
-    box-shadow:
-      10px 10px 18px rgba(163, 177, 198, 0.65),
-      -10px -10px 18px rgba(255, 255, 255, 0.55);
-  }
-
-  .dark .neuro-card {
-    box-shadow:
-      8px 8px 16px rgba(0, 0, 0, 0.4),
-      -8px -8px 16px rgba(255, 255, 255, 0.05);
-  }
-
-  .dark .neuro-card:hover {
-    box-shadow:
-      10px 10px 18px rgba(0, 0, 0, 0.45),
-      -10px -10px 18px rgba(255, 255, 255, 0.06);
-  }
-
-  /* Neumorphic Input Styles */
-  .neuro-input {
-    background: transparent;
-    box-shadow:
-      inset 8px 8px 16px rgba(163, 177, 198, 0.6),
-      inset -8px -8px 16px rgba(255, 255, 255, 0.5);
-    border-radius: 0.75rem;
-    padding: 0.75rem 1rem;
-    outline: none;
-    transition-property: all;
-    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
-    transition-duration: 200ms;
-  }
-
-  .neuro-input:focus {
-    box-shadow:
-      inset 6px 6px 12px rgba(163, 177, 198, 0.5),
-      inset -6px -6px 12px rgba(255, 255, 255, 0.4);
-  }
-
-  .dark .neuro-input {
-    box-shadow:
-      inset 8px 8px 16px rgba(0, 0, 0, 0.4),
-      inset -8px -8px 16px rgba(255, 255, 255, 0.05);
-  }
-
-  .dark .neuro-input:focus {
-    box-shadow:
-      inset 6px 6px 12px rgba(0, 0, 0, 0.35),
-      inset -6px -6px 12px rgba(255, 255, 255, 0.04);
-  }
-}
-
-/* React Big Calendar Dark Mode Customization */
-/* Using higher specificity and !important to override default styles */
-
-/* Dark mode calendar background */
-.dark .rbc-calendar {
-  background-color: hsl(var(--card)) !important;
-  color: hsl(var(--card-foreground)) !important;
-}
-
-/* Dark mode calendar header */
-.dark .rbc-header {
-  background-color: hsl(var(--muted)) !important;
-  color: hsl(var(--muted-foreground)) !important;
-  border-color: hsl(var(--border)) !important;
-}
-
-/* Dark mode month view - off-range dates (previous/next month) - CRITICAL FIX */
-.dark .rbc-off-range {
-  color: rgba(156, 163, 175, 0.25) !important; /* Very dim text */
-}
-
-.dark .rbc-off-range-bg {
-  background-color: rgba(0, 0, 0, 0.4) !important; /* Much darker than current month */
-}
-
-
-/* Dark mode selected cell */
-.dark .rbc-selected-cell {
-  background-color: hsl(var(--accent) / 0.25) !important;
-}
-
-/* Dark mode date cell */
-.dark .rbc-date-cell {
-  color: hsl(var(--foreground)) !important;
-}
-
-/* Dark mode current month dates */
-.dark .rbc-day-bg:not(.rbc-off-range-bg) {
-  background-color: hsl(var(--card)) !important;
-  border-color: hsl(var(--border)) !important;
-}
-
-/* Dark mode event */
-.dark .rbc-event {
-  background-color: hsl(var(--primary)) !important;
-  color: hsl(var(--primary-foreground)) !important;
-  border-color: hsl(var(--primary)) !important;
-}
-
-.dark .rbc-event:hover {
-  background-color: hsl(var(--primary) / 0.9) !important;
-}
-
-.dark .rbc-event.rbc-selected {
-  background-color: hsl(var(--primary) / 0.8) !important;
-}
-
-/* Dark mode toolbar */
-.dark .rbc-toolbar {
-  color: hsl(var(--foreground)) !important;
-}
-
-.dark .rbc-toolbar button {
-  color: hsl(var(--foreground)) !important;
-  border-color: hsl(var(--border)) !important;
-}
-
-.dark .rbc-toolbar button:hover,
-.dark .rbc-toolbar button:focus {
-  background-color: hsl(var(--accent)) !important;
-  color: hsl(var(--accent-foreground)) !important;
-}
-
-.dark .rbc-toolbar button.rbc-active {
-  background-color: hsl(var(--primary)) !important;
-  color: hsl(var(--primary-foreground)) !important;
-  border-color: hsl(var(--primary)) !important;
-}
-
-/* Dark mode time grid */
-.dark .rbc-time-slot {
-  border-color: hsl(var(--border)) !important;
-}
-
-.dark .rbc-time-content {
-  border-color: hsl(var(--border)) !important;
-}
-
-.dark .rbc-current-time-indicator {
-  background-color: hsl(var(--destructive)) !important;
-}
-
-/* Dark mode agenda view */
-.dark .rbc-agenda-view {
-  background-color: hsl(var(--card)) !important;
-}
-
-.dark .rbc-agenda-date-cell,
-.dark .rbc-agenda-time-cell {
-  background-color: hsl(var(--muted)) !important;
-  color: hsl(var(--muted-foreground)) !important;
-  border-color: hsl(var(--border)) !important;
-}
-
-.dark .rbc-agenda-event-cell {
-  color: hsl(var(--card-foreground)) !important;
-  border-color: hsl(var(--border)) !important;
-}
-
-/* Dark mode month view borders */
-.dark .rbc-month-view {
-  border-color: hsl(var(--border)) !important;
-}
-
-.dark .rbc-month-row {
-  border-color: hsl(var(--border)) !important;
-}
-
-/* Hover state for calendar cells - Dark Mode */
-.dark .rbc-day-bg:hover {
-  background-color: rgba(255, 255, 255, 0.1) !important;
-  cursor: pointer;
-}
-
-/* Hover state for calendar cells - Light Mode */
-.rbc-day-bg:hover {
-  background-color: rgba(0, 0, 0, 0.05) !important;
-  cursor: pointer;
-}
-
-/* Ensure off-range cells also get hover in dark mode */
-.dark .rbc-off-range-bg:hover {
-  background-color: rgba(255, 255, 255, 0.08) !important;
-  cursor: pointer;
-}
-
-/* Off-range cells hover in light mode */
-.rbc-off-range-bg:hover {
-  background-color: rgba(0, 0, 0, 0.08) !important;
-  cursor: pointer;
 }

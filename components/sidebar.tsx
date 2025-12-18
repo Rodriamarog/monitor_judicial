@@ -58,7 +58,7 @@ export function Sidebar({ email, tier, hasStripeCustomer }: SidebarProps) {
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 py-4">
+      <nav className="flex-1 py-4 px-2 space-y-1">
         {navItems.map((item) => {
           const Icon = item.icon
           const isActive = pathname === item.href
@@ -67,9 +67,9 @@ export function Sidebar({ email, tier, hasStripeCustomer }: SidebarProps) {
               <Button
                 variant="ghost"
                 className={cn(
-                  'w-full justify-start gap-3 transition-colors rounded-none relative cursor-pointer',
-                  isActive && 'bg-primary/10 border-l-4 border-l-primary text-foreground hover:bg-primary/15 font-semibold',
-                  !isActive && 'hover:bg-primary/5',
+                  'w-full justify-start gap-3 transition-colors',
+                  isActive && 'bg-muted text-foreground hover:bg-muted',
+                  !isActive && 'hover:bg-accent/50',
                   isCollapsed && 'justify-center'
                 )}
                 onClick={() => setIsMobileOpen(false)}
