@@ -8,6 +8,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { ScrollArea } from '@/components/ui/scroll-area'
+import { Switch } from '@/components/ui/switch'
+import { Label } from '@/components/ui/label'
 import {
   Sparkles,
   Send,
@@ -38,7 +40,6 @@ interface Source {
 export default function AIAssistantPage() {
   const [conversations, setConversations] = useState<Conversation[]>([])
   const [currentConversationId, setCurrentConversationId] = useState<string | null>(null)
-  const [showFilters, setShowFilters] = useState(false)
   const [selectedMaterias, setSelectedMaterias] = useState<string[]>([])
   const [loadingConversations, setLoadingConversations] = useState(true)
   const [sources, setSources] = useState<Source[]>([])
@@ -176,11 +177,57 @@ export default function AIAssistantPage() {
   }
 
   return (
-    <div className="flex h-[calc(100vh-4rem)] gap-4 p-6">
-      {/* Sidebar - Conversations */}
-      <div className="w-80 flex flex-col gap-4">
+    <div className="h-full p-6">
+      <div className="flex gap-4 h-full">
+        {/* Sidebar - Conversations */}
+        <div className="w-80 flex flex-col gap-4 h-full overflow-hidden">
+        {/* Filters */}
         <Card>
           <CardHeader>
+            <div className="flex items-center justify-between">
+              <CardTitle className="flex items-center gap-2 text-base">
+                <Filter className="w-4 h-4" />
+                Filtrar por Materia
+              </CardTitle>
+              {selectedMaterias.length > 0 && (
+                <Badge variant="default" className="text-xs">
+                  {selectedMaterias.length} activa{selectedMaterias.length !== 1 ? 's' : ''}
+                </Badge>
+              )}
+            </div>
+            <p className="text-xs text-muted-foreground mt-1">
+              Refina los resultados seleccionando materias específicas
+            </p>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {materiaOptions.map((materia) => (
+              <div key={materia} className="flex items-center justify-between space-x-2">
+                <Label htmlFor={`materia-${materia}`} className="text-sm font-normal cursor-pointer flex-1">
+                  {materia}
+                </Label>
+                <Switch
+                  id={`materia-${materia}`}
+                  checked={selectedMaterias.includes(materia)}
+                  onCheckedChange={() => toggleMateria(materia)}
+                />
+              </div>
+            ))}
+            {selectedMaterias.length > 0 && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="w-full mt-2"
+                onClick={() => setSelectedMaterias([])}
+              >
+                <X className="w-3 h-3 mr-1" />
+                Limpiar filtros
+              </Button>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card className="flex-1 flex flex-col min-h-0">
+          <CardHeader className="flex-shrink-0 pb-3">
             <div className="flex items-center justify-between">
               <CardTitle className="flex items-center gap-2">
                 <MessageSquare className="w-5 h-5" />
@@ -191,95 +238,41 @@ export default function AIAssistantPage() {
               </Button>
             </div>
           </CardHeader>
-          <CardContent className="p-0">
-            <ScrollArea className="h-[calc(100vh-16rem)]">
-              {loadingConversations ? (
-                <div className="flex items-center justify-center p-4">
-                  <Loader2 className="w-6 h-6 animate-spin" />
-                </div>
-              ) : conversations.length === 0 ? (
-                <div className="p-4 text-sm text-muted-foreground text-center">
-                  No hay conversaciones
-                </div>
-              ) : (
-                <div className="space-y-2 p-4">
-                  {conversations.map((conv) => (
-                    <button
-                      key={conv.id}
-                      onClick={() => loadConversation(conv.id)}
-                      className={`w-full text-left p-3 rounded-lg transition-colors ${
-                        currentConversationId === conv.id
-                          ? 'bg-primary text-primary-foreground'
-                          : 'hover:bg-muted'
-                      }`}
-                    >
-                      <div className="font-medium text-sm truncate">
-                        {conv.title}
-                      </div>
-                      <div className="text-xs opacity-70 mt-1">
-                        {new Date(conv.updated_at).toLocaleDateString('es-MX')}
-                      </div>
-                    </button>
-                  ))}
-                </div>
-              )}
-            </ScrollArea>
-          </CardContent>
-        </Card>
-
-        {/* Filters */}
-        <Card>
-          <CardHeader>
-            <Button
-              variant="ghost"
-              className="w-full justify-between"
-              onClick={() => setShowFilters(!showFilters)}
-            >
-              <span className="flex items-center gap-2">
-                <Filter className="w-4 h-4" />
-                Filtros RAG
-              </span>
-              {selectedMaterias.length > 0 && (
-                <Badge variant="secondary">{selectedMaterias.length}</Badge>
-              )}
-            </Button>
-          </CardHeader>
-          {showFilters && (
-            <CardContent className="space-y-2">
-              <div className="text-sm font-medium mb-2">Materias</div>
-              <div className="flex flex-wrap gap-2">
-                {materiaOptions.map((materia) => (
-                  <Badge
-                    key={materia}
-                    variant={selectedMaterias.includes(materia) ? 'default' : 'outline'}
-                    className="cursor-pointer"
-                    onClick={() => toggleMateria(materia)}
+          <CardContent className="flex-1 overflow-y-auto p-0">
+            {loadingConversations ? (
+              <div className="flex items-center justify-center p-4">
+                <Loader2 className="w-6 h-6 animate-spin" />
+              </div>
+            ) : conversations.length === 0 ? (
+              <div className="p-4 text-sm text-muted-foreground text-center">
+                No hay conversaciones
+              </div>
+            ) : (
+              <div className="space-y-2 px-4 pt-0 pb-4">
+                {conversations.map((conv) => (
+                  <button
+                    key={conv.id}
+                    onClick={() => loadConversation(conv.id)}
+                    className={`block w-full text-left p-3 rounded-lg transition-colors ${
+                      currentConversationId === conv.id
+                        ? 'bg-primary text-primary-foreground'
+                        : 'hover:bg-muted'
+                    }`}
                   >
-                    {materia}
-                    {selectedMaterias.includes(materia) && (
-                      <X className="w-3 h-3 ml-1" />
-                    )}
-                  </Badge>
+                    <div className="font-medium text-sm truncate">
+                      {conv.title}
+                    </div>
+                  </button>
                 ))}
               </div>
-              {selectedMaterias.length > 0 && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="w-full mt-2"
-                  onClick={() => setSelectedMaterias([])}
-                >
-                  Limpiar filtros
-                </Button>
-              )}
-            </CardContent>
-          )}
+            )}
+          </CardContent>
         </Card>
       </div>
 
       {/* Main Chat Area */}
-      <div className="flex-1 flex flex-col">
-        <Card className="flex-1 flex flex-col">
+      <div className="flex-1 flex flex-col min-w-0 h-full overflow-hidden">
+        <Card className="flex-1 flex flex-col h-full">
           <CardHeader className="border-b">
             <div className="flex items-center gap-2">
               <Sparkles className="w-6 h-6 text-primary" />
@@ -383,16 +376,16 @@ export default function AIAssistantPage() {
 
       {/* Sources Sidebar */}
       {sources.length > 0 && (
-        <div className="w-96">
-          <Card>
-            <CardHeader>
+        <div className="w-96 h-full overflow-hidden">
+          <Card className="h-full flex flex-col">
+            <CardHeader className="flex-shrink-0">
               <CardTitle className="flex items-center gap-2">
                 <BookOpen className="w-5 h-5" />
                 Fuentes Consultadas
               </CardTitle>
             </CardHeader>
-            <CardContent>
-              <ScrollArea className="h-[calc(100vh-12rem)]">
+            <CardContent className="flex-1 overflow-hidden">
+              <ScrollArea className="h-full">
                 <div className="space-y-3">
                   {sources.map((source, i) => (
                     <Link
@@ -429,6 +422,7 @@ export default function AIAssistantPage() {
           </Card>
         </div>
       )}
+      </div>
     </div>
   )
 }

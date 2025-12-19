@@ -64,7 +64,14 @@ export default function BuscadorTesisPage() {
   const [selectedTesis, setSelectedTesis] = useState<TesisDetail | null>(null)
   const [loadingResults, setLoadingResults] = useState(false)
   const [loadingDetail, setLoadingDetail] = useState(false)
-  const [filters, setFilters] = useState<FilterOptions | null>(null)
+  const [filters, setFilters] = useState<FilterOptions>({
+    materias: [],
+    tipos: [],
+    epocas: [],
+    instancias: [],
+    yearRange: { min_year: 1900, max_year: new Date().getFullYear() },
+    totalDocuments: 0
+  })
   const [currentPage, setCurrentPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
   const [totalCount, setTotalCount] = useState(0)
@@ -183,7 +190,7 @@ export default function BuscadorTesisPage() {
             Buscador de Tesis
           </CardTitle>
           <CardDescription>
-            {filters && `${filters.totalDocuments.toLocaleString()} tesis disponibles`}
+            {filters.totalDocuments > 0 ? `${filters.totalDocuments.toLocaleString()} tesis disponibles` : 'Cargando...'}
           </CardDescription>
         </CardHeader>
         <CardContent className="flex-1 overflow-y-auto space-y-4">
@@ -203,8 +210,7 @@ export default function BuscadorTesisPage() {
           </div>
 
           {/* Filters */}
-          {filters && (
-            <div className="space-y-4">
+          <div className="space-y-4">
               {/* Materia Filter */}
               <div className="space-y-2">
                 <label className="text-sm font-medium">Materia</label>
@@ -299,8 +305,8 @@ export default function BuscadorTesisPage() {
                       placeholder={new Date().getFullYear().toString()}
                       value={yearFrom}
                       onChange={(e) => setYearFrom(e.target.value)}
-                      min={filters?.yearRange.min_year}
-                      max={filters?.yearRange.max_year}
+                      min={filters.yearRange.min_year}
+                      max={filters.yearRange.max_year}
                       className="w-20"
                     />
                     <Select value={monthFrom} onValueChange={setMonthFrom}>
@@ -335,8 +341,8 @@ export default function BuscadorTesisPage() {
                       placeholder={new Date().getFullYear().toString()}
                       value={yearTo}
                       onChange={(e) => setYearTo(e.target.value)}
-                      min={filters?.yearRange.min_year}
-                      max={filters?.yearRange.max_year}
+                      min={filters.yearRange.min_year}
+                      max={filters.yearRange.max_year}
                       className="w-20"
                     />
                     <Select value={monthTo} onValueChange={setMonthTo}>
@@ -362,14 +368,13 @@ export default function BuscadorTesisPage() {
                   </div>
                 </div>
 
-                {filters?.yearRange.min_year && filters?.yearRange.max_year && (
+                {filters.yearRange.min_year && filters.yearRange.max_year && (
                   <p className="text-xs text-muted-foreground">
                     Disponible: {filters.yearRange.min_year} - {filters.yearRange.max_year}
                   </p>
                 )}
               </div>
-            </div>
-          )}
+          </div>
 
           {/* Action Buttons */}
           <div className="flex flex-col gap-2 pt-4">
