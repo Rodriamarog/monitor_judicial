@@ -23,7 +23,8 @@ export function JurisdiccionConcubinatoPreview({ data }: PreviewProps) {
     const witnessNames = data.witnesses.map(w => w.name.toUpperCase()).join(' Y ')
 
     return (
-        <div className="live-preview-content text-black p-12 shadow-lg min-h-full" style={{ fontFamily: 'Georgia, serif', backgroundColor: '#ffffff' }}>
+        <div className="live-preview-content text-black font-serif min-h-full" style={{ backgroundColor: '#ffffff' }}>
+            <div className="space-y-4 text-sm leading-relaxed">
             {/* CARÁTULA */}
             <div className="text-right mb-8">
                 <p className="font-bold">{data.applicantName.toUpperCase() || '[NOMBRE DEL SOLICITANTE]'}</p>
@@ -176,6 +177,7 @@ export function JurisdiccionConcubinatoPreview({ data }: PreviewProps) {
                     <p className="mb-2">_________________________________</p>
                     <p className="font-bold">{data.applicantName.toUpperCase() || '[NOMBRE DEL SOLICITANTE]'}</p>
                 </div>
+            </div>
             </div>
         </div>
     )

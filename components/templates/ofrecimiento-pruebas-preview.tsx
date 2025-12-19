@@ -32,7 +32,8 @@ export function OfrecimientoPruebasPreview({ data }: PreviewProps) {
     let evidenceNumber = 1
 
     return (
-        <div className="live-preview-content text-black p-12 shadow-lg min-h-full" style={{ fontFamily: 'Georgia, serif', backgroundColor: '#ffffff' }}>
+        <div className="live-preview-content text-black font-serif min-h-full" style={{ backgroundColor: '#ffffff' }}>
+            <div className="space-y-4 text-sm leading-relaxed">
             {/* CARÁTULA */}
             <div className="text-right mb-8">
                 <p className="font-bold">EXPEDIENTE.- {data.caseNumber || '[NÚMERO DE EXPEDIENTE]'}</p>
@@ -156,6 +157,7 @@ export function OfrecimientoPruebasPreview({ data }: PreviewProps) {
                     <p className="font-bold">{data.attorneyName.toUpperCase() || '[NOMBRE DEL ABOGADO]'}</p>
                     <p>ABOGADO PROCURADOR</p>
                 </div>
+            </div>
             </div>
         </div>
     )

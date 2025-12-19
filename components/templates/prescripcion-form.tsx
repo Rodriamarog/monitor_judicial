@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import * as z from 'zod'
@@ -61,6 +61,8 @@ type FormValues = z.infer<typeof formSchema>
 
 export function PrescripcionForm() {
     const [isGenerating, setIsGenerating] = useState(false)
+    const [googleConnected, setGoogleConnected] = useState<boolean | null>(null)
+    const [checkingGoogle, setCheckingGoogle] = useState(true)
 
     const form = useForm<FormValues>({
         resolver: zodResolver(formSchema),
@@ -94,6 +96,23 @@ export function PrescripcionForm() {
     })
 
     const watchedValues = form.watch()
+
+    // Check Google connection status on mount
+    useEffect(() => {
+        const checkGoogleStatus = async () => {
+            try {
+                const response = await fetch('/api/google/status')
+                const data = await response.json()
+                setGoogleConnected(data.connected && data.scope_valid)
+            } catch (error) {
+                console.error('Error checking Google status:', error)
+                setGoogleConnected(false)
+            } finally {
+                setCheckingGoogle(false)
+            }
+        }
+        checkGoogleStatus()
+    }, [])
 
     const generateDocument = async (data: FormValues) => {
         setIsGenerating(true)
@@ -739,19 +758,43 @@ export function PrescripcionForm() {
 
                         {/* Action Buttons */}
                         <div className="flex gap-3 pt-4">
-                            <Button
-                                onClick={openInGoogleDocs}
-                                variant="outline"
-                                disabled={isGenerating}
-                                className="cursor-pointer"
-                            >
-                                {isGenerating ? (
-                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                ) : (
-                                    <ExternalLink className="mr-2 h-4 w-4" />
-                                )}
-                                Abrir en Google Docs
-                            </Button>
+                            {!googleConnected && !checkingGoogle ? (
+                                <div className="flex flex-col gap-2 w-full">
+                                    <Button
+                                        onClick={() => window.location.href = '/dashboard/settings'}
+                                        variant="outline"
+                                        className="cursor-pointer"
+                                    >
+                                        <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                            <path d="M14 2H6C5.46957 2 4.96086 2.21071 4.58579 2.58579C4.21071 2.96086 4 3.46957 4 4V20C4 20.5304 4.21071 21.0391 4.58579 21.4142C4.96086 21.7893 5.46957 22 6 22H18C18.5304 22 19.0391 21.7893 19.4142 21.4142C19.7893 21.0391 20 20.5304 20 20V8L14 2Z" fill="#4285F4"/>
+                                            <path d="M14 2V8H20" fill="#A1C2FA"/>
+                                            <path d="M16 13H8M16 17H8M10 9H8" stroke="white" strokeWidth="2" strokeLinecap="round"/>
+                                        </svg>
+                                        Conectar Google en Configuración
+                                    </Button>
+                                    <p className="text-xs text-muted-foreground text-center">
+                                        Ve a Configuración para conectar Google y subir documentos
+                                    </p>
+                                </div>
+                            ) : (
+                                <Button
+                                    onClick={openInGoogleDocs}
+                                    variant="outline"
+                                    disabled={isGenerating || checkingGoogle || !googleConnected}
+                                    className="cursor-pointer"
+                                >
+                                    {isGenerating ? (
+                                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                    ) : (
+                                        <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                            <path d="M14 2H6C5.46957 2 4.96086 2.21071 4.58579 2.58579C4.21071 2.96086 4 3.46957 4 4V20C4 20.5304 4.21071 21.0391 4.58579 21.4142C4.96086 21.7893 5.46957 22 6 22H18C18.5304 22 19.0391 21.7893 19.4142 21.4142C19.7893 21.0391 20 20.5304 20 20V8L14 2Z" fill="#4285F4"/>
+                                            <path d="M14 2V8H20" fill="#A1C2FA"/>
+                                            <path d="M16 13H8M16 17H8M10 9H8" stroke="white" strokeWidth="2" strokeLinecap="round"/>
+                                        </svg>
+                                    )}
+                                    Abrir en Google Docs
+                                </Button>
+                            )}
                             <Button
                                 onClick={form.handleSubmit(generateDocument)}
                                 disabled={isGenerating}
@@ -782,8 +825,8 @@ export function PrescripcionForm() {
             </Card>
 
             {/* Preview Section - Right Side */}
-            <Card className="flex-1 flex flex-col h-full">
-                <CardContent className="flex-1 overflow-y-auto p-6 pl-7">
+            <Card className="flex-1 flex flex-col h-full bg-white dark:bg-white">
+                <CardContent className="flex-1 overflow-y-auto p-6">
                     <PrescripcionPreview data={watchedValues} />
                 </CardContent>
             </Card>
