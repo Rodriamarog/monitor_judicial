@@ -21,9 +21,13 @@ interface TesisSource {
   chunk_text: string
   chunk_type: string
   similarity: number
+  recency_score: number
+  epoca_score: number
+  final_score: number
   rubro: string
   texto: string
   tipo_tesis: string
+  epoca: string
   anio: number
   materias: string[]
 }
@@ -49,23 +53,191 @@ async function retrieveTesis(
 
   const queryEmbedding = embeddingResponse.data[0].embedding
 
-  // Search similar tesis
+  // Search similar tesis with recency boost
   const client = await tesisPool.connect()
   try {
     const result = await client.query(
-      `SELECT * FROM search_similar_tesis($1::vector, $2, $3, $4)`,
+      `SELECT * FROM search_similar_tesis_with_recency(
+        $1::vector,
+        $2,  -- match_threshold
+        $3,  -- match_count
+        $4,  -- filter_materias
+        $5,  -- filter_tipo_tesis
+        $6,  -- filter_epoca
+        $7,  -- filter_anio_min
+        $8,  -- filter_anio_max
+        $9,  -- filter_instancia
+        $10, -- enable_recency_boost
+        $11  -- recency_weight
+      )`,
       [
         JSON.stringify(queryEmbedding),
-        0.3, // threshold
-        5, // top k results
+        0.3,                     // threshold
+        20,                      // top k (AUMENTADO para mejor re-ranking)
         filters?.materias || null,
+        filters?.tipo_tesis || null,
+        null,                    // filter_epoca
+        filters?.year_min || null,
+        filters?.year_max || null,
+        null,                    // filter_instancia
+        true,                    // enable_recency_boost
+        0.3,                     // recency_weight (30% peso a recencia)
       ]
     )
 
-    return result.rows as TesisSource[]
+    const sources = result.rows as TesisSource[]
+    console.log(`[RAG] SQL retornó ${sources.length} tesis candidatas`)
+
+    // Re-ranking adicional: Descarta tesis muy antiguas si hay alternativas recientes
+    const rerankedSources = applyRecencyReranking(sources, query)
+    console.log(`[RAG] Re-ranking redujo a ${rerankedSources.length} tesis`)
+
+    // Limitar a top 5 después del re-ranking
+    const finalSources = rerankedSources.slice(0, 5)
+    console.log(`[RAG] Enviando ${finalSources.length} tesis al LLM`)
+    console.log('[DEBUG] Final sources being returned:', JSON.stringify(finalSources.map(s => ({
+      id: s.id_tesis,
+      similarity: s.similarity,
+      final_score: s.final_score,
+      epoca: s.epoca,
+      anio: s.anio
+    })), null, 2))
+
+    return finalSources
   } finally {
     client.release()
   }
+}
+
+/**
+ * Re-ranking post-búsqueda para aplicar lógica de "año de corte" por materia
+ * Descarta tesis antiguas cuando hay criterios más recientes disponibles
+ */
+function applyRecencyReranking(
+  sources: TesisSource[],
+  query: string
+): TesisSource[] {
+  if (sources.length === 0) return sources
+
+  // Detectar materia de la consulta para aplicar año de corte específico
+  const queryLower = query.toLowerCase()
+  const CUTOFF_YEARS: Record<string, number> = {
+    laboral: 2019,           // Reforma Laboral 2019
+    fiscal: 2020,            // Reformas fiscales importantes
+    'fiscal (adm)': 2020,    // Reformas fiscales importantes
+    electoral: 2021,         // Reforma electoral
+    penal: 2016,             // Sistema Penal Acusatorio
+    constitucional: 2011,    // Reforma DDHH
+  }
+
+  // Identificar materia relevante
+  let cutoffYear: number | null = null
+  for (const [materia, year] of Object.entries(CUTOFF_YEARS)) {
+    if (queryLower.includes(materia)) {
+      cutoffYear = year
+      break
+    }
+  }
+
+  // Analizar distribución temporal de las fuentes
+  const sourcesWithYear = sources.filter(s => s.anio)
+  if (sourcesWithYear.length === 0) {
+    console.log(`[Recency Re-ranking] No hay tesis con año, manteniendo todas`)
+    return sources
+  }
+
+  const oldestYear = Math.min(...sourcesWithYear.map(s => s.anio))
+  const newestYear = Math.max(...sourcesWithYear.map(s => s.anio))
+  const yearGap = newestYear - oldestYear
+
+  // Contar tesis por época para análisis
+  const epocaCounts = sources.reduce((acc, s) => {
+    const epoca = s.epoca || 'Sin época'
+    acc[epoca] = (acc[epoca] || 0) + 1
+    return acc
+  }, {} as Record<string, number>)
+
+  console.log(`[Recency Re-ranking] Query: "${query.substring(0, 50)}..."`)
+  console.log(`[Recency Re-ranking] Cutoff year: ${cutoffYear || 'N/A'}`)
+  console.log(`[Recency Re-ranking] Year range: ${oldestYear}-${newestYear} (gap: ${yearGap} years)`)
+  console.log(`[Recency Re-ranking] Épocas: ${JSON.stringify(epocaCounts)}`)
+
+  // Estrategia de filtrado mejorada con pool de 20 tesis
+  const recentThreshold = 2020
+  const hasRecentSources = sources.some(s => s.anio && s.anio >= recentThreshold)
+  const hasVeryRecentSources = sources.some(s => s.anio && s.anio >= 2023)
+
+  // Nivel de agresividad del filtrado basado en disponibilidad
+  let minYearToKeep = 1911 // Muy permisivo por defecto
+
+  if (hasVeryRecentSources) {
+    // Si hay tesis de 2023+, ser más agresivo
+    if (cutoffYear) {
+      minYearToKeep = cutoffYear
+    } else {
+      minYearToKeep = 2000 // Descartar pre-2000 si hay tesis muy recientes
+    }
+  } else if (hasRecentSources) {
+    // Si hay tesis de 2020+, ser moderadamente agresivo
+    if (cutoffYear) {
+      minYearToKeep = Math.max(cutoffYear - 5, 1995) // Un poco más permisivo
+    } else {
+      minYearToKeep = 1995 // Al menos Décima Época
+    }
+  }
+
+  const filtered = sources.filter((source, index) => {
+    // Siempre mantener las top 3 por score (ya vienen ordenadas)
+    if (index < 3) return true
+
+    // Mantener tesis sin año (podrían ser relevantes)
+    if (!source.anio) return true
+
+    // Aplicar filtro de año mínimo
+    if (source.anio < minYearToKeep) {
+      console.log(
+        `[Recency Re-ranking] Descartando tesis ${source.id_tesis} ` +
+        `(${source.anio}, ${source.epoca}) - Anterior a ${minYearToKeep}`
+      )
+      return false
+    }
+
+    // Filtro adicional: Si hay muchas tesis de Duodécima/Undécima Época,
+    // descartar Octava Época y anteriores
+    const modernEpocas = ['Duodécima Época', 'Undécima Época']
+    const hasModernTesis = sources.slice(0, 10).some(s =>
+      modernEpocas.includes(s.epoca)
+    )
+
+    const oldEpocas = ['Octava Época', 'Séptima Época', 'Sexta Época',
+                       'Quinta Época', 'Cuarta Época', 'Tercera Época']
+
+    if (hasModernTesis && oldEpocas.includes(source.epoca)) {
+      console.log(
+        `[Recency Re-ranking] Descartando tesis ${source.id_tesis} ` +
+        `(${source.epoca}) - Hay criterios de épocas modernas disponibles`
+      )
+      return false
+    }
+
+    return true
+  })
+
+  // Protección: Si el filtrado fue demasiado agresivo, mantener al menos top 5 originales
+  if (filtered.length < 5) {
+    console.log(
+      `[Recency Re-ranking] Filtrado demasiado agresivo ` +
+      `(${filtered.length} tesis), manteniendo top 5 originales`
+    )
+    return sources.slice(0, 5)
+  }
+
+  console.log(
+    `[Recency Re-ranking] Fuentes antes: ${sources.length}, ` +
+    `después: ${filtered.length} (descartadas: ${sources.length - filtered.length})`
+  )
+
+  return filtered
 }
 
 export async function POST(req: NextRequest) {
@@ -126,7 +298,29 @@ export async function POST(req: NextRequest) {
     console.log('User message text:', userMessageText)
 
     // RAG: Retrieve relevant tesis
-    const sources = await retrieveTesis(userMessageText, filters)
+    // Expand filters for materias with outdated/limited tesis to include broader related categories
+    const expandedFilters = filters ? { ...filters } : undefined
+    if (expandedFilters?.materias) {
+      const originalMaterias = [...expandedFilters.materias]
+      const materiasToAdd: string[] = []
+
+      // Fiscal (ADM) → Add Administrativa (recent fiscal tesis often tagged as Administrativa)
+      if (originalMaterias.includes('Fiscal (ADM)')) {
+        materiasToAdd.push('Administrativa')
+      }
+
+      // Electoral → Add Constitucional (recent electoral tesis tagged as Constitucional)
+      if (originalMaterias.includes('Electoral')) {
+        materiasToAdd.push('Constitucional')
+      }
+
+      if (materiasToAdd.length > 0) {
+        expandedFilters.materias = [...new Set([...originalMaterias, ...materiasToAdd])]
+        console.log(`[RAG] Expanded filters from [${originalMaterias.join(', ')}] to [${expandedFilters.materias.join(', ')}]`)
+      }
+    }
+
+    const sources = await retrieveTesis(userMessageText, expandedFilters)
 
     // Build context from sources
     const context = sources
@@ -134,9 +328,10 @@ export async function POST(req: NextRequest) {
         (source, i) =>
           `[Fuente ${i + 1} - ID: ${source.id_tesis}]
 Rubro: ${source.rubro}
-Tipo: ${source.tipo_tesis} | Año: ${source.anio}
+Tipo: ${source.tipo_tesis} | Época: ${source.epoca} | Año: ${source.anio}
 Materias: ${source.materias.join(', ')}
-Relevancia: ${(source.similarity * 100).toFixed(1)}%
+Similitud Semántica: ${(source.similarity * 100).toFixed(1)}%
+Puntuación Final (con recencia): ${(source.final_score * 100).toFixed(1)}%
 
 ${source.chunk_text}
 ---`
@@ -144,20 +339,45 @@ ${source.chunk_text}
       .join('\n\n')
 
     // System prompt
-    const systemPrompt = `Eres un asistente legal experto en jurisprudencia mexicana. Tu función es ayudar a usuarios a entender y aplicar tesis jurisprudenciales.
+    const systemPrompt = `Eres un asistente legal experto en jurisprudencia mexicana. Tu función es ayudar a usuarios a entender y aplicar tesis jurisprudenciales del derecho mexicano.
 
-INSTRUCCIONES:
+INSTRUCCIONES GENERALES:
 1. Responde en español formal y preciso
 2. Cita las fuentes usando el formato [ID: XXXX]
-3. Cuando menciones una tesis, incluye su ID
+3. Cuando menciones una tesis, incluye su ID, Época y Año
 4. Sé conciso pero completo
-5. Si no estás seguro, indícalo
-6. Prioriza Jurisprudencias sobre Tesis Aisladas
+5. Si no estás seguro, indícalo claramente
 
-FUENTES DISPONIBLES:
+CRITERIOS DE PRIORIZACIÓN (MUY IMPORTANTE):
+1. **PRIORIZA TESIS RECIENTES**: Cuando tengas múltiples tesis sobre el mismo tema:
+   - Las tesis de la Duodécima Época (2024-presente) SIEMPRE tienen prioridad
+   - Las tesis de la Undécima Época (2011-2023) son preferibles a épocas anteriores
+   - Si encuentras una tesis reciente (ej. 2025) y una antigua (ej. 1990) sobre el mismo tema, **SIEMPRE** menciona primero la más reciente
+
+2. **DETECTA CONTRADICCIONES TEMPORALES**: Si encuentras contradicción entre:
+   - Una tesis de 2025 vs una de 1990 → Prioriza explícitamente la de 2025
+   - Una tesis post-reforma vs una pre-reforma → Indica que la antigua está superada
+   - Criterios de Duodécima Época vs épocas anteriores → Menciona que el criterio ha evolucionado
+
+3. **INDICA LA ÉPOCA EXPLÍCITAMENTE**: Al citar una tesis, SIEMPRE menciona:
+   - "Según la tesis [ID: XXXX] de la Duodécima Época (2025)..."
+   - "El criterio de la Undécima Época estableció que..."
+   - "Nota: Esta interpretación proviene de la Quinta Época (1995) y puede estar desactualizada"
+
+4. **JERARQUÍA DE FUENTES**:
+   a) Jurisprudencias de Duodécima/Undécima Época
+   b) Tesis Aisladas de Duodécima/Undécima Época
+   c) Jurisprudencias de épocas anteriores (solo si no hay criterio reciente)
+   d) Tesis Aisladas antiguas (solo con advertencia de posible desactualización)
+
+FUENTES DISPONIBLES (ordenadas por relevancia con boost de recencia):
 ${context}
 
-IMPORTANTE: Basa tus respuestas en las fuentes proporcionadas. Si no encuentras información relevante en las fuentes, indícalo claramente.`
+IMPORTANTE:
+- Basa tus respuestas en las fuentes proporcionadas
+- Si no encuentras información relevante en las fuentes, indícalo claramente
+- Si todas las fuentes son muy antiguas (pre-2000), menciona que puede haber criterios más recientes no incluidos en la búsqueda
+- Compara las fechas de las fuentes antes de responder para priorizar la vigencia jurídica`
 
     // Combine database messages with new messages
     const allMessages = [
@@ -188,22 +408,37 @@ IMPORTANTE: Basa tus respuestas en las fuentes proporcionadas. Si no encuentras 
       model: openai('gpt-4o-mini'),
       messages: allMessages,
       temperature: 0.3,
-      maxTokens: 2000,
       onFinish: async ({ text }) => {
         fullResponse = text
+
+        // Prepare sources data
+        const sourcesData = sources.map((s) => ({
+          id_tesis: s.id_tesis,
+          rubro: s.rubro,
+          similarity: s.similarity,
+          final_score: s.final_score,
+          tipo_tesis: s.tipo_tesis,
+          epoca: s.epoca,
+          anio: s.anio,
+        }))
+
+        console.log('[DEBUG] Saving message with sources to Supabase')
+        console.log('[DEBUG] Conversation ID:', conversation.id)
+        console.log('[DEBUG] Sources to save:', JSON.stringify(sourcesData, null, 2))
+
         // Save assistant message with sources
-        await supabase.from('messages').insert({
+        const { error: insertError } = await supabase.from('messages').insert({
           conversation_id: conversation.id,
           role: 'assistant',
           content: text,
-          sources: sources.map((s) => ({
-            id_tesis: s.id_tesis,
-            rubro: s.rubro,
-            similarity: s.similarity,
-            tipo_tesis: s.tipo_tesis,
-            anio: s.anio,
-          })),
+          sources: sourcesData,
         })
+
+        if (insertError) {
+          console.error('[DEBUG] Error saving message:', insertError)
+        } else {
+          console.log('[DEBUG] Message saved successfully with', sourcesData.length, 'sources')
+        }
 
         // Update conversation timestamp
         await supabase

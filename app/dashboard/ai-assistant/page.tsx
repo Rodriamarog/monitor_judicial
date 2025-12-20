@@ -22,6 +22,9 @@ import {
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import Link from 'next/link'
+import { MarkdownMessage } from '@/components/chat/markdown-message'
+import { LoadingDots } from '@/components/chat/loading-dots'
+import { useMessageAnimation } from '@/hooks/use-message-animation'
 
 interface Conversation {
   id: string
@@ -33,7 +36,9 @@ interface Source {
   id_tesis: number
   rubro: string
   similarity: number
+  final_score?: number
   tipo_tesis: string
+  epoca?: string
   anio: number
 }
 
@@ -48,44 +53,70 @@ export default function AIAssistantPage() {
   const scrollRef = useRef<HTMLDivElement>(null)
   const supabase = createClient()
 
+  // Use ref to store the latest conversation ID from headers (avoids stale closure)
+  const latestConversationIdRef = useRef<string | null>(null)
+
   const { messages, sendMessage, status } = useChat({
     transport: new DefaultChatTransport({
       api: '/api/ai-assistant/chat',
-    }),
-    onResponse: (response) => {
-      // Extract conversation ID from headers
-      const conversationId = response.headers.get('X-Conversation-Id')
-      if (conversationId && !currentConversationId) {
-        setCurrentConversationId(conversationId)
-        loadConversations()
-      }
+      async fetch(input, init) {
+        const response = await fetch(input, init)
 
-      // Extract sources count from headers
-      const sourcesCount = response.headers.get('X-Sources-Count')
-      if (sourcesCount) {
-        console.log(`Found ${sourcesCount} relevant sources`)
-      }
-    },
-    onFinish: async (message) => {
+        // Extract conversation ID from headers
+        const conversationId = response.headers.get('X-Conversation-Id')
+        if (conversationId) {
+          console.log('[DEBUG] Conversation ID from headers:', conversationId)
+          latestConversationIdRef.current = conversationId
+
+          if (!currentConversationId) {
+            console.log('[DEBUG] Setting new conversation ID:', conversationId)
+            setCurrentConversationId(conversationId)
+            loadConversations()
+          }
+        }
+
+        return response
+      },
+    }),
+    onFinish: async ({ message }) => {
+      console.log('[DEBUG] onFinish triggered')
+
+      // Use the latest conversation ID from ref (not stale state)
+      const conversationId = latestConversationIdRef.current || currentConversationId
+      console.log('[DEBUG] Conversation ID to use:', conversationId)
+
       // Load sources from database for the latest assistant message
-      if (currentConversationId) {
-        const { data: messagesData } = await supabase
+      if (conversationId) {
+        console.log('[DEBUG] Fetching sources from Supabase for conversation:', conversationId)
+
+        // Add a small delay to ensure the message was saved
+        await new Promise(resolve => setTimeout(resolve, 500))
+
+        const { data: messagesData, error } = await supabase
           .from('messages')
           .select('sources')
-          .eq('conversation_id', currentConversationId)
+          .eq('conversation_id', conversationId)
           .eq('role', 'assistant')
           .order('created_at', { ascending: false })
           .limit(1)
           .single()
 
+        console.log('[DEBUG] Supabase response:', { messagesData, error })
+
         if (messagesData?.sources) {
+          console.log('[DEBUG] Setting sources:', messagesData.sources)
           setSources(messagesData.sources)
+        } else {
+          console.log('[DEBUG] No sources found in database')
         }
+      } else {
+        console.log('[DEBUG] No conversation ID available, cannot fetch sources')
       }
     },
   })
 
-  const isLoading = status === 'in_progress'
+  const isLoading = status === 'submitted' || status === 'streaming'
+  const animatingIndex = useMessageAnimation(messages.length)
 
   // Load conversations on mount
   useEffect(() => {
@@ -126,7 +157,7 @@ export default function AIAssistantPage() {
     if (messagesData) {
       // Get sources from last assistant message
       const lastAssistantMessage = messagesData
-        .filter((m) => m.role === 'assistant')
+        .filter((m: any) => m.role === 'assistant')
         .reverse()[0]
 
       if (lastAssistantMessage?.sources) {
@@ -165,7 +196,7 @@ export default function AIAssistantPage() {
     'Laboral',
     'Constitucional',
     'Electoral',
-    'Fiscal',
+    'Fiscal (ADM)',
   ]
 
   const toggleMateria = (materia: string) => {
@@ -312,6 +343,8 @@ export default function AIAssistantPage() {
                     key={i}
                     className={`flex gap-3 ${
                       message.role === 'user' ? 'justify-end' : 'justify-start'
+                    } ${
+                      animatingIndex === i ? 'animate-fade-in-up' : ''
                     }`}
                   >
                     <div
@@ -321,23 +354,21 @@ export default function AIAssistantPage() {
                           : 'bg-muted'
                       }`}
                     >
-                      <div className="whitespace-pre-wrap">
+                      <div>
                         {message.parts?.map((part: any, idx: number) =>
                           part.type === 'text' ? (
-                            <span key={idx}>{part.text}</span>
+                            <MarkdownMessage
+                              key={idx}
+                              content={part.text}
+                              role={message.role as 'user' | 'assistant'}
+                            />
                           ) : null
                         )}
                       </div>
                     </div>
                   </div>
                 ))}
-                {isLoading && (
-                  <div className="flex gap-3">
-                    <div className="bg-muted rounded-lg p-4">
-                      <Loader2 className="w-5 h-5 animate-spin" />
-                    </div>
-                  </div>
-                )}
+                {isLoading && <LoadingDots />}
               </div>
             )}
           </ScrollArea>
@@ -385,18 +416,25 @@ export default function AIAssistantPage() {
                     >
                       <Card className="cursor-pointer hover:bg-muted transition-colors">
                         <CardContent className="p-4">
-                          <div className="flex items-start justify-between mb-2">
-                            <Badge variant="secondary">
-                              {(source.similarity * 100).toFixed(0)}% relevancia
-                            </Badge>
-                            <span className="text-xs text-muted-foreground">
+                          <div className="flex items-start justify-between gap-2 mb-2">
+                            <div className="flex flex-wrap gap-1">
+                              <Badge variant="secondary" className="text-xs">
+                                {(source.similarity * 100).toFixed(0)}% relevancia
+                              </Badge>
+                              {source.epoca && (
+                                <Badge variant="outline" className="text-xs">
+                                  {source.epoca}
+                                </Badge>
+                              )}
+                            </div>
+                            <span className="text-xs text-muted-foreground whitespace-nowrap">
                               ID: {source.id_tesis}
                             </span>
                           </div>
                           <h4 className="font-medium text-sm mb-2 line-clamp-2">
                             {source.rubro}
                           </h4>
-                          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                          <div className="flex items-center gap-2 text-xs text-muted-foreground flex-wrap">
                             <Badge variant="outline" className="text-xs">
                               {source.tipo_tesis}
                             </Badge>
