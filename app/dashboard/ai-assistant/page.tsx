@@ -18,13 +18,14 @@ import {
   Plus,
   BookOpen,
   Filter,
-  X
+  X,
+  Trash2
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
-import Link from 'next/link'
 import { MarkdownMessage } from '@/components/chat/markdown-message'
 import { LoadingDots } from '@/components/chat/loading-dots'
 import { useMessageAnimation } from '@/hooks/use-message-animation'
+import { TesisModal } from '@/components/chat/tesis-modal'
 
 interface Conversation {
   id: string
@@ -49,14 +50,18 @@ export default function AIAssistantPage() {
   const [loadingConversations, setLoadingConversations] = useState(true)
   const [sources, setSources] = useState<Source[]>([])
   const [inputValue, setInputValue] = useState('')
+  const [sourcesAnimating, setSourcesAnimating] = useState(false)
+  const [selectedTesisId, setSelectedTesisId] = useState<number | null>(null)
+  const [tesisModalOpen, setTesisModalOpen] = useState(false)
 
   const scrollRef = useRef<HTMLDivElement>(null)
   const supabase = createClient()
 
   // Use ref to store the latest conversation ID from headers (avoids stale closure)
   const latestConversationIdRef = useRef<string | null>(null)
+  const prevSourcesLengthRef = useRef(0)
 
-  const { messages, sendMessage, status } = useChat({
+  const { messages, sendMessage, status, setMessages } = useChat({
     transport: new DefaultChatTransport({
       api: '/api/ai-assistant/chat',
       async fetch(input, init) {
@@ -71,7 +76,28 @@ export default function AIAssistantPage() {
           if (!currentConversationId) {
             console.log('[DEBUG] Setting new conversation ID:', conversationId)
             setCurrentConversationId(conversationId)
-            loadConversations()
+
+            // Optimistically add new conversation to the list
+            const newConversation = {
+              id: conversationId,
+              title: 'Nueva conversación',
+              updated_at: new Date().toISOString(),
+            }
+            setConversations((prev) => [newConversation, ...prev])
+
+            // Fetch the actual conversation details in the background to get the real title
+            supabase
+              .from('conversations')
+              .select('id, title, updated_at')
+              .eq('id', conversationId)
+              .single()
+              .then(({ data }) => {
+                if (data) {
+                  setConversations((prev) =>
+                    prev.map((c) => (c.id === conversationId ? data : c))
+                  )
+                }
+              })
           }
         }
 
@@ -109,13 +135,26 @@ export default function AIAssistantPage() {
         } else {
           console.log('[DEBUG] No sources found in database')
         }
+
+        // Update conversation timestamp and move to top of list
+        setConversations((prev) => {
+          const existingConv = prev.find((c) => c.id === conversationId)
+          if (existingConv) {
+            // Move to top with updated timestamp
+            return [
+              { ...existingConv, updated_at: new Date().toISOString() },
+              ...prev.filter((c) => c.id !== conversationId),
+            ]
+          }
+          return prev
+        })
       } else {
         console.log('[DEBUG] No conversation ID available, cannot fetch sources')
       }
     },
   })
 
-  const isLoading = status === 'submitted' || status === 'streaming'
+  const isLoading = status === 'submitted' // Hide loading indicator once streaming starts
   const animatingIndex = useMessageAnimation(messages.length)
 
   // Load conversations on mount
@@ -129,6 +168,19 @@ export default function AIAssistantPage() {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight
     }
   }, [messages])
+
+  // Trigger animation when sources appear
+  useEffect(() => {
+    if (sources.length > 0 && prevSourcesLengthRef.current === 0) {
+      setSourcesAnimating(true)
+      const timer = setTimeout(() => {
+        setSourcesAnimating(false)
+      }, 400) // Match animation duration
+
+      return () => clearTimeout(timer)
+    }
+    prevSourcesLengthRef.current = sources.length
+  }, [sources])
 
   const loadConversations = async () => {
     setLoadingConversations(true)
@@ -155,6 +207,21 @@ export default function AIAssistantPage() {
       .order('created_at', { ascending: true })
 
     if (messagesData) {
+      // Convert Supabase messages to AI SDK UIMessage format
+      const formattedMessages = messagesData.map((msg: any) => ({
+        id: crypto.randomUUID(),
+        role: msg.role,
+        parts: [
+          {
+            type: 'text',
+            text: msg.content,
+          },
+        ],
+      }))
+
+      // Set messages in the chat
+      setMessages(formattedMessages)
+
       // Get sources from last assistant message
       const lastAssistantMessage = messagesData
         .filter((m: any) => m.role === 'assistant')
@@ -169,15 +236,22 @@ export default function AIAssistantPage() {
   const startNewConversation = () => {
     setCurrentConversationId(null)
     setSources([])
+    setMessages([]) // Clear messages when starting new conversation
   }
 
   const handleSubmit = async (e?: React.FormEvent) => {
     if (e) e.preventDefault()
     if (!inputValue.trim() || isLoading) return
 
+    // Capture the input value
+    const messageText = inputValue
+
+    // Clear input IMMEDIATELY (before sending)
+    setInputValue('')
+
     // Pass dynamic body parameters at request-level to avoid stale state
     await sendMessage(
-      { text: inputValue },
+      { text: messageText },
       {
         body: {
           conversationId: currentConversationId,
@@ -185,7 +259,6 @@ export default function AIAssistantPage() {
         },
       }
     )
-    setInputValue('')
   }
 
   const materiaOptions = [
@@ -199,12 +272,65 @@ export default function AIAssistantPage() {
     'Fiscal (ADM)',
   ]
 
+  // Display names for materias (cleaner UI)
+  const materiaDisplayNames: Record<string, string> = {
+    'Fiscal (ADM)': 'Fiscal',
+  }
+
   const toggleMateria = (materia: string) => {
     setSelectedMaterias((prev) =>
       prev.includes(materia)
         ? prev.filter((m) => m !== materia)
         : [...prev, materia]
     )
+  }
+
+  const deleteConversation = async (conversationId: string, e: React.MouseEvent) => {
+    e.stopPropagation() // Prevent triggering the conversation click
+
+    if (!confirm('¿Estás seguro de que quieres eliminar esta conversación?')) {
+      return
+    }
+
+    // Optimistic update: Remove from UI immediately
+    setConversations((prev) => prev.filter((c) => c.id !== conversationId))
+
+    // If the deleted conversation was the current one, clear it
+    if (currentConversationId === conversationId) {
+      setCurrentConversationId(null)
+      setSources([])
+      setMessages([]) // Clear messages
+    }
+
+    // Delete from database in background
+    try {
+      // Delete messages first (due to foreign key constraint)
+      await supabase
+        .from('messages')
+        .delete()
+        .eq('conversation_id', conversationId)
+
+      // Then delete the conversation
+      const { error } = await supabase
+        .from('conversations')
+        .delete()
+        .eq('id', conversationId)
+
+      if (error) {
+        console.error('Error deleting conversation:', error)
+        // Optionally: reload conversations to revert the optimistic update
+        loadConversations()
+      }
+    } catch (error) {
+      console.error('Error deleting conversation:', error)
+      // Optionally: reload conversations to revert the optimistic update
+      loadConversations()
+    }
+  }
+
+  const handleTesisClick = (tesisId: number) => {
+    setSelectedTesisId(tesisId)
+    setTesisModalOpen(true)
   }
 
   return (
@@ -237,19 +363,30 @@ export default function AIAssistantPage() {
             ) : (
               <div className="space-y-1 px-4 pt-0 pb-4">
                 {conversations.map((conv) => (
-                  <button
+                  <div
                     key={conv.id}
-                    onClick={() => loadConversation(conv.id)}
-                    className={`block w-full text-left px-3 py-2 rounded-lg transition-colors cursor-pointer ${
+                    className={`group flex items-center gap-2 px-3 py-2 rounded-lg transition-colors cursor-pointer ${
                       currentConversationId === conv.id
                         ? 'bg-primary text-primary-foreground'
                         : 'hover:bg-muted'
                     }`}
                   >
-                    <div className="font-medium text-sm truncate">
-                      {conv.title}
-                    </div>
-                  </button>
+                    <button
+                      onClick={() => loadConversation(conv.id)}
+                      className="flex-1 text-left min-w-0"
+                    >
+                      <div className="font-medium text-sm truncate">
+                        {conv.title}
+                      </div>
+                    </button>
+                    <button
+                      onClick={(e) => deleteConversation(conv.id, e)}
+                      className="opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0 p-1 hover:bg-destructive/10 rounded"
+                      aria-label="Eliminar conversación"
+                    >
+                      <Trash2 className="w-4 h-4 text-destructive" />
+                    </button>
+                  </div>
                 ))}
               </div>
             )}
@@ -278,7 +415,7 @@ export default function AIAssistantPage() {
             {materiaOptions.map((materia) => (
               <div key={materia} className="flex items-center justify-between space-x-2">
                 <Label htmlFor={`materia-${materia}`} className="text-sm font-normal cursor-pointer flex-1">
-                  {materia}
+                  {materiaDisplayNames[materia] || materia}
                 </Label>
                 <Switch
                   id={`materia-${materia}`}
@@ -310,7 +447,6 @@ export default function AIAssistantPage() {
           <ScrollArea className="flex-1 p-6" ref={scrollRef}>
             {messages.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-full text-center">
-                <Sparkles className="w-16 h-16 text-muted-foreground mb-4" />
                 <h3 className="text-lg font-semibold mb-2">
                   ¿En qué puedo ayudarte hoy?
                 </h3>
@@ -344,7 +480,11 @@ export default function AIAssistantPage() {
                     className={`flex gap-3 ${
                       message.role === 'user' ? 'justify-end' : 'justify-start'
                     } ${
-                      animatingIndex === i ? 'animate-fade-in-up' : ''
+                      animatingIndex === i
+                        ? message.role === 'user'
+                          ? 'animate-in fade-in slide-in-from-right-2 duration-500'
+                          : 'animate-in fade-in slide-in-from-bottom-2 duration-500'
+                        : ''
                     }`}
                   >
                     <div
@@ -397,7 +537,7 @@ export default function AIAssistantPage() {
 
       {/* Sources Sidebar */}
       {sources.length > 0 && (
-        <div className="w-96 h-full overflow-hidden">
+        <div className={`w-96 h-full overflow-hidden ${sourcesAnimating ? 'animate-in fade-in slide-in-from-right-4 duration-400' : ''}`}>
           <Card className="h-full flex flex-col">
             <CardHeader className="flex-shrink-0">
               <CardTitle className="flex items-center gap-2">
@@ -409,40 +549,31 @@ export default function AIAssistantPage() {
               <ScrollArea className="h-full">
                 <div className="space-y-3">
                   {sources.map((source, i) => (
-                    <Link
+                    <Card
                       key={i}
-                      href={`/dashboard/tesis?id=${source.id_tesis}`}
-                      target="_blank"
+                      className="cursor-pointer hover:bg-muted transition-colors"
+                      onClick={() => handleTesisClick(source.id_tesis)}
                     >
-                      <Card className="cursor-pointer hover:bg-muted transition-colors">
-                        <CardContent className="p-4">
-                          <div className="flex items-start justify-between gap-2 mb-2">
-                            <div className="flex flex-wrap gap-1">
-                              <Badge variant="secondary" className="text-xs">
-                                {(source.similarity * 100).toFixed(0)}% relevancia
-                              </Badge>
-                              {source.epoca && (
-                                <Badge variant="outline" className="text-xs">
-                                  {source.epoca}
-                                </Badge>
-                              )}
-                            </div>
-                            <span className="text-xs text-muted-foreground whitespace-nowrap">
-                              ID: {source.id_tesis}
-                            </span>
-                          </div>
-                          <h4 className="font-medium text-sm mb-2 line-clamp-2">
-                            {source.rubro}
-                          </h4>
-                          <div className="flex items-center gap-2 text-xs text-muted-foreground flex-wrap">
-                            <Badge variant="outline" className="text-xs">
-                              {source.tipo_tesis}
-                            </Badge>
-                            <span>{source.anio}</span>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    </Link>
+                      <CardContent className="p-4">
+                        <div className="flex items-start justify-between gap-2 mb-2">
+                          <Badge variant="secondary" className="text-xs">
+                            {(source.similarity * 100).toFixed(0)}% relevancia
+                          </Badge>
+                          <span className="text-xs text-muted-foreground whitespace-nowrap">
+                            ID: {source.id_tesis}
+                          </span>
+                        </div>
+                        <h4 className="font-medium text-sm mb-2 line-clamp-2">
+                          {source.rubro}
+                        </h4>
+                        <div className="flex items-center gap-2 text-xs text-muted-foreground flex-wrap">
+                          <Badge variant="outline" className="text-xs">
+                            {source.tipo_tesis}
+                          </Badge>
+                          <span>{source.anio}</span>
+                        </div>
+                      </CardContent>
+                    </Card>
                   ))}
                 </div>
               </ScrollArea>
@@ -450,6 +581,13 @@ export default function AIAssistantPage() {
           </Card>
         </div>
       )}
+
+      {/* Tesis Modal */}
+      <TesisModal
+        tesisId={selectedTesisId}
+        open={tesisModalOpen}
+        onOpenChange={setTesisModalOpen}
+      />
       </div>
     </div>
   )
