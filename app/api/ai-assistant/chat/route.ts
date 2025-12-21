@@ -4,6 +4,13 @@ import { openai } from '@ai-sdk/openai'
 import { NextRequest } from 'next/server'
 import OpenAI from 'openai'
 
+// AI Flow utilities
+import { classifyIntent } from '@/lib/ai/intent-classifier'
+import { rewriteQueryWithContext } from '@/lib/ai/query-rewriter'
+import { getQueryRewritingWindow, getLLMGenerationWindow } from '@/lib/ai/sliding-window'
+import { extractSourcesFromHistory, mergeSources } from '@/lib/ai/source-manager'
+import { createTimer, estimateTokens } from '@/lib/ai/utils'
+
 // PostgreSQL connection for RAG (local tesis database)
 import pg from 'pg'
 const { Pool } = pg
@@ -284,18 +291,31 @@ export async function POST(req: NextRequest) {
       conversation = data
     }
 
-    // Load previous messages from database
-    const { data: dbMessages } = await supabase
-      .from('messages')
-      .select('role, content')
-      .eq('conversation_id', conversation.id)
-      .order('created_at', { ascending: true })
+    // Load previous messages with sliding windows
+    // Large window for LLM generation context (10 messages / 5 pairs)
+    const dbMessages = await getLLMGenerationWindow(conversation.id)
+
+    // Small window for query rewriting context (6 messages / 3 pairs)
+    const queryContext = await getQueryRewritingWindow(conversation.id)
+
+    // Extract historical sources from conversation
+    const historicalSources = extractSourcesFromHistory(dbMessages, 15)
 
     // Get last user message - AI SDK v5 format has parts array
     const lastUserMessage = messages[messages.length - 1]
     const userMessageText = lastUserMessage.parts?.[0]?.text || lastUserMessage.content || ''
 
     console.log('User message text:', userMessageText)
+
+    // Start performance timer
+    const timer = createTimer()
+
+    // Step 1: Classify intent (NUEVA vs REUSAR)
+    const classification = await classifyIntent(userMessageText, queryContext)
+    console.log(`[AI Flow] Intent: ${classification.intent} (${classification.method}, ${classification.confidence})`)
+    console.log(`[AI Flow] Reasoning: ${classification.reasoning}`)
+
+    let sources: TesisSource[] = []
 
     // RAG: Retrieve relevant tesis
     // Expand filters for materias with outdated/limited tesis to include broader related categories
@@ -320,7 +340,36 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    const sources = await retrieveTesis(userMessageText, expandedFilters)
+    // Step 2: Conditional RAG execution based on intent
+    if (classification.intent === 'NUEVA') {
+      // Step 2a: Rewrite query with context
+      const rewriteResult = await rewriteQueryWithContext(userMessageText, queryContext)
+
+      if (rewriteResult.usedContext) {
+        console.log(`[AI Flow] Original: "${rewriteResult.originalQuery}"`)
+        console.log(`[AI Flow] Rewritten: "${rewriteResult.rewrittenQuery}"`)
+      }
+
+      timer.log('Intent + Rewrite')
+
+      // Step 2b: Execute RAG with rewritten query
+      const newSources = await retrieveTesis(
+        rewriteResult.rewrittenQuery,
+        expandedFilters
+      )
+
+      timer.log('RAG Search')
+
+      // Step 2c: Merge with historical sources
+      sources = mergeSources(newSources, historicalSources, 15)
+      console.log(`[AI Flow] Sources: ${newSources.length} new, ${historicalSources.length} historical, ${sources.length} final`)
+
+    } else {
+      // Reuse historical sources
+      sources = historicalSources
+      console.log(`[AI Flow] Reusing ${sources.length} historical sources (no RAG search)`)
+      timer.log('Intent Classification (skip RAG)')
+    }
 
     // Build context from sources
     const context = sources
@@ -329,11 +378,11 @@ export async function POST(req: NextRequest) {
           `[Fuente ${i + 1} - ID: ${source.id_tesis}]
 Rubro: ${source.rubro}
 Tipo: ${source.tipo_tesis} | Época: ${source.epoca} | Año: ${source.anio}
-Materias: ${source.materias.join(', ')}
+Materias: ${source.materias?.join(', ') || 'N/A'}
 Similitud Semántica: ${(source.similarity * 100).toFixed(1)}%
 Puntuación Final (con recencia): ${(source.final_score * 100).toFixed(1)}%
 
-${source.chunk_text}
+${source.chunk_text || source.texto || 'Sin texto disponible'}
 ---`
       )
       .join('\n\n')
@@ -411,15 +460,21 @@ IMPORTANTE:
       onFinish: async ({ text }) => {
         fullResponse = text
 
-        // Prepare sources data
+        // Prepare sources data - save complete source info for reuse
         const sourcesData = sources.map((s) => ({
           id_tesis: s.id_tesis,
-          rubro: s.rubro,
+          chunk_text: s.chunk_text,
+          chunk_type: s.chunk_type,
           similarity: s.similarity,
+          recency_score: s.recency_score,
+          epoca_score: s.epoca_score,
           final_score: s.final_score,
+          rubro: s.rubro,
+          texto: s.texto,
           tipo_tesis: s.tipo_tesis,
           epoca: s.epoca,
           anio: s.anio,
+          materias: s.materias || [],
         }))
 
         console.log('[DEBUG] Saving message with sources to Supabase')
@@ -445,6 +500,11 @@ IMPORTANTE:
           .from('conversations')
           .update({ updated_at: new Date().toISOString() })
           .eq('id', conversation.id)
+
+        // Log optimization metrics
+        console.log(`[AI Flow] Total time: ${timer.elapsed()}ms`)
+        console.log(`[AI Flow] Estimated tokens: ${estimateTokens(JSON.stringify(dbMessages))}`)
+        console.log(`[AI Flow] RAG executed: ${classification.intent === 'NUEVA' ? 'YES' : 'NO'}`)
       },
     })
 

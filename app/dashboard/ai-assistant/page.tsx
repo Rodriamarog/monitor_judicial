@@ -77,13 +77,19 @@ export default function AIAssistantPage() {
             console.log('[DEBUG] Setting new conversation ID:', conversationId)
             setCurrentConversationId(conversationId)
 
-            // Optimistically add new conversation to the list
+            // Optimistically add new conversation to the list (if not already present)
             const newConversation = {
               id: conversationId,
               title: 'Nueva conversación',
               updated_at: new Date().toISOString(),
             }
-            setConversations((prev) => [newConversation, ...prev])
+            setConversations((prev) => {
+              // Don't add if already exists
+              if (prev.some(c => c.id === conversationId)) {
+                return prev
+              }
+              return [newConversation, ...prev]
+            })
 
             // Fetch the actual conversation details in the background to get the real title
             supabase
@@ -93,8 +99,9 @@ export default function AIAssistantPage() {
               .single()
               .then(({ data }) => {
                 if (data) {
+                  // Simple update: replace the temporary conversation with real data
                   setConversations((prev) =>
-                    prev.map((c) => (c.id === conversationId ? data : c))
+                    prev.map((c) => c.id === conversationId ? data : c)
                   )
                 }
               })
@@ -136,18 +143,21 @@ export default function AIAssistantPage() {
           console.log('[DEBUG] No sources found in database')
         }
 
-        // Update conversation timestamp and move to top of list
-        setConversations((prev) => {
-          const existingConv = prev.find((c) => c.id === conversationId)
-          if (existingConv) {
-            // Move to top with updated timestamp
+        // Note: Backend updates conversation timestamp in database
+        // Optimistically move current conversation to top of list (better UX)
+        if (conversationId) {
+          setConversations((prev) => {
+            const index = prev.findIndex(c => c.id === conversationId)
+            if (index <= 0) return prev // Already at top or not found
+
+            const conv = prev[index]
             return [
-              { ...existingConv, updated_at: new Date().toISOString() },
-              ...prev.filter((c) => c.id !== conversationId),
+              { ...conv, updated_at: new Date().toISOString() },
+              ...prev.slice(0, index),
+              ...prev.slice(index + 1)
             ]
-          }
-          return prev
-        })
+          })
+        }
       } else {
         console.log('[DEBUG] No conversation ID available, cannot fetch sources')
       }
@@ -365,23 +375,21 @@ export default function AIAssistantPage() {
                 {conversations.map((conv) => (
                   <div
                     key={conv.id}
+                    onClick={() => loadConversation(conv.id)}
                     className={`group flex items-center gap-2 px-3 py-2 rounded-lg transition-colors cursor-pointer ${
                       currentConversationId === conv.id
                         ? 'bg-primary text-primary-foreground'
                         : 'hover:bg-muted'
                     }`}
                   >
-                    <button
-                      onClick={() => loadConversation(conv.id)}
-                      className="flex-1 text-left min-w-0"
-                    >
+                    <div className="flex-1 text-left min-w-0">
                       <div className="font-medium text-sm truncate">
                         {conv.title}
                       </div>
-                    </button>
+                    </div>
                     <button
                       onClick={(e) => deleteConversation(conv.id, e)}
-                      className="opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0 p-1 hover:bg-destructive/10 rounded"
+                      className="opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0 p-1 hover:bg-destructive/10 rounded cursor-pointer"
                       aria-label="Eliminar conversación"
                     >
                       <Trash2 className="w-4 h-4 text-destructive" />
