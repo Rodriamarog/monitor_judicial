@@ -307,9 +307,10 @@ export default function AIAssistantPage() {
   useEffect(() => {
     if (!shouldAutoScrollRef.current) return
 
-    // Debounce - only scroll after 50ms of no updates, but keep smooth animation
+    // Debounce - only scroll after 50ms of no updates
     const timer = setTimeout(() => {
-      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+      // Always use instant scroll to avoid animation lag
+      messagesEndRef.current?.scrollIntoView({ behavior: 'auto' })
     }, 50)
 
     return () => clearTimeout(timer)
