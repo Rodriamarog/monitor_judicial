@@ -116,6 +116,7 @@ export default function AIAssistantPage() {
   const scrollPendingRef = useRef(false)
   const messageRefsMap = useRef<Map<number, HTMLDivElement>>(new Map())
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  const shouldAutoScrollRef = useRef(true) // Track if we should auto-scroll
 
   // Refs for smart source animation
   const prevRagExecutedRef = useRef(false)
@@ -153,6 +154,11 @@ export default function AIAssistantPage() {
     } else {
       messageRefsMap.current.delete(index)
     }
+  }, [])
+
+  // Disable auto-scroll when user manually scrolls (wheel or scrollbar)
+  const handleUserScroll = useCallback(() => {
+    shouldAutoScrollRef.current = false
   }, [])
 
   const { messages, sendMessage, status, setMessages } = useChat({
@@ -265,10 +271,40 @@ export default function AIAssistantPage() {
     loadConversations()
   }, [])
 
-  // Auto-scroll to bottom when messages change (industry standard pattern)
+  // Detect user scroll actions (wheel or scrollbar drag)
   useEffect(() => {
-    // Scroll the anchor element into view (standard chat pattern)
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+    const scrollAreaRoot = scrollRef.current
+    if (!scrollAreaRoot) return
+
+    // Get the actual scrollable viewport inside the ScrollArea
+    const viewport = scrollAreaRoot.querySelector('[data-radix-scroll-area-viewport]')
+    if (!viewport) return
+
+    // Listen for mouse wheel scroll
+    viewport.addEventListener('wheel', handleUserScroll, { passive: true })
+
+    // Listen for scrollbar interaction (mousedown on scrollbar)
+    const scrollbar = scrollAreaRoot.querySelector('[data-radix-scroll-area-scrollbar]')
+    if (scrollbar) {
+      scrollbar.addEventListener('mousedown', handleUserScroll)
+      scrollbar.addEventListener('pointerdown', handleUserScroll)
+    }
+
+    return () => {
+      viewport.removeEventListener('wheel', handleUserScroll)
+      if (scrollbar) {
+        scrollbar.removeEventListener('mousedown', handleUserScroll)
+        scrollbar.removeEventListener('pointerdown', handleUserScroll)
+      }
+    }
+  }, [handleUserScroll])
+
+  // Auto-scroll to bottom when messages change (unless user manually scrolled)
+  useEffect(() => {
+    // Only auto-scroll if user hasn't manually scrolled (wheel or scrollbar)
+    if (shouldAutoScrollRef.current) {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+    }
   }, [messages])
 
   // Smart source animation: only animate when RAG executed AND sources increased
@@ -360,6 +396,9 @@ export default function AIAssistantPage() {
       // Reset message count ref to prevent scroll effect from triggering
       prevMessageCountRef.current = formattedMessages.length
 
+      // Enable auto-scroll for loaded conversation (scroll to bottom initially)
+      shouldAutoScrollRef.current = true
+
       // Get sources from last assistant message
       const lastAssistantMessage = messagesData
         .filter((m: any) => m.role === 'assistant')
@@ -381,6 +420,7 @@ export default function AIAssistantPage() {
     prevRagExecutedRef.current = false
     prevSourcesLengthRef.current = 0
     prevMessageCountRef.current = 0
+    shouldAutoScrollRef.current = true
   }
 
   const handleSubmit = async (e?: React.FormEvent) => {
@@ -392,6 +432,9 @@ export default function AIAssistantPage() {
 
     // Clear input IMMEDIATELY (before sending)
     setInputValue('')
+
+    // Reset auto-scroll for new message
+    shouldAutoScrollRef.current = true
 
     // Pass dynamic body parameters at request-level to avoid stale state
     await sendMessage(
