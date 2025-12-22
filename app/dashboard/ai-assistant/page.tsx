@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef, useCallback, memo } from 'react'
 import { useChat } from '@ai-sdk/react'
 import { DefaultChatTransport } from 'ai'
 import { Button } from '@/components/ui/button'
@@ -43,6 +43,56 @@ interface Source {
   anio: number
 }
 
+// Memoized message component to prevent unnecessary re-renders during streaming
+const ChatMessage = memo(({
+  message,
+  index,
+  animatingIndex,
+  onRefSet
+}: {
+  message: any
+  index: number
+  animatingIndex: number | null
+  onRefSet: (index: number, el: HTMLDivElement | null) => void
+}) => {
+  return (
+    <div
+      ref={(el) => onRefSet(index, el)}
+      className={`flex gap-3 ${
+        message.role === 'user' ? 'justify-end' : 'justify-start'
+      } ${
+        animatingIndex === index
+          ? message.role === 'user'
+            ? 'animate-in fade-in slide-in-from-right-2 duration-500'
+            : 'animate-in fade-in slide-in-from-bottom-2 duration-500'
+          : ''
+      }`}
+    >
+      <div
+        className={`max-w-[80%] rounded-lg p-4 ${
+          message.role === 'user'
+            ? 'bg-primary text-primary-foreground'
+            : 'bg-muted'
+        }`}
+      >
+        <div>
+          {message.parts?.map((part: any, idx: number) =>
+            part.type === 'text' ? (
+              <MarkdownMessage
+                key={idx}
+                content={part.text}
+                role={message.role as 'user' | 'assistant'}
+              />
+            ) : null
+          )}
+        </div>
+      </div>
+    </div>
+  )
+})
+
+ChatMessage.displayName = 'ChatMessage'
+
 export default function AIAssistantPage() {
   const [conversations, setConversations] = useState<Conversation[]>([])
   const [currentConversationId, setCurrentConversationId] = useState<string | null>(null)
@@ -65,10 +115,11 @@ export default function AIAssistantPage() {
   // Refs for smart scroll behavior
   const scrollPendingRef = useRef(false)
   const messageRefsMap = useRef<Map<number, HTMLDivElement>>(new Map())
-  const lastUserMessageIndexRef = useRef<number>(-1)
 
   // Refs for smart source animation
   const prevRagExecutedRef = useRef(false)
+  const prevMessageCountRef = useRef(0)
+  const prevStatusRef = useRef<string>('')
 
   // RAF-throttled scroll function for performance
   const scrollToBottomThrottled = useCallback(() => {
@@ -93,6 +144,15 @@ export default function AIAssistantPage() {
       behavior: 'smooth',
       block: 'start' // Position at TOP of viewport
     })
+  }, [])
+
+  // Stable ref setter for message elements
+  const handleMessageRefSet = useCallback((index: number, el: HTMLDivElement | null) => {
+    if (el) {
+      messageRefsMap.current.set(index, el)
+    } else {
+      messageRefsMap.current.delete(index)
+    }
   }, [])
 
   const { messages, sendMessage, status, setMessages } = useChat({
@@ -205,17 +265,22 @@ export default function AIAssistantPage() {
     loadConversations()
   }, [])
 
-  // Smart scroll: only auto-scroll when loading conversation or after streaming completes
+  // Smart scroll: only auto-scroll after streaming completes (not during streaming)
   useEffect(() => {
-    // Don't auto-scroll during active streaming (viewport stays locked on user message)
-    if (status !== 'submitted' && messages.length > 0) {
+    // Detect when streaming completes (status changes from 'submitted' to something else)
+    const streamingJustCompleted = prevStatusRef.current === 'submitted' && status !== 'submitted'
+
+    if (streamingJustCompleted && messages.length > 0) {
       const lastMessage = messages[messages.length - 1]
       if (lastMessage.role === 'assistant') {
-        // Only scroll after streaming completes
+        // Scroll to bottom after streaming completes
         scrollToBottomThrottled()
       }
     }
-  }, [messages, status, scrollToBottomThrottled])
+
+    // Update previous status
+    prevStatusRef.current = status
+  }, [status, messages.length, scrollToBottomThrottled])
 
   // Smart source animation: only animate when RAG executed AND sources increased
   useEffect(() => {
@@ -240,6 +305,27 @@ export default function AIAssistantPage() {
     prevSourcesLengthRef.current = currCount
     prevRagExecutedRef.current = ragExecuted
   }, [sources, isRagExecuting])
+
+  // Scroll to user message when it appears in the messages array
+  useEffect(() => {
+    // Only proceed if messages array has grown
+    if (messages.length > prevMessageCountRef.current) {
+      const lastMessage = messages[messages.length - 1]
+
+      // Only scroll for user messages
+      if (lastMessage.role === 'user') {
+        const userMessageIndex = messages.length - 1
+
+        // Small delay to ensure DOM has updated
+        setTimeout(() => {
+          scrollToMessage(userMessageIndex)
+        }, 100)
+      }
+
+      // Update previous count
+      prevMessageCountRef.current = messages.length
+    }
+  }, [messages.length, scrollToMessage])
 
   const loadConversations = async () => {
     setLoadingConversations(true)
@@ -282,6 +368,9 @@ export default function AIAssistantPage() {
       // Set messages in the chat
       setMessages(formattedMessages)
 
+      // Reset message count ref to prevent scroll effect from triggering
+      prevMessageCountRef.current = formattedMessages.length
+
       // Get sources from last assistant message
       const lastAssistantMessage = messagesData
         .filter((m: any) => m.role === 'assistant')
@@ -299,9 +388,10 @@ export default function AIAssistantPage() {
     setMessages([]) // Clear messages when starting new conversation
     setIsRagExecuting(true) // First message always searches for tesis
 
-    // Reset animation refs
+    // Reset refs
     prevRagExecutedRef.current = false
     prevSourcesLengthRef.current = 0
+    prevMessageCountRef.current = 0
   }
 
   const handleSubmit = async (e?: React.FormEvent) => {
@@ -324,11 +414,6 @@ export default function AIAssistantPage() {
         },
       }
     )
-
-    // Scroll to show user message at top of viewport (Gemini-style)
-    const userMessageIndex = messages.length
-    lastUserMessageIndexRef.current = userMessageIndex
-    setTimeout(() => scrollToMessage(userMessageIndex), 150)
   }
 
   const materiaOptions = [
@@ -543,42 +628,13 @@ export default function AIAssistantPage() {
             ) : (
               <div className="space-y-6">
                 {messages.map((message, i) => (
-                  <div
+                  <ChatMessage
                     key={i}
-                    ref={(el) => {
-                      if (el) messageRefsMap.current.set(i, el)
-                      else messageRefsMap.current.delete(i)
-                    }}
-                    className={`flex gap-3 ${
-                      message.role === 'user' ? 'justify-end' : 'justify-start'
-                    } ${
-                      animatingIndex === i
-                        ? message.role === 'user'
-                          ? 'animate-in fade-in slide-in-from-right-2 duration-500'
-                          : 'animate-in fade-in slide-in-from-bottom-2 duration-500'
-                        : ''
-                    }`}
-                  >
-                    <div
-                      className={`max-w-[80%] rounded-lg p-4 ${
-                        message.role === 'user'
-                          ? 'bg-primary text-primary-foreground'
-                          : 'bg-muted'
-                      }`}
-                    >
-                      <div>
-                        {message.parts?.map((part: any, idx: number) =>
-                          part.type === 'text' ? (
-                            <MarkdownMessage
-                              key={idx}
-                              content={part.text}
-                              role={message.role as 'user' | 'assistant'}
-                            />
-                          ) : null
-                        )}
-                      </div>
-                    </div>
-                  </div>
+                    message={message}
+                    index={i}
+                    animatingIndex={animatingIndex}
+                    onRefSet={handleMessageRefSet}
+                  />
                 ))}
                 {isLoading && <LoadingDots isSearching={isRagExecuting} />}
               </div>
