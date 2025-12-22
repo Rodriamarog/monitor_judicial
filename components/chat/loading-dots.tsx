@@ -1,15 +1,24 @@
 import { useState, useEffect } from 'react'
 
-export function LoadingDots() {
+interface LoadingDotsProps {
+  isSearching?: boolean // Whether RAG is actually searching for tesis
+}
+
+export function LoadingDots({ isSearching = true }: LoadingDotsProps) {
   const [message, setMessage] = useState('Pensando')
 
   useEffect(() => {
+    // Only switch to "Buscando tesis" if RAG is actually executing
+    if (!isSearching) {
+      return // Stay on "Pensando..." for follow-ups
+    }
+
     const timer = setTimeout(() => {
       setMessage('Buscando tesis relevantes')
     }, 1000) // Switch after 1 second
 
     return () => clearTimeout(timer)
-  }, [])
+  }, [isSearching])
 
   return (
     <div className="flex gap-3">

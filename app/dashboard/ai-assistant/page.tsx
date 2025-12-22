@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { useChat } from '@ai-sdk/react'
 import { DefaultChatTransport } from 'ai'
 import { Button } from '@/components/ui/button'
@@ -53,6 +53,7 @@ export default function AIAssistantPage() {
   const [sourcesAnimating, setSourcesAnimating] = useState(false)
   const [selectedTesisId, setSelectedTesisId] = useState<number | null>(null)
   const [tesisModalOpen, setTesisModalOpen] = useState(false)
+  const [isRagExecuting, setIsRagExecuting] = useState(true) // Default to true for first message
 
   const scrollRef = useRef<HTMLDivElement>(null)
   const supabase = createClient()
@@ -61,14 +62,52 @@ export default function AIAssistantPage() {
   const latestConversationIdRef = useRef<string | null>(null)
   const prevSourcesLengthRef = useRef(0)
 
+  // Refs for smart scroll behavior
+  const scrollPendingRef = useRef(false)
+  const messageRefsMap = useRef<Map<number, HTMLDivElement>>(new Map())
+  const lastUserMessageIndexRef = useRef<number>(-1)
+
+  // Refs for smart source animation
+  const prevRagExecutedRef = useRef(false)
+
+  // RAF-throttled scroll function for performance
+  const scrollToBottomThrottled = useCallback(() => {
+    if (scrollPendingRef.current) return
+
+    scrollPendingRef.current = true
+    requestAnimationFrame(() => {
+      if (scrollRef.current) {
+        scrollRef.current.scrollTop = scrollRef.current.scrollHeight
+      }
+      scrollPendingRef.current = false
+    })
+  }, [])
+
+  // Scroll to specific message (positions it at top of viewport)
+  const scrollToMessage = useCallback((messageIndex: number) => {
+    const messageElement = messageRefsMap.current.get(messageIndex)
+    if (!messageElement || !scrollRef.current) return
+
+    // Scroll to position message at top of viewport
+    messageElement.scrollIntoView({
+      behavior: 'smooth',
+      block: 'start' // Position at TOP of viewport
+    })
+  }, [])
+
   const { messages, sendMessage, status, setMessages } = useChat({
     transport: new DefaultChatTransport({
       api: '/api/ai-assistant/chat',
       async fetch(input, init) {
         const response = await fetch(input, init)
 
-        // Extract conversation ID from headers
+        // Extract headers
         const conversationId = response.headers.get('X-Conversation-Id')
+        const ragExecuted = response.headers.get('X-RAG-Executed') === 'true'
+
+        console.log('[DEBUG] RAG executed:', ragExecuted)
+        setIsRagExecuting(ragExecuted)
+
         if (conversationId) {
           console.log('[DEBUG] Conversation ID from headers:', conversationId)
           latestConversationIdRef.current = conversationId
@@ -118,12 +157,12 @@ export default function AIAssistantPage() {
       const conversationId = latestConversationIdRef.current || currentConversationId
       console.log('[DEBUG] Conversation ID to use:', conversationId)
 
-      // Load sources from database for the latest assistant message
+      // Fetch sources from database after streaming completes
       if (conversationId) {
         console.log('[DEBUG] Fetching sources from Supabase for conversation:', conversationId)
 
-        // Add a small delay to ensure the message was saved
-        await new Promise(resolve => setTimeout(resolve, 500))
+        // Small delay to ensure the message was saved
+        await new Promise(resolve => setTimeout(resolve, 300))
 
         const { data: messagesData, error } = await supabase
           .from('messages')
@@ -132,34 +171,28 @@ export default function AIAssistantPage() {
           .eq('role', 'assistant')
           .order('created_at', { ascending: false })
           .limit(1)
-          .single()
 
         console.log('[DEBUG] Supabase response:', { messagesData, error })
 
-        if (messagesData?.sources) {
-          console.log('[DEBUG] Setting sources:', messagesData.sources)
-          setSources(messagesData.sources)
+        if (messagesData?.[0]?.sources) {
+          console.log('[DEBUG] Setting sources:', messagesData[0].sources)
+          setSources(messagesData[0].sources)
         } else {
           console.log('[DEBUG] No sources found in database')
         }
 
-        // Note: Backend updates conversation timestamp in database
         // Optimistically move current conversation to top of list (better UX)
-        if (conversationId) {
-          setConversations((prev) => {
-            const index = prev.findIndex(c => c.id === conversationId)
-            if (index <= 0) return prev // Already at top or not found
+        setConversations((prev) => {
+          const index = prev.findIndex(c => c.id === conversationId)
+          if (index <= 0) return prev // Already at top or not found
 
-            const conv = prev[index]
-            return [
-              { ...conv, updated_at: new Date().toISOString() },
-              ...prev.slice(0, index),
-              ...prev.slice(index + 1)
-            ]
-          })
-        }
-      } else {
-        console.log('[DEBUG] No conversation ID available, cannot fetch sources')
+          const conv = prev[index]
+          return [
+            { ...conv, updated_at: new Date().toISOString() },
+            ...prev.slice(0, index),
+            ...prev.slice(index + 1)
+          ]
+        })
       }
     },
   })
@@ -172,25 +205,41 @@ export default function AIAssistantPage() {
     loadConversations()
   }, [])
 
-  // Scroll to bottom when new messages arrive
+  // Smart scroll: only auto-scroll when loading conversation or after streaming completes
   useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight
+    // Don't auto-scroll during active streaming (viewport stays locked on user message)
+    if (status !== 'submitted' && messages.length > 0) {
+      const lastMessage = messages[messages.length - 1]
+      if (lastMessage.role === 'assistant') {
+        // Only scroll after streaming completes
+        scrollToBottomThrottled()
+      }
     }
-  }, [messages])
+  }, [messages, status, scrollToBottomThrottled])
 
-  // Trigger animation when sources appear
+  // Smart source animation: only animate when RAG executed AND sources increased
   useEffect(() => {
-    if (sources.length > 0 && prevSourcesLengthRef.current === 0) {
+    const prevCount = prevSourcesLengthRef.current
+    const currCount = sources.length
+    const ragExecuted = isRagExecuting
+
+    // Only animate if RAG executed AND sources increased
+    const shouldAnimate = ragExecuted && currCount > prevCount
+
+    if (shouldAnimate) {
       setSourcesAnimating(true)
       const timer = setTimeout(() => {
         setSourcesAnimating(false)
-      }, 400) // Match animation duration
+      }, 400)
 
+      prevSourcesLengthRef.current = currCount
+      prevRagExecutedRef.current = ragExecuted
       return () => clearTimeout(timer)
     }
-    prevSourcesLengthRef.current = sources.length
-  }, [sources])
+
+    prevSourcesLengthRef.current = currCount
+    prevRagExecutedRef.current = ragExecuted
+  }, [sources, isRagExecuting])
 
   const loadConversations = async () => {
     setLoadingConversations(true)
@@ -208,6 +257,7 @@ export default function AIAssistantPage() {
 
   const loadConversation = async (conversationId: string) => {
     setCurrentConversationId(conversationId)
+    setIsRagExecuting(true) // Default to true until we know from header
 
     // Load messages from this conversation
     const { data: messagesData } = await supabase
@@ -247,6 +297,11 @@ export default function AIAssistantPage() {
     setCurrentConversationId(null)
     setSources([])
     setMessages([]) // Clear messages when starting new conversation
+    setIsRagExecuting(true) // First message always searches for tesis
+
+    // Reset animation refs
+    prevRagExecutedRef.current = false
+    prevSourcesLengthRef.current = 0
   }
 
   const handleSubmit = async (e?: React.FormEvent) => {
@@ -269,6 +324,11 @@ export default function AIAssistantPage() {
         },
       }
     )
+
+    // Scroll to show user message at top of viewport (Gemini-style)
+    const userMessageIndex = messages.length
+    lastUserMessageIndexRef.current = userMessageIndex
+    setTimeout(() => scrollToMessage(userMessageIndex), 150)
   }
 
   const materiaOptions = [
@@ -485,6 +545,10 @@ export default function AIAssistantPage() {
                 {messages.map((message, i) => (
                   <div
                     key={i}
+                    ref={(el) => {
+                      if (el) messageRefsMap.current.set(i, el)
+                      else messageRefsMap.current.delete(i)
+                    }}
                     className={`flex gap-3 ${
                       message.role === 'user' ? 'justify-end' : 'justify-start'
                     } ${
@@ -516,7 +580,7 @@ export default function AIAssistantPage() {
                     </div>
                   </div>
                 ))}
-                {isLoading && <LoadingDots />}
+                {isLoading && <LoadingDots isSearching={isRagExecuting} />}
               </div>
             )}
           </ScrollArea>

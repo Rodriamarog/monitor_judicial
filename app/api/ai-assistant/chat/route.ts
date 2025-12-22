@@ -39,6 +39,25 @@ interface TesisSource {
   materias: string[]
 }
 
+/**
+ * Deduplicate sources by id_tesis, keeping the highest-scoring chunk for each tesis
+ */
+function deduplicateSourcesByIdTesis(sources: TesisSource[]): TesisSource[] {
+  const bestByTesis = new Map<number, TesisSource>()
+
+  for (const source of sources) {
+    const existing = bestByTesis.get(source.id_tesis)
+
+    // Keep the source with the highest final_score
+    if (!existing || source.final_score > existing.final_score) {
+      bestByTesis.set(source.id_tesis, source)
+    }
+  }
+
+  // Return deduplicated sources in original order (by final_score)
+  return Array.from(bestByTesis.values()).sort((a, b) => b.final_score - a.final_score)
+}
+
 async function retrieveTesis(
   query: string,
   filters?: {
@@ -99,8 +118,13 @@ async function retrieveTesis(
     const rerankedSources = applyRecencyReranking(sources, query)
     console.log(`[RAG] Re-ranking redujo a ${rerankedSources.length} tesis`)
 
-    // Limitar a top 5 después del re-ranking
-    const finalSources = rerankedSources.slice(0, 5)
+    // Deduplicate by id_tesis BEFORE selecting top 5
+    // This ensures we get 5 unique tesis, not 5 chunks from 2 tesis
+    const uniqueSources = deduplicateSourcesByIdTesis(rerankedSources)
+    console.log(`[RAG] Deduplicación redujo a ${uniqueSources.length} tesis únicas`)
+
+    // Limitar a top 5 después del re-ranking y deduplicación
+    const finalSources = uniqueSources.slice(0, 5)
     console.log(`[RAG] Enviando ${finalSources.length} tesis al LLM`)
     console.log('[DEBUG] Final sources being returned:', JSON.stringify(finalSources.map(s => ({
       id: s.id_tesis,
@@ -512,6 +536,7 @@ IMPORTANTE:
       headers: {
         'X-Conversation-Id': conversation.id,
         'X-Sources-Count': sources.length.toString(),
+        'X-RAG-Executed': classification.intent === 'NUEVA' ? 'true' : 'false',
       },
     })
   } catch (error) {
