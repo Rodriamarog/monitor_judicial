@@ -48,12 +48,14 @@ const ChatMessage = memo(({
   message,
   index,
   animatingIndex,
-  onRefSet
+  onRefSet,
+  onTesisClick
 }: {
   message: any
   index: number
   animatingIndex: number | null
   onRefSet: (index: number, el: HTMLDivElement | null) => void
+  onTesisClick?: (tesisId: number) => void
 }) => {
   return (
     <div
@@ -82,6 +84,7 @@ const ChatMessage = memo(({
                 key={idx}
                 content={part.text}
                 role={message.role as 'user' | 'assistant'}
+                onTesisClick={onTesisClick}
               />
             ) : null
           )}
@@ -666,6 +669,7 @@ export default function AIAssistantPage() {
                     index={i}
                     animatingIndex={animatingIndex}
                     onRefSet={handleMessageRefSet}
+                    onTesisClick={handleTesisClick}
                   />
                 ))}
                 {isLoading && <LoadingDots isSearching={isRagExecuting} />}

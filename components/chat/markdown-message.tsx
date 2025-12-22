@@ -4,12 +4,18 @@ import rehypeHighlight from 'rehype-highlight'
 interface MarkdownMessageProps {
   content: string
   role: 'user' | 'assistant'
+  onTesisClick?: (tesisId: number) => void
 }
 
-export function MarkdownMessage({ content, role }: MarkdownMessageProps) {
+export function MarkdownMessage({ content, role, onTesisClick }: MarkdownMessageProps) {
   if (role === 'user') {
     return <div className="whitespace-pre-wrap">{content}</div>
   }
+
+  // Convert [ID: XXXXXX] references to clickable links
+  const processedContent = onTesisClick
+    ? content.replace(/\[ID:\s*(\d+)\]/g, '[$1](#tesis-$1)')
+    : content
 
   return (
     <ReactMarkdown
@@ -21,6 +27,25 @@ export function MarkdownMessage({ content, role }: MarkdownMessageProps) {
         ol: ({ children }) => <ol className="mb-2 ml-4 list-decimal">{children}</ol>,
         li: ({ children }) => <li className="mb-1">{children}</li>,
         strong: ({ children }) => <strong className="font-semibold">{children}</strong>,
+        a: ({ href, children }) => {
+          // Handle tesis ID links
+          if (href?.startsWith('#tesis-') && onTesisClick) {
+            const tesisId = parseInt(href.replace('#tesis-', ''))
+            return (
+              <button
+                onClick={(e) => {
+                  e.preventDefault()
+                  onTesisClick(tesisId)
+                }}
+                className="text-primary hover:underline cursor-pointer font-medium"
+              >
+                [ID: {children}]
+              </button>
+            )
+          }
+          // Regular links
+          return <a href={href} className="text-primary hover:underline">{children}</a>
+        },
         code: ({ inline, children }) =>
           inline ? (
             <code className="bg-muted px-1 py-0.5 rounded text-sm">{children}</code>
@@ -29,7 +54,7 @@ export function MarkdownMessage({ content, role }: MarkdownMessageProps) {
           ),
       }}
     >
-      {content}
+      {processedContent}
     </ReactMarkdown>
   )
 }
