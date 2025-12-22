@@ -115,11 +115,11 @@ export default function AIAssistantPage() {
   // Refs for smart scroll behavior
   const scrollPendingRef = useRef(false)
   const messageRefsMap = useRef<Map<number, HTMLDivElement>>(new Map())
+  const messagesEndRef = useRef<HTMLDivElement>(null)
 
   // Refs for smart source animation
   const prevRagExecutedRef = useRef(false)
   const prevMessageCountRef = useRef(0)
-  const prevStatusRef = useRef<string>('')
 
   // RAF-throttled scroll function for performance
   const scrollToBottomThrottled = useCallback(() => {
@@ -265,22 +265,11 @@ export default function AIAssistantPage() {
     loadConversations()
   }, [])
 
-  // Smart scroll: only auto-scroll after streaming completes (not during streaming)
+  // Auto-scroll to bottom when messages change (industry standard pattern)
   useEffect(() => {
-    // Detect when streaming completes (status changes from 'submitted' to something else)
-    const streamingJustCompleted = prevStatusRef.current === 'submitted' && status !== 'submitted'
-
-    if (streamingJustCompleted && messages.length > 0) {
-      const lastMessage = messages[messages.length - 1]
-      if (lastMessage.role === 'assistant') {
-        // Scroll to bottom after streaming completes
-        scrollToBottomThrottled()
-      }
-    }
-
-    // Update previous status
-    prevStatusRef.current = status
-  }, [status, messages.length, scrollToBottomThrottled])
+    // Scroll the anchor element into view (standard chat pattern)
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }, [messages])
 
   // Smart source animation: only animate when RAG executed AND sources increased
   useEffect(() => {
@@ -597,7 +586,7 @@ export default function AIAssistantPage() {
           </CardHeader>
 
           {/* Messages */}
-          <ScrollArea className="flex-1 p-6" ref={scrollRef}>
+          <ScrollArea className="flex-1 px-6" ref={scrollRef}>
             {messages.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-full text-center">
                 <h3 className="text-lg font-semibold mb-2">
@@ -637,6 +626,8 @@ export default function AIAssistantPage() {
                   />
                 ))}
                 {isLoading && <LoadingDots isSearching={isRagExecuting} />}
+                {/* Scroll anchor - invisible element at bottom */}
+                <div ref={messagesEndRef} className="h-0" />
               </div>
             )}
           </ScrollArea>
