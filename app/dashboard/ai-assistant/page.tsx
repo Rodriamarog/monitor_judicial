@@ -107,6 +107,7 @@ export default function AIAssistantPage() {
   const [selectedTesisId, setSelectedTesisId] = useState<number | null>(null)
   const [tesisModalOpen, setTesisModalOpen] = useState(false)
   const [isRagExecuting, setIsRagExecuting] = useState(true) // Default to true for first message
+  const [loadingMessages, setLoadingMessages] = useState(false) // Loading state for conversation messages
 
   const scrollRef = useRef<HTMLDivElement>(null)
   const supabase = createClient()
@@ -302,12 +303,16 @@ export default function AIAssistantPage() {
     }
   }, [handleUserScroll])
 
-  // Auto-scroll to bottom when messages change (unless user manually scrolled)
+  // Auto-scroll to bottom when messages change (debounced for performance)
   useEffect(() => {
-    // Only auto-scroll if user hasn't manually scrolled (wheel or scrollbar)
-    if (shouldAutoScrollRef.current) {
+    if (!shouldAutoScrollRef.current) return
+
+    // Debounce - only scroll after 50ms of no updates, but keep smooth animation
+    const timer = setTimeout(() => {
       messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-    }
+    }, 50)
+
+    return () => clearTimeout(timer)
   }, [messages])
 
   // Smart source animation: only animate when RAG executed AND sources increased
@@ -370,46 +375,62 @@ export default function AIAssistantPage() {
   }
 
   const loadConversation = async (conversationId: string) => {
+    setLoadingMessages(true) // Show loading state
     setCurrentConversationId(conversationId)
     setIsRagExecuting(true) // Default to true until we know from header
 
-    // Load messages from this conversation
-    const { data: messagesData } = await supabase
-      .from('messages')
-      .select('role, content, sources, created_at')
-      .eq('conversation_id', conversationId)
-      .order('created_at', { ascending: true })
+    try {
+      // Load messages from this conversation
+      const { data: messagesData } = await supabase
+        .from('messages')
+        .select('role, content, sources, created_at')
+        .eq('conversation_id', conversationId)
+        .order('created_at', { ascending: true })
 
-    if (messagesData) {
-      // Convert Supabase messages to AI SDK UIMessage format
-      const formattedMessages = messagesData.map((msg: any) => ({
-        id: crypto.randomUUID(),
-        role: msg.role,
-        parts: [
-          {
-            type: 'text',
-            text: msg.content,
-          },
-        ],
-      }))
+      if (messagesData) {
+        // Disable auto-scroll temporarily to prevent debounced effect
+        shouldAutoScrollRef.current = false
 
-      // Set messages in the chat
-      setMessages(formattedMessages)
+        // Convert Supabase messages to AI SDK UIMessage format
+        const formattedMessages = messagesData.map((msg: any) => ({
+          id: crypto.randomUUID(),
+          role: msg.role,
+          parts: [
+            {
+              type: 'text',
+              text: msg.content,
+            },
+          ],
+        }))
 
-      // Reset message count ref to prevent scroll effect from triggering
-      prevMessageCountRef.current = formattedMessages.length
+        // Set messages in the chat
+        setMessages(formattedMessages)
 
-      // Enable auto-scroll for loaded conversation (scroll to bottom initially)
-      shouldAutoScrollRef.current = true
+        // Reset message count ref to prevent scroll effect from triggering
+        prevMessageCountRef.current = formattedMessages.length
 
-      // Get sources from last assistant message
-      const lastAssistantMessage = messagesData
-        .filter((m: any) => m.role === 'assistant')
-        .reverse()[0]
+        // Scroll to bottom BEFORE browser paints to avoid flash
+        // Use requestAnimationFrame to ensure DOM is ready but before paint
+        requestAnimationFrame(() => {
+          const viewport = scrollRef.current?.querySelector('[data-radix-scroll-area-viewport]')
+          if (viewport) {
+            viewport.scrollTop = viewport.scrollHeight
+          }
+          // Re-enable auto-scroll for future streaming messages
+          shouldAutoScrollRef.current = true
+        })
 
-      if (lastAssistantMessage?.sources) {
-        setSources(lastAssistantMessage.sources)
+        // Get sources from last assistant message
+        const lastAssistantMessage = messagesData
+          .filter((m: any) => m.role === 'assistant')
+          .reverse()[0]
+
+        if (lastAssistantMessage?.sources) {
+          setSources(lastAssistantMessage.sources)
+        }
       }
+    } finally {
+      setLoadingMessages(false) // Hide loading state
     }
   }
 
@@ -518,10 +539,10 @@ export default function AIAssistantPage() {
     }
   }
 
-  const handleTesisClick = (tesisId: number) => {
+  const handleTesisClick = useCallback((tesisId: number) => {
     setSelectedTesisId(tesisId)
     setTesisModalOpen(true)
-  }
+  }, [])
 
   return (
     <div className="h-full p-6">
@@ -633,7 +654,11 @@ export default function AIAssistantPage() {
 
           {/* Messages */}
           <ScrollArea className="flex-1 px-6" ref={scrollRef}>
-            {messages.length === 0 ? (
+            {loadingMessages ? (
+              <div className="flex items-center justify-center h-full">
+                <p className="text-muted-foreground">Cargando conversación...</p>
+              </div>
+            ) : messages.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-full text-center">
                 <h3 className="text-lg font-semibold mb-2">
                   ¿En qué puedo ayudarte hoy?

@@ -1,3 +1,4 @@
+import { memo, useMemo } from 'react'
 import ReactMarkdown from 'react-markdown'
 import rehypeHighlight from 'rehype-highlight'
 
@@ -7,15 +8,18 @@ interface MarkdownMessageProps {
   onTesisClick?: (tesisId: number) => void
 }
 
-export function MarkdownMessage({ content, role, onTesisClick }: MarkdownMessageProps) {
+export const MarkdownMessage = memo(function MarkdownMessage({ content, role, onTesisClick }: MarkdownMessageProps) {
   if (role === 'user') {
     return <div className="whitespace-pre-wrap">{content}</div>
   }
 
-  // Convert [ID: XXXXXX] references to clickable links
-  const processedContent = onTesisClick
-    ? content.replace(/\[ID:\s*(\d+)\]/g, '[$1](#tesis-$1)')
-    : content
+  // Memoize regex processing to avoid recomputation on every render
+  const processedContent = useMemo(() =>
+    onTesisClick
+      ? content.replace(/\[ID:\s*(\d+)\]/g, '[$1](#tesis-$1)')
+      : content,
+    [content, onTesisClick]
+  )
 
   return (
     <ReactMarkdown
@@ -57,4 +61,4 @@ export function MarkdownMessage({ content, role, onTesisClick }: MarkdownMessage
       {processedContent}
     </ReactMarkdown>
   )
-}
+})
