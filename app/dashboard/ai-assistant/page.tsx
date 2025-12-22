@@ -380,20 +380,25 @@ export default function AIAssistantPage() {
     setIsRagExecuting(true) // Default to true until we know from header
 
     try {
-      // Load messages from this conversation
+      const MESSAGE_LIMIT = 50 // Load last 50 messages only
+
+      // Load messages from this conversation (newest first, then reverse)
       const { data: messagesData } = await supabase
         .from('messages')
-        .select('role, content, sources, created_at')
+        .select('id, role, content, sources, created_at')
         .eq('conversation_id', conversationId)
-        .order('created_at', { ascending: true })
+        .order('created_at', { ascending: false }) // Get newest first
+        .limit(MESSAGE_LIMIT)
 
       if (messagesData) {
+        // Reverse to show oldest first (chronological order)
+        const reversedMessages = messagesData.reverse()
         // Disable auto-scroll temporarily to prevent debounced effect
         shouldAutoScrollRef.current = false
 
         // Convert Supabase messages to AI SDK UIMessage format
-        const formattedMessages = messagesData.map((msg: any) => ({
-          id: crypto.randomUUID(),
+        const formattedMessages = reversedMessages.map((msg: any) => ({
+          id: msg.id.toString(), // Use database ID for stable, cheap identification
           role: msg.role,
           parts: [
             {
@@ -421,7 +426,7 @@ export default function AIAssistantPage() {
         })
 
         // Get sources from last assistant message
-        const lastAssistantMessage = messagesData
+        const lastAssistantMessage = reversedMessages
           .filter((m: any) => m.role === 'assistant')
           .reverse()[0]
 
@@ -689,7 +694,7 @@ export default function AIAssistantPage() {
               <div className="space-y-6">
                 {messages.map((message, i) => (
                   <ChatMessage
-                    key={i}
+                    key={message.id}
                     message={message}
                     index={i}
                     animatingIndex={animatingIndex}
