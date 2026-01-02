@@ -3,6 +3,9 @@
 import { useState, useEffect, useRef, useCallback, memo } from 'react'
 import { useChat } from '@ai-sdk/react'
 import { DefaultChatTransport } from 'ai'
+import { useVirtualizer } from '@tanstack/react-virtual'
+import { useQueryClient } from '@tanstack/react-query'
+import { useConversations, useDeleteConversation } from './hooks/useConversations'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -97,10 +100,13 @@ const ChatMessage = memo(({
 ChatMessage.displayName = 'ChatMessage'
 
 export default function AIAssistantPage() {
-  const [conversations, setConversations] = useState<Conversation[]>([])
+  // Use React Query for conversations caching
+  const queryClient = useQueryClient()
+  const { data: conversations = [], isLoading: loadingConversations } = useConversations()
+  const deleteConversationMutation = useDeleteConversation()
+
   const [currentConversationId, setCurrentConversationId] = useState<string | null>(null)
   const [selectedMaterias, setSelectedMaterias] = useState<string[]>([])
-  const [loadingConversations, setLoadingConversations] = useState(true)
   const [sources, setSources] = useState<Source[]>([])
   const [inputValue, setInputValue] = useState('')
   const [sourcesAnimating, setSourcesAnimating] = useState(false)
@@ -108,6 +114,8 @@ export default function AIAssistantPage() {
   const [tesisModalOpen, setTesisModalOpen] = useState(false)
   const [isRagExecuting, setIsRagExecuting] = useState(true) // Default to true for first message
   const [loadingMessages, setLoadingMessages] = useState(false) // Loading state for conversation messages
+  const [hasMoreMessages, setHasMoreMessages] = useState(false) // Whether there are older messages to load
+  const [loadingMore, setLoadingMore] = useState(false) // Loading state for "load more"
 
   const scrollRef = useRef<HTMLDivElement>(null)
   const supabase = createClient()
@@ -186,34 +194,8 @@ export default function AIAssistantPage() {
             console.log('[DEBUG] Setting new conversation ID:', conversationId)
             setCurrentConversationId(conversationId)
 
-            // Optimistically add new conversation to the list (if not already present)
-            const newConversation = {
-              id: conversationId,
-              title: 'Nueva conversación',
-              updated_at: new Date().toISOString(),
-            }
-            setConversations((prev) => {
-              // Don't add if already exists
-              if (prev.some(c => c.id === conversationId)) {
-                return prev
-              }
-              return [newConversation, ...prev]
-            })
-
-            // Fetch the actual conversation details in the background to get the real title
-            supabase
-              .from('conversations')
-              .select('id, title, updated_at')
-              .eq('id', conversationId)
-              .single()
-              .then(({ data }) => {
-                if (data) {
-                  // Simple update: replace the temporary conversation with real data
-                  setConversations((prev) =>
-                    prev.map((c) => c.id === conversationId ? data : c)
-                  )
-                }
-              })
+            // Invalidate conversations cache to refetch with new conversation
+            queryClient.invalidateQueries({ queryKey: ['conversations'] })
           }
         }
 
@@ -251,18 +233,8 @@ export default function AIAssistantPage() {
           console.log('[DEBUG] No sources found in database')
         }
 
-        // Optimistically move current conversation to top of list (better UX)
-        setConversations((prev) => {
-          const index = prev.findIndex(c => c.id === conversationId)
-          if (index <= 0) return prev // Already at top or not found
-
-          const conv = prev[index]
-          return [
-            { ...conv, updated_at: new Date().toISOString() },
-            ...prev.slice(0, index),
-            ...prev.slice(index + 1)
-          ]
-        })
+        // Invalidate cache to refetch and reorder conversations
+        queryClient.invalidateQueries({ queryKey: ['conversations'] })
       }
     },
   })
@@ -270,10 +242,18 @@ export default function AIAssistantPage() {
   const isLoading = status === 'submitted' // Hide loading indicator once streaming starts
   const animatingIndex = useMessageAnimation(messages.length)
 
-  // Load conversations on mount
-  useEffect(() => {
-    loadConversations()
-  }, [])
+  // Virtual scrolling for performance with large message lists
+  const virtualizer = useVirtualizer({
+    count: messages.length,
+    getScrollElement: () => {
+      // Get the Radix ScrollArea viewport element
+      return scrollRef.current?.querySelector('[data-radix-scroll-area-viewport]') as HTMLElement || null
+    },
+    estimateSize: () => 150, // Estimated message height in pixels
+    overscan: 5, // Render 5 extra messages above/below viewport for smooth scrolling
+  })
+
+  // Conversations are now automatically loaded and cached via React Query
 
   // Detect user scroll actions (wheel or scrollbar drag)
   useEffect(() => {
@@ -315,6 +295,23 @@ export default function AIAssistantPage() {
 
     return () => clearTimeout(timer)
   }, [messages])
+
+  // Load more messages when scrolling to top
+  useEffect(() => {
+    const viewport = scrollRef.current?.querySelector('[data-radix-scroll-area-viewport]')
+    if (!viewport) return
+
+    const handleScroll = () => {
+      const { scrollTop } = viewport
+      // Trigger load more when scrolled within 200px of top
+      if (scrollTop < 200 && hasMoreMessages && !loadingMore) {
+        loadMoreMessages()
+      }
+    }
+
+    viewport.addEventListener('scroll', handleScroll)
+    return () => viewport.removeEventListener('scroll', handleScroll)
+  }, [hasMoreMessages, loadingMore])
 
   // Smart source animation: only animate when RAG executed AND sources increased
   useEffect(() => {
@@ -361,20 +358,6 @@ export default function AIAssistantPage() {
     }
   }, [messages.length, scrollToMessage])
 
-  const loadConversations = async () => {
-    setLoadingConversations(true)
-    const { data, error } = await supabase
-      .from('conversations')
-      .select('id, title, updated_at')
-      .order('updated_at', { ascending: false })
-      .limit(20)
-
-    if (!error && data) {
-      setConversations(data)
-    }
-    setLoadingConversations(false)
-  }
-
   const loadConversation = async (conversationId: string) => {
     setLoadingMessages(true) // Show loading state
     setCurrentConversationId(conversationId)
@@ -382,6 +365,12 @@ export default function AIAssistantPage() {
 
     try {
       const MESSAGE_LIMIT = 50 // Load last 50 messages only
+
+      // Check total message count to determine if there are more messages
+      const { count: totalCount } = await supabase
+        .from('messages')
+        .select('*', { count: 'exact', head: true })
+        .eq('conversation_id', conversationId)
 
       // Load messages from this conversation (newest first, then reverse)
       const { data: messagesData } = await supabase
@@ -392,6 +381,8 @@ export default function AIAssistantPage() {
         .limit(MESSAGE_LIMIT)
 
       if (messagesData) {
+        // Set hasMoreMessages if total count > what we loaded
+        setHasMoreMessages((totalCount || 0) > messagesData.length)
         // Reverse to show oldest first (chronological order)
         const reversedMessages = messagesData.reverse()
         // Disable auto-scroll temporarily to prevent debounced effect
@@ -437,6 +428,60 @@ export default function AIAssistantPage() {
       }
     } finally {
       setLoadingMessages(false) // Hide loading state
+    }
+  }
+
+  const loadMoreMessages = async () => {
+    if (!hasMoreMessages || loadingMore || !currentConversationId) return
+
+    setLoadingMore(true)
+
+    try {
+      const MESSAGE_LIMIT = 50
+      const oldestMessage = messages[0]
+      if (!oldestMessage) return
+
+      // Get the created_at timestamp of the oldest message we have
+      const { data: oldestMessageData } = await supabase
+        .from('messages')
+        .select('created_at')
+        .eq('id', parseInt(oldestMessage.id))
+        .single()
+
+      if (!oldestMessageData) return
+
+      // Fetch older messages
+      const { data: olderMessages } = await supabase
+        .from('messages')
+        .select('id, role, content, sources, created_at')
+        .eq('conversation_id', currentConversationId)
+        .lt('created_at', oldestMessageData.created_at)
+        .order('created_at', { ascending: false })
+        .limit(MESSAGE_LIMIT)
+
+      if (olderMessages && olderMessages.length > 0) {
+        // Format and prepend messages
+        const formattedMessages = olderMessages.reverse().map((msg: any) => ({
+          id: msg.id.toString(),
+          role: msg.role,
+          parts: [
+            {
+              type: 'text',
+              text: msg.content,
+            },
+          ],
+        }))
+
+        // Prepend to existing messages
+        setMessages((prev) => [...formattedMessages, ...prev])
+
+        // Update hasMoreMessages
+        setHasMoreMessages(olderMessages.length === MESSAGE_LIMIT)
+      } else {
+        setHasMoreMessages(false)
+      }
+    } finally {
+      setLoadingMore(false)
     }
   }
 
@@ -509,9 +554,6 @@ export default function AIAssistantPage() {
       return
     }
 
-    // Optimistic update: Remove from UI immediately
-    setConversations((prev) => prev.filter((c) => c.id !== conversationId))
-
     // If the deleted conversation was the current one, clear it
     if (currentConversationId === conversationId) {
       setCurrentConversationId(null)
@@ -519,30 +561,8 @@ export default function AIAssistantPage() {
       setMessages([]) // Clear messages
     }
 
-    // Delete from database in background
-    try {
-      // Delete messages first (due to foreign key constraint)
-      await supabase
-        .from('messages')
-        .delete()
-        .eq('conversation_id', conversationId)
-
-      // Then delete the conversation
-      const { error } = await supabase
-        .from('conversations')
-        .delete()
-        .eq('id', conversationId)
-
-      if (error) {
-        console.error('Error deleting conversation:', error)
-        // Optionally: reload conversations to revert the optimistic update
-        loadConversations()
-      }
-    } catch (error) {
-      console.error('Error deleting conversation:', error)
-      // Optionally: reload conversations to revert the optimistic update
-      loadConversations()
-    }
+    // Use React Query mutation (handles cache invalidation automatically)
+    deleteConversationMutation.mutate(conversationId)
   }
 
   const handleTesisClick = useCallback((tesisId: number) => {
@@ -692,20 +712,86 @@ export default function AIAssistantPage() {
                 </div>
               </div>
             ) : (
-              <div className="space-y-6">
-                {messages.map((message, i) => (
-                  <ChatMessage
-                    key={message.id}
-                    message={message}
-                    index={i}
-                    animatingIndex={animatingIndex}
-                    onRefSet={handleMessageRefSet}
-                    onTesisClick={handleTesisClick}
-                  />
-                ))}
-                {isLoading && <LoadingDots isSearching={isRagExecuting} />}
+              <div
+                style={{
+                  height: `${virtualizer.getTotalSize()}px`,
+                  width: '100%',
+                  position: 'relative',
+                }}
+              >
+                {/* Load more indicator at top */}
+                {loadingMore && (
+                  <div
+                    style={{
+                      position: 'absolute',
+                      top: 0,
+                      width: '100%',
+                      padding: '12px 0',
+                      textAlign: 'center',
+                    }}
+                  >
+                    <p className="text-sm text-muted-foreground">Cargando mensajes anteriores...</p>
+                  </div>
+                )}
+                {hasMoreMessages && !loadingMore && (
+                  <div
+                    style={{
+                      position: 'absolute',
+                      top: 0,
+                      width: '100%',
+                      padding: '12px 0',
+                      textAlign: 'center',
+                    }}
+                  >
+                    <p className="text-xs text-muted-foreground">Desplázate hacia arriba para cargar más</p>
+                  </div>
+                )}
+                {virtualizer.getVirtualItems().map((virtualRow) => {
+                  const message = messages[virtualRow.index]
+                  return (
+                    <div
+                      key={message.id}
+                      data-index={virtualRow.index}
+                      ref={virtualizer.measureElement}
+                      style={{
+                        position: 'absolute',
+                        top: 0,
+                        left: 0,
+                        width: '100%',
+                        transform: `translateY(${virtualRow.start}px)`,
+                      }}
+                      className="pb-6"
+                    >
+                      <ChatMessage
+                        message={message}
+                        index={virtualRow.index}
+                        animatingIndex={animatingIndex}
+                        onRefSet={handleMessageRefSet}
+                        onTesisClick={handleTesisClick}
+                      />
+                    </div>
+                  )
+                })}
+                {isLoading && (
+                  <div
+                    style={{
+                      position: 'absolute',
+                      top: `${virtualizer.getTotalSize()}px`,
+                      width: '100%',
+                    }}
+                  >
+                    <LoadingDots isSearching={isRagExecuting} />
+                  </div>
+                )}
                 {/* Scroll anchor - invisible element at bottom */}
-                <div ref={messagesEndRef} className="h-0" />
+                <div
+                  ref={messagesEndRef}
+                  style={{
+                    position: 'absolute',
+                    top: `${virtualizer.getTotalSize() + (isLoading ? 100 : 0)}px`,
+                    height: '1px',
+                  }}
+                />
               </div>
             )}
           </ScrollArea>

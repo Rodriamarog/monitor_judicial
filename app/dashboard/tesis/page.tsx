@@ -93,7 +93,7 @@ export default function BuscadorTesisPage() {
     }
   }
 
-  const performSearch = async (page = 1) => {
+  const performSearch = async (page = 1, customSortOrder?: string) => {
     setLoadingResults(true)
     setCurrentPage(page)
     setSelectedTesis(null) // Clear selected tesis when searching
@@ -109,7 +109,7 @@ export default function BuscadorTesisPage() {
       if (monthFrom && monthFrom !== 'all') params.append('monthFrom', monthFrom)
       if (yearTo) params.append('yearTo', yearTo)
       if (monthTo && monthTo !== 'all') params.append('monthTo', monthTo)
-      params.append('sort', sortOrder)
+      params.append('sort', customSortOrder || sortOrder)
       params.append('page', page.toString())
       params.append('limit', '20')
 
@@ -548,7 +548,7 @@ export default function BuscadorTesisPage() {
                     <span className="text-sm text-muted-foreground">Ordenar:</span>
                     <Select value={sortOrder} onValueChange={(value) => {
                       setSortOrder(value)
-                      performSearch(1) // Reset to page 1 when changing sort
+                      performSearch(1, value) // Pass new sort value immediately to avoid stale state
                     }}>
                       <SelectTrigger className="w-[140px]">
                         <SelectValue />

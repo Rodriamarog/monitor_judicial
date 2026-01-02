@@ -29,6 +29,7 @@ import { cn } from '@/lib/utils'
 interface Alert {
   id: string
   created_at: string
+  is_read: boolean
   monitored_cases: {
     case_number: string
     juzgado: string
@@ -121,10 +122,32 @@ export default function AlertsPage() {
   const filteredAlerts = useMemo(() => {
     if (!dateFrom && !dateTo) return alerts
 
-    return alerts.filter((alert) => {
-      // Use alert creation date instead of bulletin date
-      const alertDate = new Date(alert.created_at).toISOString().split('T')[0]
+    const today = getTodayDate()
+    const isTodayFilter = dateFrom === today && dateTo === today
 
+    return alerts.filter((alert) => {
+      const alertDateTime = new Date(alert.created_at)
+      const alertDate = alertDateTime.toISOString().split('T')[0]
+
+      // Special "Hoy" filter: include today + yesterday after 5pm
+      if (isTodayFilter) {
+        // Include all of today's alerts
+        if (alertDate === today) return true
+
+        // Include yesterday's alerts from 5:00 PM onwards
+        const yesterday = new Date()
+        yesterday.setDate(yesterday.getDate() - 1)
+        const yesterdayStr = yesterday.toLocaleDateString('en-CA', { timeZone: 'America/Tijuana' })
+
+        if (alertDate === yesterdayStr) {
+          const alertHour = alertDateTime.getHours()
+          return alertHour >= 17 // 5:00 PM = 17:00
+        }
+
+        return false
+      }
+
+      // Regular date range filtering
       if (dateFrom && alertDate < dateFrom) return false
       if (dateTo && alertDate > dateTo) return false
 

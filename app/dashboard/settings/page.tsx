@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
-import { Loader2, CheckCircle2, Calendar, RefreshCw, AlertTriangle, FileText } from 'lucide-react'
+import { Loader2, CheckCircle2, AlertTriangle, FileText } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Switch } from '@/components/ui/switch'
 import { SubscriptionButton } from '@/components/subscription-button'
@@ -20,9 +20,7 @@ export default function SettingsPage() {
   const [whatsappEnabled, setWhatsappEnabled] = useState(false)
   const [emailEnabled, setEmailEnabled] = useState(true)
   const [googleConnected, setGoogleConnected] = useState(false)
-  const [googleCalendarId, setGoogleCalendarId] = useState<string | null>(null)
   const [scopeValid, setScopeValid] = useState(true)
-  const [syncing, setSyncing] = useState(false)
   const [connecting, setConnecting] = useState(false)
   const [disconnecting, setDisconnecting] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -66,7 +64,7 @@ export default function SettingsPage() {
 
       const { data: profile, error: profileError } = await supabase
         .from('user_profiles')
-        .select('phone, whatsapp_enabled, email_notifications_enabled, google_calendar_id, subscription_tier, stripe_customer_id')
+        .select('phone, whatsapp_enabled, email_notifications_enabled, subscription_tier, stripe_customer_id')
         .eq('id', user.id)
         .single()
 
@@ -75,7 +73,6 @@ export default function SettingsPage() {
       setPhone(profile.phone || '')
       setWhatsappEnabled(profile.whatsapp_enabled || false)
       setEmailEnabled(profile.email_notifications_enabled !== false)
-      setGoogleCalendarId(profile.google_calendar_id || null)
       setTier(profile.subscription_tier || 'free')
       setHasStripeCustomer(!!profile.stripe_customer_id)
 
@@ -152,7 +149,7 @@ export default function SettingsPage() {
   }
 
   const handleDisconnectGoogle = async () => {
-    if (!confirm('¿Estás seguro de que quieres desconectar Google? Esto deshabilitará tanto Calendar como Drive.')) {
+    if (!confirm('¿Estás seguro de que quieres desconectar Google Drive? Ya no podrás subir documentos directamente.')) {
       return
     }
 
@@ -171,7 +168,6 @@ export default function SettingsPage() {
       }
 
       setGoogleConnected(false)
-      setGoogleCalendarId(null)
       setSuccess(true)
       setTimeout(() => setSuccess(false), 3000)
     } catch (err) {
@@ -182,30 +178,6 @@ export default function SettingsPage() {
     }
   }
 
-  const handleSyncCalendar = async () => {
-    setSyncing(true)
-    setError(null)
-
-    try {
-      const response = await fetch('/api/calendar/sync', {
-        method: 'POST',
-      })
-
-      const data = await response.json()
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to sync')
-      }
-
-      setSuccess(true)
-      setTimeout(() => setSuccess(false), 3000)
-    } catch (err) {
-      console.error('Error syncing calendar:', err)
-      setError(err instanceof Error ? err.message : 'Error al sincronizar calendario')
-    } finally {
-      setSyncing(false)
-    }
-  }
 
   if (loading) {
     return (
@@ -268,7 +240,7 @@ export default function SettingsPage() {
               <Alert className="bg-green-50 border-green-500 dark:bg-green-950 dark:border-green-700">
                 <CheckCircle2 className="h-5 w-5 text-green-600 dark:text-green-400" />
                 <AlertDescription className="text-green-900 dark:text-green-100 font-semibold text-base">
-                  ✓ Google conectado exitosamente (Calendar + Drive)
+                  ✓ Google Drive conectado exitosamente
                 </AlertDescription>
               </Alert>
             )}
@@ -330,16 +302,16 @@ export default function SettingsPage() {
               )}
             </div>
 
-            {/* Google Integration (Calendar + Drive) */}
+            {/* Google Drive Integration */}
             <div className="space-y-4 pt-4 border-t">
               <div className="flex items-center justify-between">
                 <div className="space-y-0.5">
                   <Label className="text-base flex items-center gap-2">
-                    <Calendar className="h-5 w-5" />
-                    Integración con Google
+                    <FileText className="h-5 w-5" />
+                    Integración con Google Drive
                   </Label>
                   <p className="text-sm text-muted-foreground">
-                    Sincroniza eventos con Google Calendar y sube documentos a Google Drive
+                    Sube y edita documentos directamente en Google Drive
                   </p>
                 </div>
                 <Badge variant={googleConnected && scopeValid ? "default" : "secondary"}>
@@ -360,7 +332,7 @@ export default function SettingsPage() {
               {!googleConnected || !scopeValid ? (
                 <div className="pl-4 border-l-2 border-muted space-y-4">
                   <p className="text-sm text-muted-foreground">
-                    Conecta tu cuenta de Google para sincronizar eventos con Calendar y subir documentos a Drive.
+                    Conecta tu cuenta de Google para subir y editar documentos directamente en Google Drive.
                   </p>
                   <Button
                     type="button"
@@ -376,8 +348,8 @@ export default function SettingsPage() {
                       </span>
                     ) : (
                       <span className="flex items-center justify-center gap-2">
-                        <Calendar className="h-4 w-4" />
-                        <span>{googleConnected ? 'Reconectar' : 'Conectar'} Google</span>
+                        <FileText className="h-4 w-4" />
+                        <span>{googleConnected ? 'Reconectar' : 'Conectar'} Google Drive</span>
                       </span>
                     )}
                   </Button>
@@ -387,64 +359,33 @@ export default function SettingsPage() {
                   <Alert>
                     <CheckCircle2 className="h-4 w-4 text-green-600" />
                     <AlertDescription className="text-sm">
-                      <p className="font-semibold">✓ Conectado a Google</p>
-                      {googleCalendarId && (
-                        <p className="text-xs text-muted-foreground mt-1">
-                          Calendar ID: {googleCalendarId}
-                        </p>
-                      )}
+                      <p className="font-semibold">✓ Conectado a Google Drive</p>
                       <p className="text-xs text-muted-foreground mt-1">
-                        ✓ Calendar: Sincronización automática de eventos
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        ✓ Drive: Subida de documentos habilitada
+                        ✓ Subida y edición de documentos habilitada
                       </p>
                     </AlertDescription>
                   </Alert>
 
-                  <div className="flex gap-2">
-                    <Button
-                      type="button"
-                      onClick={handleSyncCalendar}
-                      disabled={syncing}
-                      variant="outline"
-                      size="sm"
-                      className="flex-1"
-                    >
-                      {syncing ? (
-                        <span className="flex items-center justify-center gap-2">
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                          <span>Sincronizando...</span>
-                        </span>
-                      ) : (
-                        <span className="flex items-center justify-center gap-2">
-                          <RefreshCw className="h-4 w-4" />
-                          <span>Sincronizar Ahora</span>
-                        </span>
-                      )}
-                    </Button>
-
-                    <Button
-                      type="button"
-                      onClick={handleDisconnectGoogle}
-                      disabled={disconnecting}
-                      variant="destructive"
-                      size="sm"
-                      className="flex-1"
-                    >
-                      {disconnecting ? (
-                        <span className="flex items-center justify-center gap-2">
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                          <span>Desconectando...</span>
-                        </span>
-                      ) : (
-                        'Desconectar'
-                      )}
-                    </Button>
-                  </div>
+                  <Button
+                    type="button"
+                    onClick={handleDisconnectGoogle}
+                    disabled={disconnecting}
+                    variant="destructive"
+                    size="sm"
+                    className="w-full"
+                  >
+                    {disconnecting ? (
+                      <span className="flex items-center justify-center gap-2">
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        <span>Desconectando...</span>
+                      </span>
+                    ) : (
+                      'Desconectar Google Drive'
+                    )}
+                  </Button>
 
                   <p className="text-xs text-muted-foreground">
-                    Los eventos se sincronizan automáticamente con Google Calendar. Usa "Abrir en Google Docs" en las plantillas para subir documentos.
+                    Usa "Abrir en Google Docs" en las plantillas para subir y editar documentos directamente en Google Drive.
                   </p>
                 </div>
               )}

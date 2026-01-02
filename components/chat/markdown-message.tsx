@@ -6,11 +6,18 @@ interface MarkdownMessageProps {
   content: string
   role: 'user' | 'assistant'
   onTesisClick?: (tesisId: number) => void
+  lazy?: boolean // For lazy loading with virtual scrolling
 }
 
-export const MarkdownMessage = memo(function MarkdownMessage({ content, role, onTesisClick }: MarkdownMessageProps) {
+export const MarkdownMessage = memo(function MarkdownMessage({ content, role, onTesisClick, lazy = false }: MarkdownMessageProps) {
   if (role === 'user') {
     return <div className="whitespace-pre-wrap">{content}</div>
+  }
+
+  // Lazy loading optimization: render simple placeholder for off-screen items
+  // Note: With virtual scrolling, this component won't even mount for far off-screen items
+  if (lazy && content.length > 1000) {
+    return <div className="h-20 bg-muted/20 rounded animate-pulse" />
   }
 
   // Memoize regex processing to avoid recomputation on every render

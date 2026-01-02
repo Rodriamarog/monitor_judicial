@@ -329,7 +329,8 @@ export default function KanbanBoard() {
     setHasChanges(true)
   }
 
-  const handleDeleteTask = (taskId: string) => {
+  const handleDeleteTask = async (taskId: string) => {
+    // Optimistic update
     setColumns((prev) =>
       prev.map((column) => ({
         ...column,
@@ -337,7 +338,20 @@ export default function KanbanBoard() {
       })),
     )
     setEditingTask(null)
-    setHasChanges(true)
+
+    // Actually delete from database (hard delete)
+    try {
+      const { error } = await supabase
+        .from('kanban_tasks')
+        .delete()
+        .eq('id', taskId)
+
+      if (error) {
+        console.error('Error deleting task:', error)
+      }
+    } catch (err) {
+      console.error('Error in handleDeleteTask:', err)
+    }
   }
 
   const handleAddColumn = () => {

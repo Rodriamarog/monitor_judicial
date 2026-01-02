@@ -167,8 +167,8 @@ export async function GET(request: NextRequest) {
 
     // Determine sort order
     const orderByClause = sortOrder === 'oldest'
-      ? 'ORDER BY anio ASC, id_tesis ASC'
-      : 'ORDER BY anio DESC, id_tesis DESC';
+      ? 'ORDER BY anio ASC, id_tesis ASC'   // Oldest: ascending (2000, 2001, 2002...)
+      : 'ORDER BY anio DESC, id_tesis DESC'; // Newest: descending (2024, 2023, 2022...)
 
     // Get results with pagination
     const resultsQuery = `

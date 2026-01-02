@@ -4,12 +4,14 @@ import React, { useState } from 'react'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { Badge } from '@/components/ui/badge'
 import { ChevronDown, ChevronUp, ExternalLink } from 'lucide-react'
 import { formatTijuanaDate } from '@/lib/date-utils'
 
 interface Alert {
   id: string
   created_at: string
+  is_read: boolean
   monitored_cases: {
     case_number: string
     juzgado: string
@@ -25,6 +27,7 @@ interface Alert {
 
 interface AlertsTableProps {
   alerts: Alert[]
+  onMarkAsRead?: (alertId: string) => void
 }
 
 export function AlertsTable({ alerts }: AlertsTableProps) {

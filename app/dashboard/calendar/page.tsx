@@ -83,7 +83,6 @@ export default function CalendarPage() {
   const [view, setView] = useState<View>('month')
   const [date, setDate] = useState(new Date())
   const [error, setError] = useState<string | null>(null)
-  const [googleCalendarEnabled, setGoogleCalendarEnabled] = useState(false)
 
   const router = useRouter()
   const supabase = createClient()
@@ -120,29 +119,6 @@ export default function CalendarPage() {
     // Non-kanban events - use yellow (default)
     return {
       className: 'non-kanban-event',
-    }
-  }
-
-  const checkGoogleCalendarStatus = async () => {
-    try {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser()
-
-      if (!user) {
-        router.push('/login')
-        return
-      }
-
-      const { data: profile } = await supabase
-        .from('user_profiles')
-        .select('google_calendar_enabled')
-        .eq('id', user.id)
-        .single()
-
-      setGoogleCalendarEnabled(profile?.google_calendar_enabled || false)
-    } catch (err) {
-      console.error('Error checking Google Calendar status:', err)
     }
   }
 
@@ -189,10 +165,6 @@ export default function CalendarPage() {
       setLoading(false)
     }
   }, [date, router, supabase])
-
-  useEffect(() => {
-    checkGoogleCalendarStatus()
-  }, [])
 
   useEffect(() => {
     loadEvents()
@@ -414,6 +386,26 @@ export default function CalendarPage() {
 
           .rbc-event.rbc-event-allday:hover {
             background: linear-gradient(90deg, var(--event-hover-1) 0%, var(--event-hover-2) 100%) !important;
+          }
+
+          /* Day cell hover effect in month view */
+          .rbc-day-bg {
+            cursor: pointer !important;
+            transition: background-color 0.15s ease !important;
+          }
+
+          .rbc-day-bg:hover {
+            background-color: rgba(59, 130, 246, 0.08) !important;
+          }
+
+          /* Dark mode hover */
+          .dark .rbc-day-bg:hover {
+            background-color: rgba(59, 130, 246, 0.15) !important;
+          }
+
+          /* Also apply to the date cell container */
+          .rbc-date-cell {
+            cursor: pointer !important;
           }
         `}</style>
         <div className="h-full">

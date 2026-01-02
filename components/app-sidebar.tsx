@@ -157,7 +157,7 @@ export function AppSidebar({ email, tier, hasStripeCustomer }: AppSidebarProps) 
       {/* Mobile Hamburger */}
       <div className="md:hidden fixed top-4 left-4 z-50">
         <Sheet open={isMobileOpen} onOpenChange={setIsMobileOpen}>
-          <SheetTrigger asChild>
+          <SheetTrigger asChild suppressHydrationWarning>
             <Button variant="outline" size="icon">
               <Menu className="h-5 w-5" />
             </Button>
