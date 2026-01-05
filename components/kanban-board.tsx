@@ -15,7 +15,7 @@ import {
 import { createClient } from "@/lib/supabase/client"
 import TaskCard from "@/components/task-card"
 import AddTaskDialog from "@/components/add-task-dialog"
-import EditTaskDialog from "@/components/edit-task-dialog"
+import TaskEditModal from "@/components/kanban/task-edit-modal"
 
 // Database task interface
 export interface Task {
@@ -27,6 +27,9 @@ export interface Task {
   dueDate?: string // Display format: "Nov 27"
   due_date?: string | null // Database format: "YYYY-MM-DD"
   calendar_event_id?: string | null
+  assigned_to?: string | null // NEW: User ID of assignee
+  parent_task_id?: string | null // NEW: Parent task for subtasks
+  is_completed?: boolean // NEW: Completion status (for subtasks)
   position?: number
   color?: string
   comments?: Comment[]
@@ -58,6 +61,7 @@ export default function KanbanBoard() {
   const [loading, setLoading] = useState(true)
   const [hasChanges, setHasChanges] = useState(false)
   const [userId, setUserId] = useState<string | null>(null)
+  const [subtasksMap, setSubtasksMap] = useState<Record<string, Array<{ id: string; title: string; is_completed: boolean; position?: number }>>>({})
   const [addTaskColumn, setAddTaskColumn] = useState<string | null>(null)
   const [editingTask, setEditingTask] = useState<Task | null>(null)
   const [editingColumnId, setEditingColumnId] = useState<string | null>(null)
@@ -113,6 +117,31 @@ export default function KanbanBoard() {
           console.log('✅ Default columns initialized')
         }
 
+        // Organize subtasks by parent task ID
+        const allTasks = (columns || []).flatMap((col: any) => col.kanban_tasks || [])
+        const subtasksMapData: Record<string, Array<{ id: string; title: string; is_completed: boolean; position: number }>> = {}
+
+        allTasks.forEach((task: any) => {
+          if (task.parent_task_id && !task.deleted_at) {
+            if (!subtasksMapData[task.parent_task_id]) {
+              subtasksMapData[task.parent_task_id] = []
+            }
+            subtasksMapData[task.parent_task_id].push({
+              id: task.id,
+              title: task.title,
+              is_completed: task.is_completed || false,
+              position: task.position || 0
+            })
+          }
+        })
+
+        // Sort subtasks by position for each parent
+        Object.keys(subtasksMapData).forEach(parentId => {
+          subtasksMapData[parentId].sort((a, b) => a.position - b.position)
+        })
+
+        setSubtasksMap(subtasksMapData)
+
         // Transform to UI format
         const transformedColumns: Column[] = (columns || []).map((col: any) => ({
           id: col.id,
@@ -121,7 +150,7 @@ export default function KanbanBoard() {
           position: col.position,
           user_id: col.user_id,
           tasks: (col.kanban_tasks || [])
-            .filter((t: any) => !t.deleted_at)
+            .filter((t: any) => !t.deleted_at && !t.parent_task_id) // Exclude subtasks
             .sort((a: any, b: any) => a.position - b.position)
             .map((t: any) => ({
               id: t.id,
@@ -132,9 +161,14 @@ export default function KanbanBoard() {
               dueDate: t.due_date ? formatDisplayDate(t.due_date) : undefined,
               due_date: t.due_date,
               calendar_event_id: t.calendar_event_id,
+              assigned_to: t.assigned_to || null, // NEW
+              parent_task_id: t.parent_task_id || null, // NEW
+              is_completed: t.is_completed || false, // NEW
               position: t.position,
               color: t.color,
               comments: [], // Comments not in DB schema yet - keep as UI-only
+              created_at: t.created_at,
+              updated_at: t.updated_at,
             }))
         }))
 
@@ -194,6 +228,9 @@ export default function KanbanBoard() {
           due_date: task.due_date || null,
           calendar_event_id: task.calendar_event_id || null,
           labels: task.labels || [], // Save labels to DB
+          assigned_to: task.assigned_to || null, // NEW
+          parent_task_id: task.parent_task_id || null, // NEW
+          is_completed: task.is_completed || false, // NEW
           deleted_at: null,
         }))
       )
@@ -318,6 +355,45 @@ export default function KanbanBoard() {
     setHasChanges(true)
   }
 
+  const reloadSubtasks = async () => {
+    if (!userId) return
+
+    try {
+      const { data: allTasksData } = await supabase
+        .from('kanban_tasks')
+        .select('id, title, is_completed, parent_task_id, deleted_at, position')
+        .eq('user_id', userId)
+        .order('position', { ascending: true })
+
+      const subtasksMapData: Record<string, Array<{ id: string; title: string; is_completed: boolean; position: number }>> = {}
+
+      if (allTasksData) {
+        allTasksData.forEach((task: any) => {
+          if (task.parent_task_id && !task.deleted_at) {
+            if (!subtasksMapData[task.parent_task_id]) {
+              subtasksMapData[task.parent_task_id] = []
+            }
+            subtasksMapData[task.parent_task_id].push({
+              id: task.id,
+              title: task.title,
+              is_completed: task.is_completed || false,
+              position: task.position || 0
+            })
+          }
+        })
+      }
+
+      // Sort subtasks by position for each parent
+      Object.keys(subtasksMapData).forEach(parentId => {
+        subtasksMapData[parentId].sort((a, b) => a.position - b.position)
+      })
+
+      setSubtasksMap(subtasksMapData)
+    } catch (err) {
+      console.error('Error reloading subtasks:', err)
+    }
+  }
+
   const handleUpdateTask = (updatedTask: Task) => {
     setColumns((prev) =>
       prev.map((column) => ({
@@ -325,8 +401,11 @@ export default function KanbanBoard() {
         tasks: column.tasks.map((task) => (task.id === updatedTask.id ? updatedTask : task)),
       })),
     )
-    setEditingTask(null)
+    // Update the editing task to keep modal in sync, but don't close it
+    setEditingTask(updatedTask)
     setHasChanges(true)
+    // Reload subtasks to reflect any changes
+    reloadSubtasks()
   }
 
   const handleDeleteTask = async (taskId: string) => {
@@ -348,6 +427,9 @@ export default function KanbanBoard() {
 
       if (error) {
         console.error('Error deleting task:', error)
+      } else {
+        // Reload subtasks in case this task had subtasks
+        reloadSubtasks()
       }
     } catch (err) {
       console.error('Error in handleDeleteTask:', err)
@@ -530,6 +612,7 @@ export default function KanbanBoard() {
                                 task={task}
                                 isDragging={snapshot.isDragging}
                                 onClick={() => setEditingTask(task)}
+                                subtasks={subtasksMap[task.id]}
                               />
                             </div>
                           )}
@@ -577,12 +660,13 @@ export default function KanbanBoard() {
         onAdd={(task) => addTaskColumn && handleAddTask(addTaskColumn, task)}
       />
 
-      {/* Edit Task Dialog */}
-      <EditTaskDialog
+      {/* Edit Task Modal */}
+      <TaskEditModal
         task={editingTask}
         onClose={() => setEditingTask(null)}
         onSave={handleUpdateTask}
         onDelete={handleDeleteTask}
+        onSubtasksChange={reloadSubtasks}
       />
     </div>
   )
