@@ -124,7 +124,7 @@ export function CommentsSection({ taskId, userId }: CommentsSectionProps) {
     try {
       const { error } = await supabase
         .from('kanban_comments')
-        .update({ deleted_at: new Date().toISOString() })
+        .delete()
         .eq('id', commentId)
 
       if (error) {
@@ -134,6 +134,7 @@ export function CommentsSection({ taskId, userId }: CommentsSectionProps) {
       }
     } catch (err) {
       console.error('Error in handleDeleteComment:', err)
+      loadComments()
     }
   }
 
@@ -150,7 +151,7 @@ export function CommentsSection({ taskId, userId }: CommentsSectionProps) {
 
   if (loading) {
     return (
-      <div className="space-y-4">
+      <div className="space-y-3">
         <h3 className="text-sm font-medium text-muted-foreground uppercase">
           Comentarios
         </h3>
@@ -160,7 +161,7 @@ export function CommentsSection({ taskId, userId }: CommentsSectionProps) {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       <h3 className="text-sm font-medium text-muted-foreground uppercase">
         Comentarios
       </h3>

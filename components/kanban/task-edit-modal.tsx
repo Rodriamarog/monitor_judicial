@@ -347,7 +347,7 @@ export default function TaskEditModal({ task, onClose, onSave, onDelete, onSubta
       }}
     >
       <DialogContent
-        className="max-w-6xl h-[85vh] overflow-hidden flex flex-col"
+        className="max-w-7xl h-[90vh] overflow-hidden flex flex-col"
         onOpenAutoFocus={(e) => e.preventDefault()}
         onPointerDownOutside={(e) => {
           console.log('[TaskEditModal] onPointerDownOutside triggered', e.target)
@@ -387,9 +387,9 @@ export default function TaskEditModal({ task, onClose, onSave, onDelete, onSubta
         />
 
         {/* Two-Column Layout */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 flex-1 overflow-hidden">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 flex-1 overflow-hidden">
           {/* Main Content - Left Side (2/3) */}
-          <div className="lg:col-span-8 space-y-6 overflow-y-auto pr-2 pl-2">
+          <div className="lg:col-span-8 space-y-4 overflow-y-auto pr-2 pl-2">
             {/* Description Section */}
             <div className="space-y-2">
               <Label className="text-sm font-medium text-muted-foreground uppercase">
@@ -506,7 +506,7 @@ export default function TaskEditModal({ task, onClose, onSave, onDelete, onSubta
           </div>
 
           {/* Details Sidebar - Right Side (1/3) */}
-          <div className="lg:col-span-4 space-y-6 border-l pl-6 overflow-y-auto">
+          <div className="lg:col-span-4 space-y-4 border-l pl-4 overflow-y-auto">
             {/* Assignee */}
             <div className="space-y-2">
               <Label className="text-sm font-medium text-muted-foreground uppercase">
@@ -630,7 +630,7 @@ export default function TaskEditModal({ task, onClose, onSave, onDelete, onSubta
             </div>
 
             {/* Timestamps */}
-            <div className="space-y-3 pt-4 border-t">
+            <div className="space-y-2 pt-3 border-t">
               <div>
                 <p className="text-xs font-medium text-muted-foreground uppercase">Creado</p>
                 <p className="text-sm">{formatTimestamp(task.created_at)}</p>
@@ -640,20 +640,27 @@ export default function TaskEditModal({ task, onClose, onSave, onDelete, onSubta
                 <p className="text-sm">{formatTimestamp(task.updated_at)}</p>
               </div>
             </div>
-
-            {/* Delete Button */}
-            <div className="pt-4 border-t flex justify-end">
-              <Button
-                variant="ghost"
-                size="sm"
-                className="text-destructive hover:text-destructive hover:bg-destructive/10 text-xs"
-                onClick={handleDelete}
-              >
-                <Trash2 className="h-3 w-3 mr-1.5" />
-                Eliminar Tarea
-              </Button>
-            </div>
           </div>
+        </div>
+
+        {/* Action Buttons Footer */}
+        <div className="flex justify-end items-center gap-2 pt-3 border-t mt-3">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="text-destructive hover:text-destructive hover:bg-destructive/10 text-xs"
+            onClick={handleDelete}
+          >
+            <Trash2 className="h-3 w-3 mr-1.5" />
+            Eliminar Tarea
+          </Button>
+          <Button
+            variant="default"
+            size="sm"
+            onClick={handleClose}
+          >
+            Guardar
+          </Button>
         </div>
 
         {/* Saving Indicator */}
