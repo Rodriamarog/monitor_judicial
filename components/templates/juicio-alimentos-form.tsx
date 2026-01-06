@@ -608,27 +608,6 @@ export function JuicioAlimentosForm() {
         }
     }
 
-    const autoFillForm = () => {
-        form.setValue('actorName', 'María Guadalupe Pérez López')
-        form.setValue('defendantName', 'Juan Carlos González Ramírez')
-        form.setValue('actorAddress', 'Calle Revolución #123, Col. Centro, Tijuana, B.C.')
-        form.setValue('defendantAddress', 'Av. Constitución #456, Col. Zona Río, Tijuana, B.C.')
-        form.setValue('authorizedPersons', 'Lic. Roberto Martínez García')
-        form.setValue('children', [
-            { name: 'Ana Sofía González Pérez', dob: '2018-05-15' },
-            { name: 'Carlos Emilio González Pérez', dob: '2020-08-22' }
-        ])
-        form.setValue('relationshipStartDate', '5 años')
-        form.setValue('previousAmount', '$3,000.00')
-        form.setValue('stopDate', 'marzo de 2024')
-        form.setValue('witnesses', [
-            { name: 'Claudia Fernández Torres' },
-            { name: 'Pedro Sánchez Morales' }
-        ])
-        form.setValue('city', 'Tijuana, Baja California')
-        toast.success('Formulario auto-completado')
-    }
-
     const openInGoogleDocs = async () => {
         setIsGenerating(true)
 
@@ -697,21 +676,11 @@ export function JuicioAlimentosForm() {
             <Card className="flex-1 flex flex-col h-full">
                 <CardContent className="flex-1 overflow-y-auto p-6">
                     <div className="space-y-6">
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <h2 className="text-2xl font-bold mb-2">Juicio de Alimentos</h2>
-                                <p className="text-sm text-muted-foreground">
-                                    Completa los datos para generar la demanda
-                                </p>
-                            </div>
-                            <Button
-                                type="button"
-                                variant="outline"
-                                size="sm"
-                                onClick={autoFillForm}
-                            >
-                                🧪 Auto-rellenar (Dev)
-                            </Button>
+                        <div>
+                            <h2 className="text-2xl font-bold mb-2">Juicio de Alimentos</h2>
+                            <p className="text-sm text-muted-foreground">
+                                Completa los datos para generar la demanda
+                            </p>
                         </div>
 
                         <div className="grid gap-4 md:grid-cols-2">
