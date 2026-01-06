@@ -40,6 +40,7 @@ interface AppSidebarProps {
   email: string
   tier: string
   hasStripeCustomer: boolean
+  unreadAlertsCount: number
 }
 
 const navigation: NavSection[] = [
