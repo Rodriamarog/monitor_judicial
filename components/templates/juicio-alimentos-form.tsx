@@ -764,12 +764,12 @@ export function JuicioAlimentosForm() {
                         {childFields.map((field, index) => (
                             <Card key={field.id}>
                                 <CardContent className="pt-6">
-                                    <div className="grid gap-4 md:grid-cols-2 items-end">
-                                        <div className="space-y-2">
+                                    <div className="flex gap-4 items-end">
+                                        <div className="flex-1 space-y-2">
                                             <Label>Nombre Completo</Label>
                                             <Input {...form.register(`children.${index}.name`)} placeholder="Nombre del menor" />
                                         </div>
-                                        <div className="space-y-2">
+                                        <div className="flex-1 space-y-2">
                                             <Label>Fecha de Nacimiento</Label>
                                             <Input {...form.register(`children.${index}.dob`)} type="date" />
                                         </div>

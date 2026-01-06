@@ -32,9 +32,20 @@ interface AlertsTableProps {
 
 export function AlertsTable({ alerts }: AlertsTableProps) {
   const [expandedId, setExpandedId] = useState<string | null>(null)
+  const [previousExpandedId, setPreviousExpandedId] = useState<string | null>(null)
 
   const toggleExpand = (id: string) => {
-    setExpandedId(expandedId === id ? null : id)
+    if (expandedId && expandedId !== id) {
+      // Opening a different row while another is open - instant close the previous
+      setPreviousExpandedId(expandedId)
+      setExpandedId(id)
+      // Reset previousExpandedId after a brief delay
+      setTimeout(() => setPreviousExpandedId(null), 0)
+    } else {
+      // Normal toggle
+      setPreviousExpandedId(null)
+      setExpandedId(expandedId === id ? null : id)
+    }
   }
 
   return (
@@ -53,7 +64,10 @@ export function AlertsTable({ alerts }: AlertsTableProps) {
           <TableBody>
             {alerts.map((alert) => (
               <React.Fragment key={alert.id}>
-                <TableRow className="cursor-pointer hover:bg-muted/50">
+                <TableRow
+                  className="cursor-pointer hover:bg-muted/50 transition-colors"
+                  onClick={() => toggleExpand(alert.id)}
+                >
                   <TableCell className="font-medium">
                     {formatTijuanaDate(alert.created_at)}
                   </TableCell>
@@ -79,7 +93,10 @@ export function AlertsTable({ alerts }: AlertsTableProps) {
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={() => toggleExpand(alert.id)}
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        toggleExpand(alert.id)
+                      }}
                     >
                       {expandedId === alert.id ? (
                         <>
@@ -97,9 +114,19 @@ export function AlertsTable({ alerts }: AlertsTableProps) {
                 </TableRow>
 
                 {/* Expanded Details Row */}
-                {expandedId === alert.id && (
-                  <TableRow>
-                    <TableCell colSpan={5} className="bg-muted/30">
+                <TableRow>
+                  <TableCell colSpan={5} className="p-0 overflow-hidden">
+                    <div
+                      className={`bg-muted/30 transition-all ease-in-out ${
+                        alert.id === previousExpandedId
+                          ? 'duration-0'
+                          : 'duration-150'
+                      } ${
+                        expandedId === alert.id
+                          ? 'max-h-[1000px] opacity-100'
+                          : 'max-h-0 opacity-0'
+                      }`}
+                    >
                       <div className="p-4 space-y-4">
                         {/* Mobile: Show juzgado and bulletin date */}
                         <div className="md:hidden space-y-2 text-sm pb-3 border-b">
@@ -148,9 +175,9 @@ export function AlertsTable({ alerts }: AlertsTableProps) {
                           )}
                         </div>
                       </div>
-                    </TableCell>
-                  </TableRow>
-                )}
+                    </div>
+                  </TableCell>
+                </TableRow>
               </React.Fragment>
             ))}
           </TableBody>

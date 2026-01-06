@@ -89,7 +89,7 @@ export function DashboardClient({
         <CardHeader className="flex-shrink-0">
           <CardTitle>Lista de Casos</CardTitle>
         </CardHeader>
-        <CardContent className="flex-1 overflow-auto">
+        <CardContent className="flex-1 overflow-auto pb-2">
           {!casesWithAlerts || casesWithAlerts.length === 0 ? (
             <div className="text-center py-12">
               <p className="text-muted-foreground mb-4">

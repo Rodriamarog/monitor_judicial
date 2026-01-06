@@ -63,16 +63,22 @@ export function CasesTable({ cases, onDelete, onUpdate }: CasesTableProps) {
   useEffect(() => {
     const calculateTableHeight = () => {
       // Approximate heights in pixels
-      const headerHeight = 120 // Top nav
-      const statsCardHeight = 100 // Compact stats card
-      const tableHeaderHeight = 80 // Table title + search
-      const padding = 40 // Extra padding
+      const headerHeight = 100 // Top nav
+      const statsCardHeight = 90 // Compact stats card
+      const tableHeaderHeight = 70 // Table title
+      const searchBarHeight = 48 // Search input
+      const paginationHeight = 28 // "Mostrando x de x casos" text
+      const spacingHeight = 28 // space-y-4 gaps
+      const padding = 32 // Safety padding
 
       const availableHeight =
         window.innerHeight -
         headerHeight -
         statsCardHeight -
         tableHeaderHeight -
+        searchBarHeight -
+        paginationHeight -
+        spacingHeight -
         padding
 
       setTableHeight(Math.max(400, availableHeight))
