@@ -52,15 +52,15 @@ export function CommentsSection({ taskId, userId }: CommentsSectionProps) {
       }
 
       // Fetch user profiles for all unique user IDs
-      const userIds = [...new Set((commentsData || []).map(c => c.user_id))]
+      const userIds = [...new Set((commentsData || []).map((c: any) => c.user_id))]
       const { data: profiles } = await supabase
         .from('user_profiles')
         .select('id, email')
         .in('id', userIds)
 
       // Map profiles to comments
-      const profileMap = new Map(profiles?.map(p => [p.id, p]) || [])
-      const commentsWithProfiles = (commentsData || []).map(comment => ({
+      const profileMap = new Map(profiles?.map((p: any) => [p.id, p]) || [])
+      const commentsWithProfiles = (commentsData || []).map((comment: any) => ({
         ...comment,
         user_profiles: profileMap.get(comment.user_id)
       }))

@@ -3,7 +3,7 @@
  * This is separate from Supabase and connects to the local MJ_TesisYJurisprudencias database
  */
 
-import { Pool, PoolClient, QueryResult } from 'pg';
+import { Pool, PoolClient, QueryResult, QueryResultRow } from 'pg';
 
 // Local PostgreSQL connection configuration
 const pool = new Pool({
@@ -27,7 +27,7 @@ if (process.env.NODE_ENV === 'development') {
 /**
  * Execute a query on the Tesis database
  */
-export async function query<T = any>(
+export async function query<T extends QueryResultRow = any>(
   text: string,
   params?: any[]
 ): Promise<QueryResult<T>> {
