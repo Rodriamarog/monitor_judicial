@@ -11,16 +11,17 @@ import { getQueryRewritingWindow, getLLMGenerationWindow } from '@/lib/ai/slidin
 import { extractSourcesFromHistory, mergeSources } from '@/lib/ai/source-manager'
 import { createTimer, estimateTokens } from '@/lib/ai/utils'
 
-// PostgreSQL connection for RAG (local tesis database)
+// PostgreSQL connection for RAG (Supabase tesis database)
 import pg from 'pg'
 const { Pool } = pg
 
 const tesisPool = new Pool({
-  host: process.env.DB_HOST || 'localhost',
-  port: parseInt(process.env.DB_PORT || '5432'),
-  database: process.env.DB_NAME || 'MJ_TesisYJurisprudencias',
-  user: process.env.DB_USER || 'postgres',
-  password: process.env.DB_PASSWORD || 'admin',
+  host: process.env.SUPABASE_TESIS_HOST || 'db.mnotrrzjswisbwkgbyow.supabase.co',
+  port: parseInt(process.env.SUPABASE_TESIS_PORT || '5432'),
+  database: process.env.SUPABASE_TESIS_DB || 'postgres',
+  user: process.env.SUPABASE_TESIS_USER || 'postgres',
+  password: process.env.SUPABASE_TESIS_PASSWORD!,
+  ssl: { rejectUnauthorized: false }, // Required for Supabase
 })
 
 interface TesisSource {

@@ -1,17 +1,18 @@
 /**
- * Local PostgreSQL database connection for Tesis database
- * This is separate from Supabase and connects to the local MJ_TesisYJurisprudencias database
+ * Supabase PostgreSQL database connection for Tesis database
+ * Migrated from local PostgreSQL to Supabase for production deployment
  */
 
 import { Pool, PoolClient, QueryResult, QueryResultRow } from 'pg';
 
-// Local PostgreSQL connection configuration
+// Supabase PostgreSQL connection configuration
 const pool = new Pool({
-  host: process.env.TESIS_DB_HOST || 'localhost',
-  port: parseInt(process.env.TESIS_DB_PORT || '5432'),
-  database: process.env.TESIS_DB_NAME || 'MJ_TesisYJurisprudencias',
-  user: process.env.TESIS_DB_USER || 'postgres',
-  password: process.env.TESIS_DB_PASSWORD || 'admin',
+  host: process.env.SUPABASE_TESIS_HOST || 'db.mnotrrzjswisbwkgbyow.supabase.co',
+  port: parseInt(process.env.SUPABASE_TESIS_PORT || '5432'),
+  database: process.env.SUPABASE_TESIS_DB || 'postgres',
+  user: process.env.SUPABASE_TESIS_USER || 'postgres',
+  password: process.env.SUPABASE_TESIS_PASSWORD!,
+  ssl: { rejectUnauthorized: false }, // Required for Supabase
   max: 20, // Maximum number of clients in the pool
   idleTimeoutMillis: 30000,
   connectionTimeoutMillis: 2000,

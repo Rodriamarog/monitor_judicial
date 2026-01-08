@@ -1,0 +1,257 @@
+{
+  "overview": {
+    "total_documents": 310895,
+    "documents_embedded": 310895,
+    "total_embeddings": 648766,
+    "average_chunks_per_tesis": 2.086768844786825,
+    "coverage_percentage": 100.0
+  },
+  "chunk_distribution": {
+    "min": 1,
+    "max": 4,
+    "mean": 2.086768844786825,
+    "median": 2,
+    "std_dev": 0.5299481633750782,
+    "percentile_25": 2,
+    "percentile_75": 2,
+    "percentile_90": 3,
+    "percentile_95": 3,
+    "percentile_99": 4
+  },
+  "chunk_types": {
+    "full": {
+      "count": 335356,
+      "percentage": 51.691364837244855
+    },
+    "rubro": {
+      "count": 287819,
+      "percentage": 44.36406963373543
+    },
+    "hechos": {
+      "count": 8546,
+      "percentage": 1.3172700172327156
+    },
+    "criterio": {
+      "count": 8525,
+      "percentage": 1.3140331028444772
+    },
+    "justificacion": {
+      "count": 8520,
+      "percentage": 1.3132624089425156
+    }
+  },
+  "year_analysis": [
+    {
+      "year": 2025,
+      "tesis_count": 1818,
+      "embedding_count": 7272,
+      "avg_chunks": 4.0
+    },
+    {
+      "year": 2024,
+      "tesis_count": 1855,
+      "embedding_count": 7417,
+      "avg_chunks": 3.999056222192261
+    },
+    {
+      "year": 2023,
+      "tesis_count": 2201,
+      "embedding_count": 8794,
+      "avg_chunks": 3.9972708664998864
+    },
+    {
+      "year": 2022,
+      "tesis_count": 1704,
+      "embedding_count": 6647,
+      "avg_chunks": 3.9417782458251844
+    },
+    {
+      "year": 2021,
+      "tesis_count": 1382,
+      "embedding_count": 4747,
+      "avg_chunks": 3.6176532546871707
+    },
+    {
+      "year": 2020,
+      "tesis_count": 1269,
+      "embedding_count": 3442,
+      "avg_chunks": 2.89424753050552
+    },
+    {
+      "year": 2019,
+      "tesis_count": 2436,
+      "embedding_count": 5932,
+      "avg_chunks": 2.536075522589346
+    },
+    {
+      "year": 2018,
+      "tesis_count": 2958,
+      "embedding_count": 7209,
+      "avg_chunks": 2.5380774032459428
+    },
+    {
+      "year": 2017,
+      "tesis_count": 2538,
+      "embedding_count": 6169,
+      "avg_chunks": 2.531528610795915
+    },
+    {
+      "year": 2016,
+      "tesis_count": 2643,
+      "embedding_count": 6371,
+      "avg_chunks": 2.5109088055250353
+    },
+    {
+      "year": 2015,
+      "tesis_count": 2541,
+      "embedding_count": 6101,
+      "avg_chunks": 2.501065399114899
+    },
+    {
+      "year": 2014,
+      "tesis_count": 2975,
+      "embedding_count": 7151,
+      "avg_chunks": 2.504125297161236
+    },
+    {
+      "year": 2013,
+      "tesis_count": 2832,
+      "embedding_count": 6772,
+      "avg_chunks": 2.4908446544595395
+    },
+    {
+      "year": 2012,
+      "tesis_count": 2906,
+      "embedding_count": 6828,
+      "avg_chunks": 2.4463971880492092
+    },
+    {
+      "year": 2011,
+      "tesis_count": 2762,
+      "embedding_count": 6468,
+      "avg_chunks": 2.4381570810142237
+    },
+    {
+      "year": 2010,
+      "tesis_count": 2409,
+      "embedding_count": 5672,
+      "avg_chunks": 2.4520451339915375
+    },
+    {
+      "year": 2009,
+      "tesis_count": 3491,
+      "embedding_count": 8055,
+      "avg_chunks": 2.3998758535071385
+    },
+    {
+      "year": 2008,
+      "tesis_count": 2746,
+      "embedding_count": 6332,
+      "avg_chunks": 2.397978521794062
+    },
+    {
+      "year": 2007,
+      "tesis_count": 4268,
+      "embedding_count": 9878,
+      "avg_chunks": 2.4083822636161165
+    },
+    {
+      "year": 2006,
+      "tesis_count": 2952,
+      "embedding_count": 6688,
+      "avg_chunks": 2.3522727272727275
+    }
+  ],
+  "materia_analysis": [
+    {
+      "materia": "Administrativa",
+      "tesis_count": 68326,
+      "embedding_count": 148139,
+      "avg_chunks": 2.3068942007168944
+    },
+    {
+      "materia": "Civil",
+      "tesis_count": 64635,
+      "embedding_count": 134936,
+      "avg_chunks": 2.225781111045236
+    },
+    {
+      "materia": "Penal",
+      "tesis_count": 63141,
+      "embedding_count": 126501,
+      "avg_chunks": 2.145809124038545
+    },
+    {
+      "materia": "Común",
+      "tesis_count": 59676,
+      "embedding_count": 125602,
+      "avg_chunks": 2.2968264836547188
+    },
+    {
+      "materia": "Laboral",
+      "tesis_count": 53755,
+      "embedding_count": 113703,
+      "avg_chunks": 2.211982093700254
+    },
+    {
+      "materia": "Constitucional",
+      "tesis_count": 25218,
+      "embedding_count": 60414,
+      "avg_chunks": 2.5613268447710795
+    },
+    {
+      "materia": "Electoral",
+      "tesis_count": 962,
+      "embedding_count": 2292,
+      "avg_chunks": 2.481675392670157
+    },
+    {
+      "materia": "Fiscal (ADM)",
+      "tesis_count": 953,
+      "embedding_count": 2127,
+      "avg_chunks": 2.3135872120357313
+    },
+    {
+      "materia": "Agraria (ADM)",
+      "tesis_count": 483,
+      "embedding_count": 1037,
+      "avg_chunks": 2.205400192864031
+    },
+    {
+      "materia": "Suspensión (ADM)",
+      "tesis_count": 256,
+      "embedding_count": 541,
+      "avg_chunks": 2.1940850277264325
+    },
+    {
+      "materia": "Electoral-Laboral",
+      "tesis_count": 56,
+      "embedding_count": 124,
+      "avg_chunks": 2.2903225806451615
+    },
+    {
+      "materia": "",
+      "tesis_count": 3,
+      "embedding_count": 7,
+      "avg_chunks": 2.4285714285714284
+    }
+  ],
+  "tipo_tesis_analysis": [
+    {
+      "tipo_tesis": "Aislada",
+      "tesis_count": 260703,
+      "embedding_count": 533583,
+      "avg_chunks": 2.1729534111843893
+    },
+    {
+      "tipo_tesis": "Jurisprudencia",
+      "tesis_count": 50192,
+      "embedding_count": 115183,
+      "avg_chunks": 2.4455605427884324
+    }
+  ],
+  "storage_stats": {
+    "documents_table_size": "568 MB",
+    "embeddings_table_size": "10108 MB"
+  }
+}

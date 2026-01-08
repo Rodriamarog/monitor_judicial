@@ -15,8 +15,11 @@
 /tesis_api/logs
 /tesis_api/models
 /tesis_api/venv
-/tesis_api
 /venv
+
+# database backups and migration data (large files)
+/backups
+/migration_data
 
 
 # testing

@@ -1,0 +1,5 @@
+2025-12-13 17:25:57,013 - INFO - Initializing components...
+2025-12-13 17:25:57,023 - INFO - Database connection successful
+2025-12-13 17:25:57,032 - INFO - pgvector extension is installed
+2025-12-13 17:25:57,033 - INFO - Loaded checkpoint from embedding_progress.json
+2025-12-13 17:25:57,033 - INFO - Loaded checkpoint with 1,000 processed tesis
