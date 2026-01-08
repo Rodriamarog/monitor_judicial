@@ -118,10 +118,44 @@ async function retrieveTesis(
       const countResult = await client.query('SELECT COUNT(*) FROM tesis_embeddings')
       console.log(`[TESIS DB] Count query completed in ${Date.now() - startCount}ms, count: ${countResult.rows[0].count}`)
 
-      // Test 3: Direct HNSW search without function
-      console.log('[TESIS DB] Test 3: Direct HNSW vector search (bypass function)...')
-      const startDirect = Date.now()
-      const directQuery = `
+      // Test 3a: Vector search WITHOUT JOIN, LIMIT 1
+      console.log('[TESIS DB] Test 3a: Vector search NO JOIN, LIMIT 1...')
+      const start3a = Date.now()
+      const query3a = await client.query(`
+        SELECT id_tesis, (1 - (embedding <=> $1::vector))::double precision AS similarity
+        FROM tesis_embeddings
+        ORDER BY embedding <=> $1::vector
+        LIMIT 1
+      `, [JSON.stringify(queryEmbedding)])
+      console.log(`[TESIS DB] Test 3a completed in ${Date.now() - start3a}ms, result:`, query3a.rows[0])
+
+      // Test 3b: Vector search WITHOUT JOIN, LIMIT 10
+      console.log('[TESIS DB] Test 3b: Vector search NO JOIN, LIMIT 10...')
+      const start3b = Date.now()
+      const query3b = await client.query(`
+        SELECT id_tesis, (1 - (embedding <=> $1::vector))::double precision AS similarity
+        FROM tesis_embeddings
+        ORDER BY embedding <=> $1::vector
+        LIMIT 10
+      `, [JSON.stringify(queryEmbedding)])
+      console.log(`[TESIS DB] Test 3b completed in ${Date.now() - start3b}ms, returned ${query3b.rows.length} rows`)
+
+      // Test 3c: Vector search WITH JOIN, LIMIT 1
+      console.log('[TESIS DB] Test 3c: Vector search WITH JOIN, LIMIT 1...')
+      const start3c = Date.now()
+      const query3c = await client.query(`
+        SELECT e.id_tesis, d.epoca, d.anio
+        FROM tesis_embeddings e
+        JOIN tesis_documents d ON e.id_tesis = d.id_tesis
+        ORDER BY e.embedding <=> $1::vector
+        LIMIT 1
+      `, [JSON.stringify(queryEmbedding)])
+      console.log(`[TESIS DB] Test 3c completed in ${Date.now() - start3c}ms, result:`, query3c.rows[0])
+
+      // Test 3d: Full query with LIMIT 50
+      console.log('[TESIS DB] Test 3d: Full query WITH JOIN, LIMIT 50...')
+      const start3d = Date.now()
+      const result = await client.query(`
         SELECT
           e.id_tesis,
           e.chunk_text,
@@ -139,12 +173,8 @@ async function retrieveTesis(
         JOIN tesis_documents d ON e.id_tesis = d.id_tesis
         ORDER BY e.embedding <=> $1::vector
         LIMIT 50
-      `
-      console.log('[TESIS DB] Query:', directQuery.substring(0, 100) + '...')
-      console.log('[TESIS DB] Embedding length:', queryEmbedding.length)
-
-      const result = await client.query(directQuery, [JSON.stringify(queryEmbedding)])
-      console.log(`[TESIS DB] Direct vector search completed in ${Date.now() - startDirect}ms, returned ${result.rows.length} candidates`)
+      `, [JSON.stringify(queryEmbedding)])
+      console.log(`[TESIS DB] Test 3d completed in ${Date.now() - start3d}ms, returned ${result.rows.length} candidates`)
 
       if (result.rows.length > 0) {
         console.log('[TESIS DB] Sample result:', {
