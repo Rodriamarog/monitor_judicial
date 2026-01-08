@@ -6,11 +6,12 @@
 import { Pool, PoolClient, QueryResult, QueryResultRow } from 'pg';
 
 // Supabase PostgreSQL connection configuration
+// Use connection pooler for serverless (Vercel) compatibility
 const pool = new Pool({
-  host: process.env.SUPABASE_TESIS_HOST || 'db.mnotrrzjswisbwkgbyow.supabase.co',
-  port: parseInt(process.env.SUPABASE_TESIS_PORT || '5432'),
+  host: process.env.SUPABASE_TESIS_HOST || 'aws-1-us-east-1.pooler.supabase.com',
+  port: parseInt(process.env.SUPABASE_TESIS_PORT || '6543'),
   database: process.env.SUPABASE_TESIS_DB || 'postgres',
-  user: process.env.SUPABASE_TESIS_USER || 'postgres',
+  user: process.env.SUPABASE_TESIS_USER || 'postgres.mnotrrzjswisbwkgbyow',
   password: process.env.SUPABASE_TESIS_PASSWORD!,
   ssl: { rejectUnauthorized: false }, // Required for Supabase
   max: 20, // Maximum number of clients in the pool
