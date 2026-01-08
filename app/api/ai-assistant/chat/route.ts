@@ -99,43 +99,76 @@ async function retrieveTesis(
 
     const queryEmbedding = embeddingResponse.data[0].embedding
 
-    // Search similar tesis with recency boost
+    // Fast vector search - scoring done in TypeScript for better performance
     console.log('[TESIS DB] Attempting to connect to pool...')
     const client = await tesisPool.connect()
     console.log('[TESIS DB] Successfully connected to pool')
     try {
-      console.log('[TESIS DB] Executing query...')
+      console.log('[TESIS DB] Executing fast vector search...')
       const result = await client.query(
-      `SELECT * FROM search_similar_tesis_with_recency(
+      `SELECT * FROM search_similar_tesis_fast(
         $1::vector,
-        $2,  -- match_threshold
-        $3,  -- match_count
-        $4,  -- filter_materias
-        $5,  -- filter_tipo_tesis
-        $6,  -- filter_epoca
-        $7,  -- filter_anio_min
-        $8,  -- filter_anio_max
-        $9,  -- filter_instancia
-        $10, -- enable_recency_boost
-        $11  -- recency_weight
+        $2,  -- match_count
+        $3,  -- filter_materias
+        $4,  -- filter_tipo_tesis
+        $5,  -- filter_anio_min
+        $6   -- filter_anio_max
       )`,
       [
         JSON.stringify(queryEmbedding),
-        0.3,                     // threshold
-        20,                      // top k (AUMENTADO para mejor re-ranking)
+        50,                      // Get more candidates for scoring
         filters?.materias || null,
         filters?.tipo_tesis || null,
-        null,                    // filter_epoca
         filters?.year_min || null,
         filters?.year_max || null,
-        null,                    // filter_instancia
-        true,                    // enable_recency_boost
-        0.3,                     // recency_weight (30% peso a recencia)
       ]
     )
 
-    const sources = result.rows as TesisSource[]
-    console.log(`[RAG] SQL retornó ${sources.length} tesis candidatas`)
+    console.log(`[TESIS DB] Vector search returned ${result.rows.length} candidates`)
+
+    // Apply recency and epoca scoring in TypeScript
+    const scoredSources = result.rows.map((row: any) => {
+      const similarity = row.similarity
+
+      // Calculate recency factor (same logic as DB function)
+      let recencyFactor = 1.0
+      if (row.anio) {
+        if (row.anio >= 2020) recencyFactor = 1.0 + ((row.anio - 2020) / 20.0)
+        else if (row.anio >= 2010) recencyFactor = 1.0 + ((row.anio - 2010) / 30.0)
+        else if (row.anio >= 2000) recencyFactor = 1.0 + ((row.anio - 2000) / 50.0)
+        else if (row.anio >= 1990) recencyFactor = 1.0 + ((row.anio - 1990) / 100.0)
+      }
+
+      // Calculate epoca factor
+      const epocaFactors: Record<string, number> = {
+        'Duodécima Época': 2.0,
+        'Undécima Época': 1.8,
+        'Décima Época': 1.5,
+        'Novena Época': 1.2,
+        'Octava Época': 1.1,
+      }
+      const epocaFactor = epocaFactors[row.epoca] || 1.0
+
+      // Calculate final score with recency boost
+      const recencyWeight = 0.3
+      const finalScore = similarity *
+        (1.0 + (recencyFactor - 1.0) * recencyWeight) *
+        (1.0 + (epocaFactor - 1.0) * recencyWeight)
+
+      return {
+        ...row,
+        recency_score: recencyFactor,
+        epoca_score: epocaFactor,
+        final_score: finalScore,
+      }
+    }) as TesisSource[]
+
+    // Filter by minimum similarity threshold
+    const filteredSources = scoredSources.filter(s => s.similarity > 0.3)
+
+    // Sort by final score
+    const sources = filteredSources.sort((a, b) => b.final_score - a.final_score).slice(0, 20)
+    console.log(`[RAG] After scoring and filtering: ${sources.length} tesis candidatas`)
 
     // Re-ranking adicional: Descarta tesis muy antiguas si hay alternativas recientes
     const rerankedSources = applyRecencyReranking(sources, query)
