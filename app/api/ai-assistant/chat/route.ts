@@ -12,17 +12,18 @@ import { extractSourcesFromHistory, mergeSources } from '@/lib/ai/source-manager
 import { createTimer, estimateTokens } from '@/lib/ai/utils'
 
 // PostgreSQL connection for RAG (Supabase tesis database)
-// Use connection pooler for serverless (Vercel) compatibility
+// Use direct connection for vector search (long-running queries)
 import pg from 'pg'
 const { Pool } = pg
 
 const tesisPool = new Pool({
-  host: process.env.SUPABASE_TESIS_HOST || 'aws-1-us-east-1.pooler.supabase.com',
-  port: parseInt(process.env.SUPABASE_TESIS_PORT || '6543'),
+  host: process.env.SUPABASE_TESIS_HOST || 'db.mnotrrzjswisbwkgbyow.supabase.co',
+  port: parseInt(process.env.SUPABASE_TESIS_PORT || '5432'),
   database: process.env.SUPABASE_TESIS_DB || 'postgres',
-  user: process.env.SUPABASE_TESIS_USER || 'postgres.mnotrrzjswisbwkgbyow',
+  user: process.env.SUPABASE_TESIS_USER || 'postgres',
   password: process.env.SUPABASE_TESIS_PASSWORD!,
   ssl: { rejectUnauthorized: false }, // Required for Supabase
+  max: 10, // Limit pool size for serverless
 })
 
 interface TesisSource {
