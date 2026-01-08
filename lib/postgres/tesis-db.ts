@@ -9,7 +9,7 @@ import { Pool, PoolClient, QueryResult, QueryResultRow } from 'pg';
 // Use connection pooler in session mode (supports long-running queries)
 // Session mode (port 5432) instead of transaction mode (port 6543) for vector search
 const pool = new Pool({
-  host: process.env.SUPABASE_TESIS_HOST || 'aws-0-us-east-1.pooler.supabase.com',
+  host: process.env.SUPABASE_TESIS_HOST || 'aws-1-us-east-1.pooler.supabase.com',
   port: parseInt(process.env.SUPABASE_TESIS_PORT || '5432'),
   database: process.env.SUPABASE_TESIS_DB || 'postgres',
   user: process.env.SUPABASE_TESIS_USER || 'postgres.mnotrrzjswisbwkgbyow',
