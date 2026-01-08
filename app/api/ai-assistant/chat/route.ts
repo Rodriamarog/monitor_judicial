@@ -11,36 +11,10 @@ import { getQueryRewritingWindow, getLLMGenerationWindow } from '@/lib/ai/slidin
 import { extractSourcesFromHistory, mergeSources } from '@/lib/ai/source-manager'
 import { createTimer, estimateTokens } from '@/lib/ai/utils'
 
-// PostgreSQL connection for RAG (Supabase tesis database)
-// Use direct connection for vector search (long-running queries)
-import pg from 'pg'
-const { Pool } = pg
-
-// Debug: Log environment variables at module load time
-console.log('[TESIS DB] Environment variables:', {
-  SUPABASE_TESIS_HOST: process.env.SUPABASE_TESIS_HOST,
-  SUPABASE_TESIS_PORT: process.env.SUPABASE_TESIS_PORT,
-  SUPABASE_TESIS_DB: process.env.SUPABASE_TESIS_DB,
-  SUPABASE_TESIS_USER: process.env.SUPABASE_TESIS_USER,
-  SUPABASE_TESIS_PASSWORD: process.env.SUPABASE_TESIS_PASSWORD ? '[SET]' : '[NOT SET]',
-})
-
-const poolConfig = {
-  host: process.env.SUPABASE_TESIS_HOST || 'aws-1-us-east-1.pooler.supabase.com',
-  port: parseInt(process.env.SUPABASE_TESIS_PORT || '5432'),
-  database: process.env.SUPABASE_TESIS_DB || 'postgres',
-  user: process.env.SUPABASE_TESIS_USER || 'postgres.mnotrrzjswisbwkgbyow',
-  password: process.env.SUPABASE_TESIS_PASSWORD!,
-  ssl: { rejectUnauthorized: false }, // Required for Supabase
-  max: 10, // Limit pool size for serverless
-}
-
-console.log('[TESIS DB] Pool config:', {
-  ...poolConfig,
-  password: poolConfig.password ? '[REDACTED]' : '[NOT SET]',
-})
-
-const tesisPool = new Pool(poolConfig)
+// Supabase client for RAG (Supabase tesis database)
+// Use RPC to bypass connection pooler for vector search performance
+// Pooler breaks HNSW index optimization, causing 117s+ timeouts
+import { supabaseTesis } from '@/lib/supabase/tesis-client'
 
 interface TesisSource {
   id_tesis: number
@@ -99,94 +73,54 @@ async function retrieveTesis(
 
     const queryEmbedding = embeddingResponse.data[0].embedding
 
-    // Fast vector search - scoring done in TypeScript for better performance
-    console.log('[TESIS DB] Attempting to connect to pool...')
-    const startConnect = Date.now()
-    const client = await tesisPool.connect()
-    console.log(`[TESIS DB] Connected in ${Date.now() - startConnect}ms`)
+    // Execute vector search via RPC (bypasses pooler for HNSW index optimization)
+    console.log('[TESIS DB] Calling RPC: search_similar_tesis_fast')
+    const startRPC = Date.now()
 
-    try {
-      // Test 1: Simple query to verify connection works
-      console.log('[TESIS DB] Test 1: Running simple SELECT...')
-      const startSimple = Date.now()
-      await client.query('SELECT 1 as test')
-      console.log(`[TESIS DB] Simple query completed in ${Date.now() - startSimple}ms`)
+    const { data, error } = await supabaseTesis.rpc('search_similar_tesis_fast', {
+      query_embedding: queryEmbedding,
+      match_count: 50,
+      filter_materias: filters?.materias || null,
+      filter_tipo_tesis: filters?.tipo_tesis || null,
+      filter_anio_min: filters?.year_min || null,
+      filter_anio_max: filters?.year_max || null,
+    })
 
-      // Test 2: Count embeddings to verify table access
-      console.log('[TESIS DB] Test 2: Counting embeddings...')
-      const startCount = Date.now()
-      const countResult = await client.query('SELECT COUNT(*) FROM tesis_embeddings')
-      console.log(`[TESIS DB] Count query completed in ${Date.now() - startCount}ms, count: ${countResult.rows[0].count}`)
+    console.log(`[TESIS DB] RPC completed in ${Date.now() - startRPC}ms`)
 
-      // Test 3a: Vector search WITHOUT JOIN, LIMIT 1
-      console.log('[TESIS DB] Test 3a: Vector search NO JOIN, LIMIT 1...')
-      const start3a = Date.now()
-      const query3a = await client.query(`
-        SELECT id_tesis, (1 - (embedding <=> $1::vector))::double precision AS similarity
-        FROM tesis_embeddings
-        ORDER BY embedding <=> $1::vector
-        LIMIT 1
-      `, [JSON.stringify(queryEmbedding)])
-      console.log(`[TESIS DB] Test 3a completed in ${Date.now() - start3a}ms, result:`, query3a.rows[0])
+    if (error) {
+      console.error('[TESIS DB] RPC error:', error)
+      throw new Error(`RPC call failed: ${error.message}`)
+    }
 
-      // Test 3b: Vector search WITHOUT JOIN, LIMIT 10
-      console.log('[TESIS DB] Test 3b: Vector search NO JOIN, LIMIT 10...')
-      const start3b = Date.now()
-      const query3b = await client.query(`
-        SELECT id_tesis, (1 - (embedding <=> $1::vector))::double precision AS similarity
-        FROM tesis_embeddings
-        ORDER BY embedding <=> $1::vector
-        LIMIT 10
-      `, [JSON.stringify(queryEmbedding)])
-      console.log(`[TESIS DB] Test 3b completed in ${Date.now() - start3b}ms, returned ${query3b.rows.length} rows`)
+    const candidates = data as Array<{
+      id_tesis: number
+      chunk_text: string
+      chunk_type: string
+      chunk_index: number
+      similarity: number
+      rubro: string
+      texto: string
+      tipo_tesis: string
+      epoca: string
+      instancia: string
+      anio: number
+      materias: string[]
+    }>
 
-      // Test 3c: Vector search WITH JOIN, LIMIT 1
-      console.log('[TESIS DB] Test 3c: Vector search WITH JOIN, LIMIT 1...')
-      const start3c = Date.now()
-      const query3c = await client.query(`
-        SELECT e.id_tesis, d.epoca, d.anio
-        FROM tesis_embeddings e
-        JOIN tesis_documents d ON e.id_tesis = d.id_tesis
-        ORDER BY e.embedding <=> $1::vector
-        LIMIT 1
-      `, [JSON.stringify(queryEmbedding)])
-      console.log(`[TESIS DB] Test 3c completed in ${Date.now() - start3c}ms, result:`, query3c.rows[0])
+    console.log(`[TESIS DB] RPC returned ${candidates.length} candidates`)
 
-      // Test 3d: Full query with LIMIT 50
-      console.log('[TESIS DB] Test 3d: Full query WITH JOIN, LIMIT 50...')
-      const start3d = Date.now()
-      const result = await client.query(`
-        SELECT
-          e.id_tesis,
-          e.chunk_text,
-          e.chunk_type,
-          e.chunk_index,
-          (1 - (e.embedding <=> $1::vector))::double precision AS similarity,
-          d.rubro,
-          d.texto,
-          d.tipo_tesis,
-          d.epoca,
-          d.instancia,
-          d.anio,
-          d.materias
-        FROM tesis_embeddings e
-        JOIN tesis_documents d ON e.id_tesis = d.id_tesis
-        ORDER BY e.embedding <=> $1::vector
-        LIMIT 50
-      `, [JSON.stringify(queryEmbedding)])
-      console.log(`[TESIS DB] Test 3d completed in ${Date.now() - start3d}ms, returned ${result.rows.length} candidates`)
-
-      if (result.rows.length > 0) {
-        console.log('[TESIS DB] Sample result:', {
-          id_tesis: result.rows[0].id_tesis,
-          similarity: result.rows[0].similarity,
-          epoca: result.rows[0].epoca,
-          anio: result.rows[0].anio,
-        })
-      }
+    if (candidates.length > 0) {
+      console.log('[TESIS DB] Sample result:', {
+        id_tesis: candidates[0].id_tesis,
+        similarity: candidates[0].similarity,
+        epoca: candidates[0].epoca,
+        anio: candidates[0].anio,
+      })
+    }
 
     // Apply recency and epoca scoring in TypeScript
-    const scoredSources = result.rows.map((row: any) => {
+    const scoredSources = candidates.map((row: any) => {
       const similarity = row.similarity
 
       // Calculate recency factor (same logic as DB function)
@@ -250,9 +184,6 @@ async function retrieveTesis(
     })), null, 2))
 
     return finalSources
-    } finally {
-      client.release()
-    }
   } catch (error) {
     console.error('[TESIS DB] Error in retrieveTesis:', {
       error,
