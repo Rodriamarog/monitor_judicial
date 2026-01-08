@@ -16,7 +16,16 @@ import { createTimer, estimateTokens } from '@/lib/ai/utils'
 import pg from 'pg'
 const { Pool } = pg
 
-const tesisPool = new Pool({
+// Debug: Log environment variables at module load time
+console.log('[TESIS DB] Environment variables:', {
+  SUPABASE_TESIS_HOST: process.env.SUPABASE_TESIS_HOST,
+  SUPABASE_TESIS_PORT: process.env.SUPABASE_TESIS_PORT,
+  SUPABASE_TESIS_DB: process.env.SUPABASE_TESIS_DB,
+  SUPABASE_TESIS_USER: process.env.SUPABASE_TESIS_USER,
+  SUPABASE_TESIS_PASSWORD: process.env.SUPABASE_TESIS_PASSWORD ? '[SET]' : '[NOT SET]',
+})
+
+const poolConfig = {
   host: process.env.SUPABASE_TESIS_HOST || 'db.mnotrrzjswisbwkgbyow.supabase.co',
   port: parseInt(process.env.SUPABASE_TESIS_PORT || '5432'),
   database: process.env.SUPABASE_TESIS_DB || 'postgres',
@@ -24,7 +33,14 @@ const tesisPool = new Pool({
   password: process.env.SUPABASE_TESIS_PASSWORD!,
   ssl: { rejectUnauthorized: false }, // Required for Supabase
   max: 10, // Limit pool size for serverless
+}
+
+console.log('[TESIS DB] Pool config:', {
+  ...poolConfig,
+  password: poolConfig.password ? '[REDACTED]' : '[NOT SET]',
 })
+
+const tesisPool = new Pool(poolConfig)
 
 interface TesisSource {
   id_tesis: number
@@ -70,22 +86,26 @@ async function retrieveTesis(
     year_max?: number
   }
 ): Promise<TesisSource[]> {
-  // Generate embedding for query
-  const openaiClient = new OpenAI({
-    apiKey: process.env.OPENAI_API_KEY,
-  })
-
-  const embeddingResponse = await openaiClient.embeddings.create({
-    model: 'text-embedding-3-small',
-    input: query,
-  })
-
-  const queryEmbedding = embeddingResponse.data[0].embedding
-
-  // Search similar tesis with recency boost
-  const client = await tesisPool.connect()
   try {
-    const result = await client.query(
+    // Generate embedding for query
+    const openaiClient = new OpenAI({
+      apiKey: process.env.OPENAI_API_KEY,
+    })
+
+    const embeddingResponse = await openaiClient.embeddings.create({
+      model: 'text-embedding-3-small',
+      input: query,
+    })
+
+    const queryEmbedding = embeddingResponse.data[0].embedding
+
+    // Search similar tesis with recency boost
+    console.log('[TESIS DB] Attempting to connect to pool...')
+    const client = await tesisPool.connect()
+    console.log('[TESIS DB] Successfully connected to pool')
+    try {
+      console.log('[TESIS DB] Executing query...')
+      const result = await client.query(
       `SELECT * FROM search_similar_tesis_with_recency(
         $1::vector,
         $2,  -- match_threshold
@@ -138,8 +158,20 @@ async function retrieveTesis(
     })), null, 2))
 
     return finalSources
-  } finally {
-    client.release()
+    } finally {
+      client.release()
+    }
+  } catch (error) {
+    console.error('[TESIS DB] Error in retrieveTesis:', {
+      error,
+      message: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : undefined,
+      code: (error as any)?.code,
+      errno: (error as any)?.errno,
+      syscall: (error as any)?.syscall,
+      hostname: (error as any)?.hostname,
+    })
+    throw error
   }
 }
 
