@@ -101,30 +101,59 @@ async function retrieveTesis(
 
     // Fast vector search - scoring done in TypeScript for better performance
     console.log('[TESIS DB] Attempting to connect to pool...')
+    const startConnect = Date.now()
     const client = await tesisPool.connect()
-    console.log('[TESIS DB] Successfully connected to pool')
-    try {
-      console.log('[TESIS DB] Executing fast vector search...')
-      const result = await client.query(
-      `SELECT * FROM search_similar_tesis_fast(
-        $1::vector,
-        $2,  -- match_count
-        $3,  -- filter_materias
-        $4,  -- filter_tipo_tesis
-        $5,  -- filter_anio_min
-        $6   -- filter_anio_max
-      )`,
-      [
-        JSON.stringify(queryEmbedding),
-        50,                      // Get more candidates for scoring
-        filters?.materias || null,
-        filters?.tipo_tesis || null,
-        filters?.year_min || null,
-        filters?.year_max || null,
-      ]
-    )
+    console.log(`[TESIS DB] Connected in ${Date.now() - startConnect}ms`)
 
-    console.log(`[TESIS DB] Vector search returned ${result.rows.length} candidates`)
+    try {
+      // Test 1: Simple query to verify connection works
+      console.log('[TESIS DB] Test 1: Running simple SELECT...')
+      const startSimple = Date.now()
+      await client.query('SELECT 1 as test')
+      console.log(`[TESIS DB] Simple query completed in ${Date.now() - startSimple}ms`)
+
+      // Test 2: Count embeddings to verify table access
+      console.log('[TESIS DB] Test 2: Counting embeddings...')
+      const startCount = Date.now()
+      const countResult = await client.query('SELECT COUNT(*) FROM tesis_embeddings')
+      console.log(`[TESIS DB] Count query completed in ${Date.now() - startCount}ms, count: ${countResult.rows[0].count}`)
+
+      // Test 3: Direct HNSW search without function
+      console.log('[TESIS DB] Test 3: Direct HNSW vector search (bypass function)...')
+      const startDirect = Date.now()
+      const directQuery = `
+        SELECT
+          e.id_tesis,
+          e.chunk_text,
+          e.chunk_type,
+          e.chunk_index,
+          (1 - (e.embedding <=> $1::vector))::double precision AS similarity,
+          d.rubro,
+          d.texto,
+          d.tipo_tesis,
+          d.epoca,
+          d.instancia,
+          d.anio,
+          d.materias
+        FROM tesis_embeddings e
+        JOIN tesis_documents d ON e.id_tesis = d.id_tesis
+        ORDER BY e.embedding <=> $1::vector
+        LIMIT 50
+      `
+      console.log('[TESIS DB] Query:', directQuery.substring(0, 100) + '...')
+      console.log('[TESIS DB] Embedding length:', queryEmbedding.length)
+
+      const result = await client.query(directQuery, [JSON.stringify(queryEmbedding)])
+      console.log(`[TESIS DB] Direct vector search completed in ${Date.now() - startDirect}ms, returned ${result.rows.length} candidates`)
+
+      if (result.rows.length > 0) {
+        console.log('[TESIS DB] Sample result:', {
+          id_tesis: result.rows[0].id_tesis,
+          similarity: result.rows[0].similarity,
+          epoca: result.rows[0].epoca,
+          anio: result.rows[0].anio,
+        })
+      }
 
     // Apply recency and epoca scoring in TypeScript
     const scoredSources = result.rows.map((row: any) => {
