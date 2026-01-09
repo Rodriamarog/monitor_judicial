@@ -124,7 +124,6 @@ async function retrieveTesis(
     }
 
     // Apply recency and epoca scoring in TypeScript
-    // HEAVILY prioritize recent tesis (recencyWeight = 0.85)
     const scoredSources = candidates.map((row: any) => {
       const similarity = row.similarity
 
@@ -149,8 +148,8 @@ async function retrieveTesis(
       }
       const epocaFactor = epocaFactors[row.epoca] || 1.0
 
-      // Calculate final score with HEAVY recency boost (85% weight vs 30% before)
-      const recencyWeight = 0.85
+      // Calculate final score with recency boost
+      const recencyWeight = 0.30
       const finalScore = similarity *
         (1.0 + (recencyFactor - 1.0) * recencyWeight) *
         (1.0 + (epocaFactor - 1.0) * recencyWeight)
