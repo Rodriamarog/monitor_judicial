@@ -123,53 +123,10 @@ async function retrieveTesis(
       })
     }
 
-    // Normalize text: remove accents/tildes for fuzzy keyword matching
-    // This allows "electronicas" to match "electrónicas"
-    const normalizeText = (text: string): string => {
-      return text
-        .toLowerCase()
-        .normalize('NFD') // Decompose accented characters
-        .replace(/[\u0300-\u036f]/g, '') // Remove accent marks
-        .replace(/[¿?¡!.,;:()]/g, ' ') // Remove punctuation
-    }
-
-    // Extract important keywords from query for keyword matching boost
-    const queryKeywords = normalizeText(query)
-      .split(/\s+/)
-      .filter(word =>
-        word.length >= 4 && // At least 4 characters
-        !['para', 'como', 'cual', 'esta', 'este', 'sobre', 'cuando', 'donde', 'tiene', 'debe', 'pueden', 'desde', 'hacer'].includes(word) // Filter stopwords
-      )
-
-    console.log('[KEYWORD BOOST] Query keywords:', queryKeywords)
-
     // Apply recency and epoca scoring in TypeScript
     // HEAVILY prioritize recent tesis (recencyWeight = 0.85)
     const scoredSources = candidates.map((row: any) => {
       const similarity = row.similarity
-
-      // Calculate keyword match bonus
-      // Check if important keywords appear in rubro (title) or texto
-      const rubroNormalized = normalizeText(row.rubro || '')
-      const textoNormalized = normalizeText(row.texto || '')
-
-      let keywordBonus = 1.0
-      const matchedKeywords = queryKeywords.filter(keyword =>
-        rubroNormalized.includes(keyword) || textoNormalized.includes(keyword)
-      )
-
-      if (matchedKeywords.length > 0) {
-        // Check if keywords appear in title (rubro) - higher bonus
-        const inRubro = matchedKeywords.filter(kw => rubroNormalized.includes(kw)).length
-        const inTexto = matchedKeywords.length - inRubro
-
-        // Rubro match: 0.3 per keyword, Texto match: 0.15 per keyword
-        keywordBonus = 1.0 + (inRubro * 0.3) + (inTexto * 0.15)
-
-        if (inRubro > 0) {
-          console.log(`[KEYWORD BOOST] Tesis ${row.id_tesis}: ${inRubro} rubro matches, ${inTexto} texto matches → bonus ${keywordBonus.toFixed(2)}x`)
-        }
-      }
 
       // Calculate aggressive recency factor - heavily favor recent years
       let recencyFactor = 1.0
