@@ -26,6 +26,7 @@ const NEW_SEARCH_PATTERNS = {
   legal_sources: /\b(ley|código|reglamento|decreto|norma|artículo|constitución)\b/i,
   search_verbs: /^(busca|encuentra|consulta|muestra|dame tesis|hay alguna|existe|localiza)/i,
   topic_change: /^(ahora|cambiando de tema|otra pregunta sobre|también quiero saber sobre)/i,
+  more_results: /\b(más tesis|mas tesis|busca más|busca mas|busques más|busques mas|quiero más|necesito más|necesito que busques)\b/i,
 }
 
 /**
@@ -121,6 +122,9 @@ Ejemplos:
 - "y sobre despido injustificado?" → NUEVA|cambio de tema
 - "qué significa eso" → REUSAR|pide aclaración
 - "profundiza en ese tema" → REUSAR|pide expansión
+- "necesito que busques más tesis" → NUEVA|solicita más resultados
+- "busca mas" → NUEVA|solicita más resultados
+- "quiero ver más tesis" → NUEVA|solicita más resultados
 
 Contexto de conversación:
 ${contextStr}
