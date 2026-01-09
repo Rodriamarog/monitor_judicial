@@ -83,10 +83,10 @@ async function retrieveTesis(
 
     const { data, error } = await supabaseTesis.rpc('search_similar_tesis_fast', {
       query_embedding: queryEmbedding,
-      match_count: 50,
+      match_count: 100, // Increased from 50 to get more candidates for recency filtering
       filter_materias: filters?.materias || null,
       filter_tipo_tesis: filters?.tipo_tesis || null,
-      filter_anio_min: filters?.year_min || null,
+      filter_anio_min: filters?.year_min || 2000, // Hard cutoff: exclude pre-2000 tesis
       filter_anio_max: filters?.year_max || null,
     })
 
@@ -124,30 +124,33 @@ async function retrieveTesis(
     }
 
     // Apply recency and epoca scoring in TypeScript
+    // HEAVILY prioritize recent tesis (recencyWeight = 0.85)
     const scoredSources = candidates.map((row: any) => {
       const similarity = row.similarity
 
-      // Calculate recency factor (same logic as DB function)
+      // Calculate aggressive recency factor - heavily favor recent years
       let recencyFactor = 1.0
       if (row.anio) {
-        if (row.anio >= 2020) recencyFactor = 1.0 + ((row.anio - 2020) / 20.0)
-        else if (row.anio >= 2010) recencyFactor = 1.0 + ((row.anio - 2010) / 30.0)
-        else if (row.anio >= 2000) recencyFactor = 1.0 + ((row.anio - 2000) / 50.0)
-        else if (row.anio >= 1990) recencyFactor = 1.0 + ((row.anio - 1990) / 100.0)
+        if (row.anio >= 2024) recencyFactor = 3.0        // 2024+ gets 3x boost
+        else if (row.anio >= 2022) recencyFactor = 2.5   // 2022-2023 gets 2.5x boost
+        else if (row.anio >= 2020) recencyFactor = 2.0   // 2020-2021 gets 2x boost
+        else if (row.anio >= 2015) recencyFactor = 1.5   // 2015-2019 gets 1.5x boost
+        else if (row.anio >= 2010) recencyFactor = 1.2   // 2010-2014 gets 1.2x boost
+        else if (row.anio >= 2000) recencyFactor = 1.0   // 2000-2009 gets 1x (neutral)
       }
 
-      // Calculate epoca factor
+      // Calculate epoca factor (also increased)
       const epocaFactors: Record<string, number> = {
-        'Duodécima Época': 2.0,
-        'Undécima Época': 1.8,
-        'Décima Época': 1.5,
-        'Novena Época': 1.2,
-        'Octava Época': 1.1,
+        'Duodécima Época': 2.5,   // Increased from 2.0
+        'Undécima Época': 2.0,    // Increased from 1.8
+        'Décima Época': 1.3,      // Decreased from 1.5
+        'Novena Época': 1.0,      // Decreased from 1.2
+        'Octava Época': 0.8,      // Decreased from 1.1
       }
       const epocaFactor = epocaFactors[row.epoca] || 1.0
 
-      // Calculate final score with recency boost
-      const recencyWeight = 0.3
+      // Calculate final score with HEAVY recency boost (85% weight vs 30% before)
+      const recencyWeight = 0.85
       const finalScore = similarity *
         (1.0 + (recencyFactor - 1.0) * recencyWeight) *
         (1.0 + (epocaFactor - 1.0) * recencyWeight)
@@ -505,14 +508,16 @@ CRITERIOS DE PRIORIZACIÓN (MUY IMPORTANTE):
    c) Jurisprudencias de épocas anteriores (solo si no hay criterio reciente)
    d) Tesis Aisladas antiguas (solo con advertencia de posible desactualización)
 
-FUENTES DISPONIBLES (ordenadas por relevancia con boost de recencia):
+FUENTES DISPONIBLES (ordenadas por relevancia con FUERTE prioridad a recencia):
 ${context}
 
 IMPORTANTE:
-- Basa tus respuestas en las fuentes proporcionadas
-- Si no encuentras información relevante en las fuentes, indícalo claramente
-- Si todas las fuentes son muy antiguas (pre-2000), menciona que puede haber criterios más recientes no incluidos en la búsqueda
-- Compara las fechas de las fuentes antes de responder para priorizar la vigencia jurídica`
+- Basa tus respuestas EXCLUSIVAMENTE en las fuentes proporcionadas (año 2000+)
+- Las fuentes YA ESTÁN ordenadas priorizando tesis recientes (2020+)
+- SIEMPRE menciona el año de cada tesis que cites
+- Si la tesis más reciente es de 2024-2025, menciónalo explícitamente como criterio vigente
+- Si solo encuentras tesis de 2000-2010, advierte que puede haber criterios más recientes
+- NUNCA inventes información que no esté en las fuentes`
 
     // Combine database messages with new messages
     const allMessages = [
