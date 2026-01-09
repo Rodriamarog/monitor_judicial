@@ -72,7 +72,10 @@ async function retrieveTesis(
       dimensions: 256, // Reduced dimensions for memory efficiency (halfvec)
     })
 
-    const queryEmbedding = embeddingResponse.data[0].embedding
+    // Normalize query embedding to unit length (MRL truncation best practice)
+    const rawEmbedding = embeddingResponse.data[0].embedding
+    const magnitude = Math.sqrt(rawEmbedding.reduce((sum, val) => sum + val * val, 0))
+    const queryEmbedding = rawEmbedding.map(val => val / magnitude)
 
     // Execute vector search via RPC (bypasses pooler for HNSW index optimization)
     console.log('[TESIS DB] Calling RPC: search_similar_tesis_fast')
