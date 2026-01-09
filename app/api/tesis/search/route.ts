@@ -61,11 +61,11 @@ export async function GET(request: NextRequest) {
     const params: any[] = [];
     let paramIndex = 1;
 
-    // Text search in rubro and texto (accent-insensitive)
+    // Text search in rubro and texto (case-insensitive using trigram indexes)
     if (searchQuery.trim()) {
       params.push(`%${searchQuery}%`);
       params.push(`%${searchQuery}%`);
-      conditions.push(`(unaccent(rubro) ILIKE unaccent($${paramIndex}) OR unaccent(texto) ILIKE unaccent($${paramIndex + 1}))`);
+      conditions.push(`(rubro ILIKE $${paramIndex} OR texto ILIKE $${paramIndex + 1})`);
       paramIndex += 2;
     }
 
