@@ -69,6 +69,7 @@ async function retrieveTesis(
     const embeddingResponse = await openaiClient.embeddings.create({
       model: 'text-embedding-3-small',
       input: query,
+      dimensions: 256, // Reduced dimensions for memory efficiency (halfvec)
     })
 
     const queryEmbedding = embeddingResponse.data[0].embedding

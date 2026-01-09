@@ -87,7 +87,8 @@ class RetryPipeline:
         def _api_call():
             response = self.client.embeddings.create(
                 model=self.model_name,
-                input=texts
+                input=texts,
+                dimensions=256  # Reduced dimensions for memory efficiency
             )
             return np.array([item.embedding for item in response.data])
 

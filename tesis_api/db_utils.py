@@ -98,10 +98,11 @@ class DatabaseManager:
     def insert_embeddings_batch(self, embeddings: List[Tuple]) -> int:
         """
         Insert multiple embeddings at once
-        
+
         Args:
             embeddings: List of tuples (id_tesis, chunk_index, chunk_text, chunk_type, embedding_vector)
-        
+            Note: embedding_vector should be halfvec(256) - reduced dimensions for memory efficiency
+
         Returns:
             Number of embeddings inserted
         """
@@ -109,11 +110,11 @@ class DatabaseManager:
             with self.get_connection() as conn:
                 with conn.cursor() as cur:
                     query = """
-                        INSERT INTO tesis_embeddings (id_tesis, chunk_index, chunk_text, chunk_type, embedding)
+                        INSERT INTO tesis_embeddings (id_tesis, chunk_index, chunk_text, chunk_type, embedding_reduced)
                         VALUES %s
                         ON CONFLICT (id_tesis, chunk_index) DO UPDATE SET
                             chunk_text = EXCLUDED.chunk_text,
-                            embedding = EXCLUDED.embedding
+                            embedding_reduced = EXCLUDED.embedding_reduced
                     """
                     execute_values(cur, query, embeddings)
                     return len(embeddings)

@@ -23,7 +23,7 @@ query = 'amparo derechos humanos'
 print(f'Testing query: {query}\n')
 
 # Generate embedding
-response = client.embeddings.create(model='text-embedding-3-small', input=query)
+response = client.embeddings.create(model='text-embedding-3-small', input=query, dimensions=256)
 query_embedding = response.data[0].embedding
 
 # Search

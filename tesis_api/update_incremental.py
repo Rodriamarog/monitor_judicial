@@ -203,7 +203,8 @@ class IncrementalUpdateManager:
             for idx, chunk_text in enumerate(chunks):
                 response = self.openai_client.embeddings.create(
                     model='text-embedding-3-small',
-                    input=chunk_text
+                    input=chunk_text,
+                    dimensions=256
                 )
                 embedding = response.data[0].embedding
                 embeddings_to_insert.append((
@@ -220,7 +221,8 @@ class IncrementalUpdateManager:
             for idx, chunk_text in enumerate(chunks, start=len(embeddings_to_insert)):
                 response = self.openai_client.embeddings.create(
                     model='text-embedding-3-small',
-                    input=chunk_text
+                    input=chunk_text,
+                    dimensions=256
                 )
                 embedding = response.data[0].embedding
                 embeddings_to_insert.append((

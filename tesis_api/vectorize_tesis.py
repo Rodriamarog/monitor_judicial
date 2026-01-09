@@ -67,7 +67,8 @@ class OpenAIEmbeddingModel:
             # Call OpenAI API
             response = self.client.embeddings.create(
                 model=self.model_name,
-                input=batch_texts
+                input=batch_texts,
+                dimensions=256  # Reduced dimensions for memory efficiency
             )
 
             # Extract embeddings
