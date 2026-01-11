@@ -433,23 +433,46 @@ export default function KanbanBoard() {
     }
   }
 
-  const handleAddColumn = () => {
+  const handleAddColumn = async () => {
     if (columns.length >= 4) {
       alert("Máximo 4 columnas permitidas")
       return
     }
 
-    const newColumn: Column = {
-      id: crypto.randomUUID(),
-      title: `Nueva Columna`,
-      color: "bg-slate-500",
-      tasks: [],
-      position: columns.length,
-      user_id: userId || undefined,
+    if (!userId) {
+      console.error('No user ID available')
+      return
     }
 
-    setColumns([...columns, newColumn])
-    setHasChanges(true)
+    const newColumn = {
+      title: `Nueva Columna`,
+      color: "bg-slate-500",
+      position: columns.length,
+      user_id: userId,
+      deleted_at: null,
+    }
+
+    // Immediately persist to database
+    const { data, error } = await supabase
+      .from('kanban_columns')
+      .insert(newColumn)
+      .select()
+      .single()
+
+    if (error) {
+      console.error('Error creating column:', error)
+      alert('Error al crear la columna')
+      return
+    }
+
+    // Add to local state with DB-confirmed data
+    const columnWithTasks: Column = {
+      ...data,
+      tasks: [],
+    }
+
+    setColumns([...columns, columnWithTasks])
+    // No need to set hasChanges since we already persisted
   }
 
   const handleDeleteColumn = async (columnId: string) => {
