@@ -6,6 +6,7 @@
 
 import { createClient } from '@supabase/supabase-js';
 import * as cheerio from 'cheerio';
+import { normalizeJuzgado } from './normalize-juzgado';
 
 const BULLETIN_SOURCES = [
   { code: 'ti', name: 'tijuana', label: 'Tijuana' },
@@ -41,15 +42,20 @@ function buildBulletinURL(date: string, sourceCode: string): string {
 }
 
 /**
- * Clean juzgado name (remove date suffixes)
+ * Clean juzgado name (remove date suffixes and normalize by truncating after city name)
  */
 function cleanJuzgadoName(name: string): string {
-  return name
+  // First apply existing cleaning (removes dates and simple suffixes)
+  const cleaned = name
     .replace(/,?\s*B\.?\s*C\.?\s*\.?\s*\d+\s+DE\s+(ENERO|FEBRERO|MARZO|ABRIL|MAYO|JUNIO|JULIO|AGOSTO|SEPTIEMBRE|OCTUBRE|NOVIEMBRE|DICIEMBRE).*$/i, '')
     .replace(/,?\s*\d+\s+DE\s+(ENERO|FEBRERO|MARZO|ABRIL|MAYO|JUNIO|JULIO|AGOSTO|SEPTIEMBRE|OCTUBRE|NOVIEMBRE|DICIEMBRE).*$/i, '')
     .replace(/,?\s*B\.?\s*C\.?\s*\.?$/i, '')
     .replace(/\s+/g, ' ')
     .trim();
+
+  // Then apply city-based truncation normalization
+  // This removes suffixes like ", B.C. LISTA", ", DEL", etc.
+  return normalizeJuzgado(cleaned);
 }
 
 /**

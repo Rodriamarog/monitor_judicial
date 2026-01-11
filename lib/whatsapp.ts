@@ -249,3 +249,75 @@ export function formatToWhatsApp(phoneNumber: string): string {
 
   return 'whatsapp:' + cleaned;
 }
+
+/**
+ * Send admin alert for new juzgados detected
+ * Reuses the existing template (HXd2473dd12164260d0b5f52aeccc29c7a) with creative variable mapping
+ */
+export async function sendNewJuzgadoAdminAlert(data: {
+  to: string; // Admin WhatsApp number (format: whatsapp:+16197612314)
+  count: number;
+  firstJuzgado: string;
+  detectionDate: string;
+}): Promise<{ success: boolean; error?: string; messageId?: string }> {
+  try {
+    if (!whatsappFrom) {
+      throw new Error('TWILIO_WHATSAPP_FROM not configured');
+    }
+
+    if (!alertTemplateContentSid) {
+      throw new Error('TWILIO_WHATSAPP_ALERT_TEMPLATE_SID not configured');
+    }
+
+    const client = getTwilioClient();
+
+    // Format detection date
+    const formattedDate = new Date(data.detectionDate).toLocaleDateString('es-MX', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      timeZone: 'America/Tijuana',
+    });
+
+    // Template variable mapping for admin alerts:
+    // {{1}} = "APARECIO UN NUEVO JUZGADO" or "APARECIERON X NUEVOS JUZGADOS"
+    // {{2}} = Name of the juzgado (or first one if multiple)
+    // {{3}} = "Revisa tu email para detalles completos" or location if single
+    // {{4}} = Detection date
+
+    const casesText = data.count === 1
+      ? 'APARECIO UN NUEVO JUZGADO'
+      : `APARECIERON ${data.count} NUEVOS JUZGADOS`;
+
+    const juzgadoText = data.firstJuzgado;
+
+    const locationText = data.count === 1
+      ? extractLocation(data.firstJuzgado)
+      : 'Revisa tu email para ver todos los detalles';
+
+    const response = await client.messages.create({
+      from: whatsappFrom,
+      to: data.to,
+      contentSid: alertTemplateContentSid,
+      contentVariables: JSON.stringify({
+        '1': casesText,
+        '2': juzgadoText,
+        '3': locationText,
+        '4': formattedDate,
+      }),
+    });
+
+    console.log(`Admin WhatsApp alert sent to ${data.to} (${data.count} new juzgado${data.count > 1 ? 's' : ''}), SID: ${response.sid}`);
+
+    return {
+      success: true,
+      messageId: response.sid,
+    };
+  } catch (error) {
+    console.error('Admin WhatsApp alert error:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error',
+    };
+  }
+}
