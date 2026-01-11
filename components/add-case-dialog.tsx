@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
@@ -22,12 +22,18 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { JUZGADOS_BY_REGION } from '@/lib/juzgados'
 import { Loader2 } from 'lucide-react'
 
 interface AddCaseDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
+}
+
+interface Juzgado {
+  id: string
+  name: string
+  type: string
+  city: string
 }
 
 export function AddCaseDialog({ open, onOpenChange }: AddCaseDialogProps) {
@@ -38,8 +44,31 @@ export function AddCaseDialog({ open, onOpenChange }: AddCaseDialogProps) {
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
   const [loading, setLoading] = useState(false)
+  const [juzgadosByCity, setJuzgadosByCity] = useState<Record<string, Juzgado[]>>({})
+  const [loadingJuzgados, setLoadingJuzgados] = useState(true)
   const router = useRouter()
   const supabase = createClient()
+
+  // Fetch juzgados from the database when component mounts
+  useEffect(() => {
+    async function fetchJuzgados() {
+      setLoadingJuzgados(true)
+      try {
+        const response = await fetch('/api/juzgados')
+        const data = await response.json()
+
+        if (data.juzgados) {
+          setJuzgadosByCity(data.juzgados)
+        }
+      } catch (err) {
+        console.error('Error fetching juzgados:', err)
+      } finally {
+        setLoadingJuzgados(false)
+      }
+    }
+
+    fetchJuzgados()
+  }, [])
 
   // Reset form when dialog closes
   const handleOpenChange = (newOpen: boolean) => {
@@ -236,23 +265,30 @@ export function AddCaseDialog({ open, onOpenChange }: AddCaseDialogProps) {
             <Label htmlFor="juzgado">
               Juzgado <span className="text-destructive">*</span>
             </Label>
-            <Select value={juzgado} onValueChange={setJuzgado} required disabled={loading || success}>
+            <Select value={juzgado} onValueChange={setJuzgado} required disabled={loading || success || loadingJuzgados}>
               <SelectTrigger>
-                <SelectValue placeholder="Seleccione un juzgado" />
+                <SelectValue placeholder={loadingJuzgados ? "Cargando juzgados..." : "Seleccione un juzgado"} />
               </SelectTrigger>
               <SelectContent className="max-h-[300px]">
-                {Object.entries(JUZGADOS_BY_REGION).map(([region, juzgados]) => (
-                  <div key={region}>
-                    <div className="px-2 py-1.5 text-sm font-semibold text-muted-foreground capitalize">
-                      {region.replace('_', ' ')}
-                    </div>
-                    {juzgados.map((j) => (
-                      <SelectItem key={j} value={j}>
-                        {j}
-                      </SelectItem>
-                    ))}
+                {loadingJuzgados ? (
+                  <div className="px-2 py-4 text-center text-sm text-muted-foreground">
+                    <Loader2 className="h-4 w-4 animate-spin mx-auto mb-2" />
+                    Cargando juzgados...
                   </div>
-                ))}
+                ) : (
+                  Object.entries(juzgadosByCity).map(([city, juzgadosInCity]) => (
+                    <div key={city}>
+                      <div className="px-2 py-1.5 text-sm font-semibold text-muted-foreground capitalize">
+                        {city === 'other' ? 'Otros' : city}
+                      </div>
+                      {juzgadosInCity.map((j) => (
+                        <SelectItem key={j.id} value={j.name}>
+                          {j.name}
+                        </SelectItem>
+                      ))}
+                    </div>
+                  ))
+                )}
               </SelectContent>
             </Select>
             <p className="text-xs text-muted-foreground">

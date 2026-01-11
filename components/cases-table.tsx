@@ -24,7 +24,6 @@ import {
 } from '@/components/ui/dialog'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { JUZGADOS_BY_REGION } from '@/lib/juzgados'
 
 interface Case {
   id: string
@@ -43,6 +42,13 @@ interface CasesTableProps {
   onUpdate?: (caseId: string, updates: { case_number?: string; juzgado?: string; nombre?: string | null; telefono?: string | null }) => Promise<void>
 }
 
+interface Juzgado {
+  id: string
+  name: string
+  type: string
+  city: string
+}
+
 export function CasesTable({ cases, onDelete, onUpdate }: CasesTableProps) {
   const router = useRouter()
   const [searchQuery, setSearchQuery] = useState('')
@@ -58,6 +64,31 @@ export function CasesTable({ cases, onDelete, onUpdate }: CasesTableProps) {
   const [editTelefono, setEditTelefono] = useState('')
   const [editLoading, setEditLoading] = useState(false)
   const [editError, setEditError] = useState<string | null>(null)
+
+  // Juzgados state
+  const [juzgadosByCity, setJuzgadosByCity] = useState<Record<string, Juzgado[]>>({})
+  const [loadingJuzgados, setLoadingJuzgados] = useState(false)
+
+  // Fetch juzgados from the database when component mounts
+  useEffect(() => {
+    async function fetchJuzgados() {
+      setLoadingJuzgados(true)
+      try {
+        const response = await fetch('/api/juzgados')
+        const data = await response.json()
+
+        if (data.juzgados) {
+          setJuzgadosByCity(data.juzgados)
+        }
+      } catch (err) {
+        console.error('Error fetching juzgados:', err)
+      } finally {
+        setLoadingJuzgados(false)
+      }
+    }
+
+    fetchJuzgados()
+  }, [])
 
   // Calculate table height based on available window space
   useEffect(() => {
@@ -411,23 +442,30 @@ export function CasesTable({ cases, onDelete, onUpdate }: CasesTableProps) {
 
             <div className="space-y-2">
               <Label htmlFor="edit-juzgado">Juzgado</Label>
-              <Select value={editJuzgado} onValueChange={setEditJuzgado}>
+              <Select value={editJuzgado} onValueChange={setEditJuzgado} disabled={loadingJuzgados}>
                 <SelectTrigger id="edit-juzgado">
-                  <SelectValue placeholder="Seleccione un juzgado" />
+                  <SelectValue placeholder={loadingJuzgados ? "Cargando juzgados..." : "Seleccione un juzgado"} />
                 </SelectTrigger>
                 <SelectContent className="max-h-[300px]">
-                  {Object.entries(JUZGADOS_BY_REGION).map(([region, juzgados]) => (
-                    <div key={region}>
-                      <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">
-                        {region}
-                      </div>
-                      {juzgados.map((j) => (
-                        <SelectItem key={j} value={j}>
-                          {j}
-                        </SelectItem>
-                      ))}
+                  {loadingJuzgados ? (
+                    <div className="px-2 py-4 text-center text-sm text-muted-foreground">
+                      <Loader2 className="h-4 w-4 animate-spin mx-auto mb-2" />
+                      Cargando juzgados...
                     </div>
-                  ))}
+                  ) : (
+                    Object.entries(juzgadosByCity).map(([city, juzgadosInCity]) => (
+                      <div key={city}>
+                        <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground capitalize">
+                          {city === 'other' ? 'Otros' : city}
+                        </div>
+                        {juzgadosInCity.map((j) => (
+                          <SelectItem key={j.id} value={j.name}>
+                            {j.name}
+                          </SelectItem>
+                        ))}
+                      </div>
+                    ))
+                  )}
                 </SelectContent>
               </Select>
             </div>

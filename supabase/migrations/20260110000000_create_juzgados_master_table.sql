@@ -36,6 +36,7 @@ CREATE POLICY "Service role can manage juzgados"
 
 -- Populate with current juzgados from bulletin_entries
 -- This gives us the baseline from recent bulletins
+-- Filter out trash entries (case names, amparos, exhortos, etc.)
 INSERT INTO juzgados (name, first_seen, last_seen, city, type)
 SELECT DISTINCT ON (juzgado)
   juzgado as name,
@@ -62,6 +63,17 @@ SELECT DISTINCT ON (juzgado)
 FROM bulletin_entries
 WHERE juzgado NOT LIKE '%TEST%'
   AND juzgado NOT LIKE '%WEBAPP%'
+  -- Filter out trash entries
+  AND juzgado NOT LIKE '%VS.%'
+  AND juzgado NOT LIKE '%PROMOVIDO%'
+  AND juzgado NOT LIKE '%AMPARO%'
+  AND juzgado NOT LIKE '%EXHORTO%'
+  AND juzgado NOT LIKE '%CUADERNO%'
+  AND juzgado NOT LIKE '%REQUISITORIA%'
+  AND juzgado NOT LIKE 'DÉCIMO%'
+  AND juzgado NOT LIKE '%RECURSO DE QUEJA%'
+  -- Only include proper juzgado names
+  AND (juzgado LIKE 'JUZGADO%' OR juzgado LIKE 'TRIBUNAL%' OR juzgado LIKE 'H. TRIBUNAL%')
 ON CONFLICT (name) DO NOTHING;
 
 -- Add comment
