@@ -245,139 +245,133 @@ export function CasesTable({ cases, onDelete, onUpdate }: CasesTableProps) {
             <TableRow>
               <TableHead className="w-8 text-center">
                 <Button
-                variant="ghost"
-                size="sm"
-                onClick={toggleAlertsSorting}
-                className="gap-1 hover:bg-transparent p-0 cursor-pointer w-full"
-                title={
-                  sortOrder === 'alerts'
-                    ? 'Ordenado por casos que requieren atención (clic para volver a orden normal)'
-                    : 'Clic para ordenar por casos con alertas o sin actualizaciones'
-                }
-              >
-                Alertas
-                {sortOrder === 'alerts' && (
-                  <span className="text-xs text-green-500">●</span>
-                )}
-              </Button>
-            </TableHead>
-            <TableHead className="min-w-[150px] md:min-w-0">Nombre</TableHead>
-            <TableHead className="w-32">Número de Caso</TableHead>
-            <TableHead className="w-40">Teléfono</TableHead>
-            <TableHead className="w-48">Juzgado</TableHead>
-            <TableHead className="w-40">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={toggleSortOrder}
-                className="gap-1 hover:bg-transparent p-0 cursor-pointer"
-                title={
-                  sortOrder === 'alerts'
-                    ? 'Ordenado por alertas'
-                    : sortOrder === 'desc'
-                    ? 'Más recientes primero'
-                    : 'Más antiguos primero'
-                }
-              >
-                Fecha de Registro
-                {sortOrder === 'alerts' ? (
-                  <span className="text-xs text-green-500">●</span>
-                ) : sortOrder === 'desc' ? (
-                  <ChevronDown className="h-4 w-4" />
-                ) : (
-                  <ChevronUp className="h-4 w-4" />
-                )}
-              </Button>
-            </TableHead>
-            <TableHead className="text-center w-28">Acciones</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {sortedCases.length === 0 ? (
-            <TableRow>
-              <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
-                {searchQuery ? 'No se encontraron casos' : 'No tiene casos registrados'}
-              </TableCell>
+                  variant="ghost"
+                  size="sm"
+                  onClick={toggleAlertsSorting}
+                  className="gap-1 hover:bg-transparent p-0 cursor-pointer w-full"
+                  title={
+                    sortOrder === 'alerts'
+                      ? 'Ordenado por casos que requieren atención (clic para volver a orden normal)'
+                      : 'Clic para ordenar por casos con alertas o sin actualizaciones'
+                  }
+                >
+                  Alertas
+                  {sortOrder === 'alerts' && (
+                    <span className="text-xs text-green-500">●</span>
+                  )}
+                </Button>
+              </TableHead>
+              <TableHead className="min-w-0">Nombre</TableHead>
+              <TableHead className="w-32">Número de Caso</TableHead>
+              <TableHead className="w-32">Teléfono</TableHead>
+              <TableHead className="min-w-0">Juzgado</TableHead>
+              <TableHead className="w-32">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={toggleSortOrder}
+                  className="gap-1 hover:bg-transparent p-0 cursor-pointer"
+                  title={
+                    sortOrder === 'alerts'
+                      ? 'Ordenado por alertas'
+                      : sortOrder === 'desc'
+                        ? 'Más recientes primero'
+                        : 'Más antiguos primero'
+                  }
+                >
+                  Fecha de Registro
+                  {sortOrder === 'alerts' ? (
+                    <span className="text-xs text-green-500">●</span>
+                  ) : sortOrder === 'desc' ? (
+                    <ChevronDown className="h-4 w-4" />
+                  ) : (
+                    <ChevronUp className="h-4 w-4" />
+                  )}
+                </Button>
+              </TableHead>
+              <TableHead className="text-center w-20">Acciones</TableHead>
             </TableRow>
-          ) : (
-            sortedCases.map((case_) => (
-              <TableRow
-                key={case_.id}
-                onClick={(e) => handleRowClick(case_.id, e)}
-                className="cursor-pointer hover:bg-muted/50 transition-colors"
-                title="Clic para ver historial de alertas"
-              >
-                <TableCell className="text-center">
-                  <div className="flex justify-center">
-                    {case_.is_stale ? (
-                      <span
-                        className="text-lg"
-                        title="Sin actualizaciones por más de 60 días"
-                      >
-                        ⚠️
-                      </span>
-                    ) : (
-                      <div
-                        className={`w-3 h-3 rounded-full ${
-                          case_.alert_count > 0 ? 'bg-green-500' : 'bg-gray-300'
-                        }`}
-                        title={
-                          case_.alert_count > 0
-                            ? `${case_.alert_count} ${case_.alert_count === 1 ? 'alerta' : 'alertas'}`
-                            : 'Sin alertas'
-                        }
-                      />
-                    )}
-                  </div>
-                </TableCell>
-                <TableCell>
-                  <div className="min-w-[150px] md:min-w-0" title={case_.nombre || '-'}>
-                    {case_.nombre || '-'}
-                  </div>
-                </TableCell>
-                <TableCell className="font-mono">{case_.case_number}</TableCell>
-                <TableCell>{case_.telefono || '-'}</TableCell>
-                <TableCell>
-                  <div className="truncate" title={case_.juzgado}>{case_.juzgado}</div>
-                </TableCell>
-                <TableCell>{formatTijuanaDate(case_.created_at)}</TableCell>
-                <TableCell className="text-right">
-                  <div className="flex justify-end gap-2" data-action="true">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="gap-2 cursor-pointer"
-                      onClick={(e) => handleEditClick(case_, e)}
-                    >
-                      <Pencil className="h-4 w-4" />
-                      <span className="hidden sm:inline">Editar</span>
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="gap-2 text-destructive hover:text-destructive cursor-pointer"
-                      onClick={() => handleDelete(case_.id)}
-                      disabled={deletingCaseId === case_.id}
-                    >
-                      {deletingCaseId === case_.id ? (
-                        <>
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                          <span className="hidden sm:inline">Eliminando...</span>
-                        </>
-                      ) : (
-                        <>
-                          <Trash2 className="h-4 w-4" />
-                          <span className="hidden sm:inline">Eliminar</span>
-                        </>
-                      )}
-                    </Button>
-                  </div>
+          </TableHeader>
+          <TableBody>
+            {sortedCases.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                  {searchQuery ? 'No se encontraron casos' : 'No tiene casos registrados'}
                 </TableCell>
               </TableRow>
-            ))
-          )}
-        </TableBody>
-      </Table>
+            ) : (
+              sortedCases.map((case_) => (
+                <TableRow
+                  key={case_.id}
+                  onClick={(e) => handleRowClick(case_.id, e)}
+                  className="cursor-pointer hover:bg-muted/50 transition-colors"
+                  title="Clic para ver historial de alertas"
+                >
+                  <TableCell className="text-center">
+                    <div className="flex justify-center">
+                      {case_.is_stale ? (
+                        <span
+                          className="text-lg"
+                          title="Sin actualizaciones por más de 60 días"
+                        >
+                          ⚠️
+                        </span>
+                      ) : (
+                        <div
+                          className={`w-3 h-3 rounded-full ${case_.alert_count > 0 ? 'bg-green-500' : 'bg-gray-300'
+                            }`}
+                          title={
+                            case_.alert_count > 0
+                              ? `${case_.alert_count} ${case_.alert_count === 1 ? 'alerta' : 'alertas'}`
+                              : 'Sin alertas'
+                          }
+                        />
+                      )}
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <div className="truncate" title={case_.nombre || '-'}>
+                      {case_.nombre || '-'}
+                    </div>
+                  </TableCell>
+                  <TableCell className="font-mono">{case_.case_number}</TableCell>
+                  <TableCell className="truncate whitespace-nowrap">{case_.telefono || '-'}</TableCell>
+                  <TableCell>
+                    <div className="truncate" title={case_.juzgado}>{case_.juzgado}</div>
+                  </TableCell>
+                  <TableCell className="whitespace-nowrap">{formatTijuanaDate(case_.created_at)}</TableCell>
+                  <TableCell className="text-right">
+                    <div className="flex justify-center gap-1" data-action="true">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 w-8 p-0 cursor-pointer"
+                        onClick={(e) => handleEditClick(case_, e)}
+                        title="Editar"
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 w-8 p-0 text-destructive hover:text-destructive cursor-pointer"
+                        onClick={() => handleDelete(case_.id)}
+                        disabled={deletingCaseId === case_.id}
+                        title="Eliminar"
+                      >
+                        {deletingCaseId === case_.id ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Trash2 className="h-4 w-4" />
+                        )}
+                      </Button>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))
+            )}
+          </TableBody>
+        </Table>
       </div>
 
       {/* Total count display */}

@@ -27,7 +27,6 @@ export interface Task {
   dueDate?: string // Display format: "Nov 27"
   due_date?: string | null // Database format: "YYYY-MM-DD"
   calendar_event_id?: string | null
-  assigned_to?: string | null // NEW: User ID of assignee
   parent_task_id?: string | null // NEW: Parent task for subtasks
   is_completed?: boolean // NEW: Completion status (for subtasks)
   position?: number
@@ -161,7 +160,6 @@ export default function KanbanBoard() {
               dueDate: t.due_date ? formatDisplayDate(t.due_date) : undefined,
               due_date: t.due_date,
               calendar_event_id: t.calendar_event_id,
-              assigned_to: t.assigned_to || null, // NEW
               parent_task_id: t.parent_task_id || null, // NEW
               is_completed: t.is_completed || false, // NEW
               position: t.position,
@@ -228,7 +226,6 @@ export default function KanbanBoard() {
           due_date: task.due_date || null,
           calendar_event_id: task.calendar_event_id || null,
           labels: task.labels || [], // Save labels to DB
-          assigned_to: task.assigned_to || null, // NEW
           parent_task_id: task.parent_task_id || null, // NEW
           is_completed: task.is_completed || false, // NEW
           deleted_at: null,
@@ -600,9 +597,8 @@ export default function KanbanBoard() {
                     <div
                       ref={provided.innerRef}
                       {...provided.droppableProps}
-                      className={`flex-1 p-1 space-y-1 overflow-y-auto transition-colors ${
-                        snapshot.isDraggingOver ? "bg-muted/50" : ""
-                      }`}
+                      className={`flex-1 p-1 space-y-1 overflow-y-auto transition-colors ${snapshot.isDraggingOver ? "bg-muted/50" : ""
+                        }`}
                     >
                       {column.tasks.map((task, index) => (
                         <Draggable key={task.id} draggableId={task.id} index={index}>

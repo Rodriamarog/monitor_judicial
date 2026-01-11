@@ -1,43 +1,84 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 
+@variant dark (&:where(.dark, .dark *));
+
 /* Amber Minimal theme from shadcn - light mode only */
-:root {
-  --background: oklch(0.985 0.001 85);
-  --foreground: oklch(0.145 0.004 49);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0.004 49);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0.004 49);
-  --primary: oklch(0.769 0.188 70.08);
-  --primary-foreground: oklch(0.145 0.004 49);
-  --secondary: oklch(0.965 0.001 85);
-  --secondary-foreground: oklch(0.145 0.004 49);
-  --muted: oklch(0.965 0.001 85);
-  --muted-foreground: oklch(0.45 0.016 49);
-  --accent: oklch(0.965 0.001 85);
-  --accent-foreground: oklch(0.145 0.004 49);
-  --destructive: oklch(0.577 0.245 27.325);
-  --destructive-foreground: oklch(0.985 0 0);
-  --border: oklch(0.91 0.004 85);
-  --input: oklch(0.91 0.004 85);
-  --ring: oklch(0.769 0.188 70.08);
-  --chart-1: oklch(0.769 0.188 70.08);
-  --chart-2: oklch(0.666 0.179 58);
-  --chart-3: oklch(0.553 0.195 38);
-  --chart-4: oklch(0.828 0.189 84.429);
-  --chart-5: oklch(0.901 0.153 98);
-  --radius: 0.625rem;
-  --sidebar: oklch(0.985 0.001 85);
-  --sidebar-foreground: oklch(0.145 0.004 49);
-  --sidebar-primary: oklch(0.769 0.188 70.08);
-  --sidebar-primary-foreground: oklch(0.145 0.004 49);
-  --sidebar-accent: oklch(0.955 0.014 85);
-  --sidebar-accent-foreground: oklch(0.145 0.004 49);
-  --sidebar-border: oklch(0.91 0.004 85);
-  --sidebar-ring: oklch(0.769 0.188 70.08);
-  --sidebar-muted: oklch(0.45 0.016 49);
+@layer base {
+  :root {
+    --background: oklch(0.985 0.001 85);
+    --foreground: oklch(0.145 0.004 49);
+    --card: oklch(1 0 0);
+    --card-foreground: oklch(0.145 0.004 49);
+    --popover: oklch(1 0 0);
+    --popover-foreground: oklch(0.145 0.004 49);
+    --primary: oklch(0.769 0.188 70.08);
+    --primary-foreground: oklch(0.145 0.004 49);
+    --secondary: oklch(0.965 0.001 85);
+    --secondary-foreground: oklch(0.145 0.004 49);
+    --muted: oklch(0.965 0.001 85);
+    --muted-foreground: oklch(0.45 0.016 49);
+    --accent: oklch(0.965 0.001 85);
+    --accent-foreground: oklch(0.145 0.004 49);
+    --destructive: oklch(0.577 0.245 27.325);
+    --destructive-foreground: oklch(0.985 0 0);
+    --border: oklch(0.91 0.004 85);
+    --input: oklch(0.91 0.004 85);
+    --ring: oklch(0.769 0.188 70.08);
+    --chart-1: oklch(0.769 0.188 70.08);
+    --chart-2: oklch(0.666 0.179 58);
+    --chart-3: oklch(0.553 0.195 38);
+    --chart-4: oklch(0.828 0.189 84.429);
+    --chart-5: oklch(0.901 0.153 98);
+    --radius: 0.625rem;
+    --sidebar: oklch(0.985 0.001 85);
+    --sidebar-foreground: oklch(0.145 0.004 49);
+    --sidebar-primary: oklch(0.769 0.188 70.08);
+    --sidebar-primary-foreground: oklch(0.145 0.004 49);
+    --sidebar-accent: oklch(0.955 0.014 85);
+    --sidebar-accent-foreground: oklch(0.145 0.004 49);
+    --sidebar-border: oklch(0.91 0.004 85);
+    --sidebar-ring: oklch(0.769 0.188 70.08);
+    --sidebar-muted: oklch(0.45 0.016 49);
+  }
+
+  .dark {
+    --background: oklch(0.129 0.004 264.408);
+    --foreground: oklch(0.984 0.003 247.858);
+    --card: oklch(0.129 0.004 264.408);
+    --card-foreground: oklch(0.984 0.003 247.858);
+    --popover: oklch(0.129 0.004 264.408);
+    --popover-foreground: oklch(0.984 0.003 247.858);
+    --primary: oklch(0.769 0.188 70.08);
+    --primary-foreground: oklch(0.205 0.042 265.755);
+    --secondary: oklch(0.279 0.041 260.031);
+    --secondary-foreground: oklch(0.984 0.003 247.858);
+    --muted: oklch(0.279 0.041 260.031);
+    --muted-foreground: oklch(0.704 0.04 256.788);
+    --accent: oklch(0.279 0.041 260.031);
+    --accent-foreground: oklch(0.984 0.003 247.858);
+    --destructive: oklch(0.396 0.141 25.723);
+    --destructive-foreground: oklch(0.637 0.237 25.331);
+    --border: oklch(0.279 0.041 260.031);
+    --input: oklch(0.279 0.041 260.031);
+    --ring: oklch(0.442 0.117 70.08);
+    --chart-1: oklch(0.488 0.243 264.376);
+    --chart-2: oklch(0.696 0.17 162.48);
+    --chart-3: oklch(0.769 0.188 70.08);
+    --chart-4: oklch(0.627 0.265 303.9);
+    --chart-5: oklch(0.645 0.246 16.439);
+    --sidebar: oklch(0.129 0.004 264.408);
+    --sidebar-foreground: oklch(0.984 0.003 247.858);
+    --sidebar-primary: oklch(0.769 0.188 70.08);
+    --sidebar-primary-foreground: oklch(0.984 0.003 247.858);
+    --sidebar-accent: oklch(0.279 0.041 260.031);
+    --sidebar-accent-foreground: oklch(0.984 0.003 247.858);
+    --sidebar-border: oklch(0.279 0.041 260.031);
+    --sidebar-ring: oklch(0.442 0.117 70.08);
+    --sidebar-muted: oklch(0.704 0.04 256.788);
+  }
 }
+
 
 @theme inline {
   --font-sans: "Geist", "Geist Fallback";
@@ -85,10 +126,72 @@
   * {
     @apply border-border outline-ring/50;
   }
+
   body {
     @apply bg-background text-foreground;
   }
 }
+
+/* React Big Calendar Dark Mode Overrides */
+.dark .rbc-off-range-bg {
+  @apply !bg-zinc-900/50;
+}
+
+.dark .rbc-today {
+  @apply !bg-blue-950/60;
+}
+
+.dark .rbc-day-bg {
+  @apply !border-zinc-800;
+}
+
+.dark .rbc-month-view,
+.dark .rbc-time-view,
+.dark .rbc-agenda-view {
+  @apply bg-background text-foreground !border-zinc-800;
+}
+
+.dark .rbc-header {
+  @apply !border-zinc-800 text-foreground;
+}
+
+.dark .rbc-month-row,
+.dark .rbc-day-bg,
+.dark .rbc-time-header-content {
+  @apply !border-zinc-800;
+}
+
+.dark .rbc-timeslot-group,
+.dark .rbc-time-slot {
+  @apply !border-zinc-800;
+}
+
+.dark .rbc-time-gutter .rbc-timeslot-group {
+  @apply !border-zinc-800;
+}
+
+/* Toolbar Buttons in Dark Mode */
+.dark .rbc-toolbar button {
+  @apply text-foreground border-border/20;
+}
+
+.dark .rbc-toolbar button:hover {
+  @apply bg-accent text-accent-foreground;
+}
+
+.dark .rbc-toolbar button.rbc-active {
+  @apply !bg-primary !text-primary-foreground;
+  box-shadow: none;
+}
+
+.dark .rbc-toolbar button.rbc-active:hover {
+  @apply !bg-primary/90;
+}
+
+.dark .rbc-toolbar-label {
+  @apply text-foreground font-semibold;
+}
+
 
 /* Markdown prose styles for chat messages */
 .prose {
@@ -117,9 +220,13 @@
 
 /* Loading dots animation */
 @keyframes bounce-dot {
-  0%, 80%, 100% {
+
+  0%,
+  80%,
+  100% {
     opacity: 0;
   }
+
   40% {
     opacity: 1;
   }

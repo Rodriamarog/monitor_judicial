@@ -75,7 +75,6 @@ export default function TaskEditModal({ task, onClose, onSave, onDelete, onSubta
   const [title, setTitle] = useState('')
   const [labels, setLabels] = useState<string[]>([])
   const [dueDate, setDueDate] = useState('')
-  const [assignedTo, setAssignedTo] = useState<string | null>(null)
   const [currentUser, setCurrentUser] = useState<{ id: string; email: string } | null>(null)
   const [saving, setSaving] = useState(false)
   const [isDescriptionOpen, setIsDescriptionOpen] = useState(false)
@@ -93,7 +92,6 @@ export default function TaskEditModal({ task, onClose, onSave, onDelete, onSubta
     if (task) {
       setTitle(task.title)
       setLabels(task.labels || [])
-      setAssignedTo(task.assigned_to || null)
 
       // Start with description collapsed (will show read-only view if has content)
       setIsDescriptionOpen(false)
@@ -196,15 +194,7 @@ export default function TaskEditModal({ task, onClose, onSave, onDelete, onSubta
     setIsDescriptionOpen(false)
   }
 
-  const handleAssigneeChange = async (value: string) => {
-    console.log('[TaskEditModal] handleAssigneeChange called, value:', value)
-    const newAssignee = value === 'unassigned' ? null : value
-    setAssignedTo(newAssignee)
-    if (task) {
-      await updateTaskField({ assigned_to: newAssignee })
-    }
-    console.log('[TaskEditModal] handleAssigneeChange completed')
-  }
+
 
   const handleLabelToggle = async (label: string) => {
     console.log('[TaskEditModal] handleLabelToggle called, label:', label)
@@ -507,23 +497,7 @@ export default function TaskEditModal({ task, onClose, onSave, onDelete, onSubta
 
           {/* Details Sidebar - Right Side (1/3) */}
           <div className="lg:col-span-4 space-y-4 border-l pl-4 overflow-y-auto">
-            {/* Assignee */}
-            <div className="space-y-2">
-              <Label className="text-sm font-medium text-muted-foreground uppercase">
-                Asignado a
-              </Label>
-              <Select value={assignedTo || 'unassigned'} onValueChange={handleAssigneeChange}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Sin asignar" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="unassigned">Sin asignar</SelectItem>
-                  {currentUser && (
-                    <SelectItem value={currentUser.id}>{currentUser.email}</SelectItem>
-                  )}
-                </SelectContent>
-              </Select>
-            </div>
+
 
             {/* Labels */}
             <div className="space-y-2">
