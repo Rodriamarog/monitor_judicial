@@ -19,7 +19,6 @@ from dotenv import load_dotenv
 from db_utils import DatabaseManager
 from text_processing import LegalTextProcessor
 from checkpoint_manager import CheckpointManager
-from retry_handler import retry_with_backoff
 
 # Load environment variables
 load_dotenv()
