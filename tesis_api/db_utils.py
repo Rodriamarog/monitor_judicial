@@ -20,27 +20,50 @@ class DatabaseManager:
         Args:
             use_pooler: If True, uses connection pooler (port 6543) for better CI/CD compatibility
         """
-        # Force IPv4 by resolving hostname if needed
+        # Force IPv4 by resolving hostname to avoid IPv6 issues in CI/CD
         import socket
-        resolved_host = host
-        if use_pooler and not host.replace('.', '').replace('-', '').isalnum():
-            try:
-                # Try to resolve to IPv4 address
-                resolved_host = socket.getaddrinfo(host, None, socket.AF_INET)[0][4][0]
-                logger.info(f"Resolved {host} to IPv4: {resolved_host}")
-            except Exception as e:
-                logger.warning(f"Could not resolve to IPv4, using hostname: {e}")
+        resolved_ip = None
 
-        self.connection_params = {
-            'host': resolved_host,
-            'port': port,
-            'dbname': dbname,
-            'user': user,
-            'password': password,
-            'sslmode': 'require',  # Required for Supabase
-            'connect_timeout': 10,
-            'options': '-c statement_timeout=30000'  # 30 second query timeout
-        }
+        if use_pooler:
+            try:
+                # Force IPv4 resolution to avoid GitHub Actions IPv6 issues
+                # Get all addresses and filter for IPv4 only
+                all_addresses = socket.getaddrinfo(host, port, socket.AF_UNSPEC, socket.SOCK_STREAM)
+                ipv4_addresses = [addr for addr in all_addresses if addr[0] == socket.AF_INET]
+
+                if ipv4_addresses:
+                    resolved_ip = ipv4_addresses[0][4][0]
+                    logger.info(f"Resolved {host} to IPv4: {resolved_ip}")
+                else:
+                    logger.warning(f"No IPv4 address found for {host}, trying anyway")
+            except Exception as e:
+                logger.warning(f"Could not resolve hostname: {e}")
+
+        # Use hostaddr to force IPv4 if we resolved an IP
+        # hostaddr bypasses DNS and directly connects to the IP
+        if resolved_ip:
+            self.connection_params = {
+                'host': host,  # Keep host for SSL certificate verification
+                'hostaddr': resolved_ip,  # Use resolved IPv4 address for connection
+                'port': port,
+                'dbname': dbname,
+                'user': user,
+                'password': password,
+                'sslmode': 'require',  # Required for Supabase
+                'connect_timeout': 10,
+                'options': '-c statement_timeout=30000'  # 30 second query timeout
+            }
+        else:
+            self.connection_params = {
+                'host': host,
+                'port': port,
+                'dbname': dbname,
+                'user': user,
+                'password': password,
+                'sslmode': 'require',  # Required for Supabase
+                'connect_timeout': 10,
+                'options': '-c statement_timeout=30000'  # 30 second query timeout
+            }
     
     @contextmanager
     def get_connection(self):
