@@ -266,8 +266,7 @@ class IncrementalUpdateManager:
                     'chunk_index': idx,
                     'chunk_text': chunk_text,
                     'chunk_type': chunk_type,
-                    'embedding': embedding,  # Full precision vector
-                    'embedding_reduced': embedding  # Half precision halfvec (256 dims)
+                    'embedding_reduced': embedding  # 256-dim halfvec embeddings
                 })
 
             # Insert embeddings batch
