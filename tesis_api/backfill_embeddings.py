@@ -97,7 +97,8 @@ def main():
                     'chunk_index': idx,
                     'chunk_text': chunk_text,
                     'chunk_type': chunk_type,
-                    'embedding_reduced': embedding
+                    'embedding': embedding,  # Full precision vector
+                    'embedding_reduced': embedding  # Half precision halfvec (256 dims)
                 })
 
             # Insert embeddings
