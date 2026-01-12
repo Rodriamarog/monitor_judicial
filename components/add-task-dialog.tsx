@@ -143,12 +143,19 @@ export default function AddTaskDialog({ open, onClose, onAdd }: AddTaskDialogPro
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="title">Título</Label>
-            <Input
+            <Textarea
               id="title"
               placeholder="Título de la tarea..."
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              className="bg-secondary border-border"
+              className="bg-secondary border-border resize-none overflow-hidden min-h-[40px]"
+              rows={1}
+              onInput={(e) => {
+                // Auto-resize textarea to fit content
+                const target = e.target as HTMLTextAreaElement
+                target.style.height = 'auto'
+                target.style.height = target.scrollHeight + 'px'
+              }}
             />
           </div>
 

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { useEditor, EditorContent } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
 import Link from '@tiptap/extension-link'
@@ -78,6 +78,7 @@ export default function TaskEditModal({ task, onClose, onSave, onDelete, onSubta
   const [currentUser, setCurrentUser] = useState<{ id: string; email: string } | null>(null)
   const [saving, setSaving] = useState(false)
   const [isDescriptionOpen, setIsDescriptionOpen] = useState(false)
+  const titleTextareaRef = useRef<HTMLTextAreaElement>(null)
   const supabase = createClient()
 
   // Wrap onClose to track when it's called and save any pending changes
@@ -96,6 +97,14 @@ export default function TaskEditModal({ task, onClose, onSave, onDelete, onSubta
 
     onClose()
   }
+
+  // Auto-resize textarea when title changes
+  useEffect(() => {
+    if (titleTextareaRef.current) {
+      titleTextareaRef.current.style.height = 'auto'
+      titleTextareaRef.current.style.height = titleTextareaRef.current.scrollHeight + 'px'
+    }
+  }, [title])
 
   // Initialize fields when task changes
   useEffect(() => {
@@ -384,12 +393,19 @@ export default function TaskEditModal({ task, onClose, onSave, onDelete, onSubta
         </DialogHeader>
 
         {/* Editable Title - Jira Style */}
-        <input
-          type="text"
+        <textarea
+          ref={titleTextareaRef}
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           onBlur={(e) => handleTitleBlur(e)}
-          className="text-3xl font-bold border-none outline-none px-0 py-2 bg-transparent focus:outline-none focus:ring-0 w-full text-foreground placeholder:text-muted-foreground"
+          rows={1}
+          onInput={(e) => {
+            // Auto-resize textarea to fit content
+            const target = e.target as HTMLTextAreaElement
+            target.style.height = 'auto'
+            target.style.height = target.scrollHeight + 'px'
+          }}
+          className="text-3xl font-bold border-none outline-none px-0 py-2 bg-transparent focus:outline-none focus:ring-0 w-full text-foreground placeholder:text-muted-foreground resize-none overflow-hidden"
           placeholder="Título de la tarea"
         />
 
