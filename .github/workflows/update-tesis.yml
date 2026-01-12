@@ -41,13 +41,9 @@ jobs:
 
       - name: Run incremental update
         env:
-          DB_HOST: ${{ secrets.SUPABASE_TESIS_HOST }}
-          DB_PORT: 6543  # Use Supabase Transaction Pooler for CI/CD
-          DB_NAME: postgres
-          DB_USER: postgres.mnotrrzjswisbwkgbyow  # Pooler requires project-qualified username
-          DB_PASSWORD: ${{ secrets.SUPABASE_TESIS_PASSWORD }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           RUN_TYPE: ${{ inputs.run_type || 'scheduled' }}
           DRY_RUN: ${{ inputs.dry_run }}
         run: |

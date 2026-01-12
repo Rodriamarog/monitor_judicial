@@ -16,9 +16,7 @@ from typing import List, Dict, Optional
 from dotenv import load_dotenv
 
 # Import existing utilities
-from db_utils import DatabaseManager
 from text_processing import LegalTextProcessor
-from checkpoint_manager import CheckpointManager
 
 # Load environment variables
 load_dotenv()
@@ -54,24 +52,17 @@ class IncrementalUpdateManager:
         self.data_dir.mkdir(parents=True, exist_ok=True)
         Path('./logs').mkdir(exist_ok=True)
         
-        # Database connection (use pooler for CI/CD environments)
-        use_pooler = os.getenv('CI', 'false').lower() == 'true'
-        db_port = int(os.getenv('DB_PORT', 6543 if use_pooler else 5432))
+        # Initialize Supabase client (works reliably in CI/CD)
+        supabase_url = os.getenv('SUPABASE_URL')
+        supabase_key = os.getenv('SUPABASE_SERVICE_ROLE_KEY')
 
-        self.db = DatabaseManager(
-            host=os.getenv('DB_HOST'),
-            port=db_port,
-            dbname=os.getenv('DB_NAME'),
-            user=os.getenv('DB_USER'),
-            password=os.getenv('DB_PASSWORD'),
-            use_pooler=use_pooler
-        )
+        if not supabase_url or not supabase_key:
+            raise Exception("Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY environment variables")
 
-        logger.info(f"Database config: host={os.getenv('DB_HOST')}, port={db_port}, pooler={use_pooler}")
-        
-        # Test database connection
-        if not self.db.test_connection():
-            raise Exception("Failed to connect to database")
+        from supabase import create_client
+        self.supabase = create_client(supabase_url, supabase_key)
+
+        logger.info(f"Initialized Supabase client: {supabase_url}")
         
         # Initialize OpenAI for embeddings
         import openai
@@ -85,12 +76,22 @@ class IncrementalUpdateManager:
     def get_last_processed_id(self) -> int:
         """Get the maximum id_tesis from the database"""
         try:
-            with self.db.get_connection() as conn:
-                with conn.cursor() as cur:
-                    cur.execute("SELECT COALESCE(MAX(id_tesis), 0) FROM tesis_documents")
-                    max_id = cur.fetchone()[0]
-                    logger.info(f"Last processed ID: {max_id}")
-                    return max_id
+            # Use Supabase's RPC to call PostgreSQL MAX function
+            result = self.supabase.rpc('get_max_tesis_id').execute()
+
+            # If RPC doesn't exist, fall back to querying with order
+            if result.data is None:
+                result = self.supabase.table('tesis_documents') \
+                    .select('id_tesis') \
+                    .order('id_tesis', desc=True) \
+                    .limit(1) \
+                    .execute()
+                max_id = result.data[0]['id_tesis'] if result.data else 0
+            else:
+                max_id = result.data if isinstance(result.data, int) else 0
+
+            logger.info(f"Last processed ID: {max_id}")
+            return max_id
         except Exception as e:
             logger.error(f"Error getting last processed ID: {e}")
             return 0
@@ -169,99 +170,119 @@ class IncrementalUpdateManager:
         if self.dry_run:
             logger.info(f"[DRY RUN] Would insert tesis {tesis.get('idTesis')}")
             return True
-        
-        # Map fields from API to database schema
-        doc = {
-            'idTesis': tesis.get('idTesis'),
-            'rubro': self.clean_text(tesis.get('rubro', '')),
-            'texto': self.clean_text(tesis.get('texto', '')),
-            'precedentes': self.clean_text(tesis.get('precedentes')),
-            'epoca': tesis.get('epoca'),
-            'instancia': tesis.get('instancia'),
-            'organoJuris': tesis.get('organoJuris'),
-            'fuente': tesis.get('fuente'),
-            'tesis': tesis.get('tesis'),
-            'tipoTesis': tesis.get('tipoTesis'),
-            'localizacion': tesis.get('localizacion'),
-            'anio': tesis.get('anio'),
-            'mes': tesis.get('mes'),
-            'notaPublica': tesis.get('notaPublica'),
-            'anexos': tesis.get('anexos'),
-            'huellaDigital': tesis.get('huellaDigital'),
-            'materias': tesis.get('materias', [])
-        }
-        
-        return self.db.insert_document(doc)
+
+        try:
+            # Map fields from API to database schema
+            doc = {
+                'id_tesis': tesis.get('idTesis'),
+                'rubro': self.clean_text(tesis.get('rubro', '')),
+                'texto': self.clean_text(tesis.get('texto', '')),
+                'precedentes': self.clean_text(tesis.get('precedentes')),
+                'epoca': tesis.get('epoca'),
+                'instancia': tesis.get('instancia'),
+                'organo_juris': tesis.get('organoJuris'),
+                'fuente': tesis.get('fuente'),
+                'tesis': tesis.get('tesis'),
+                'tipo_tesis': tesis.get('tipoTesis'),
+                'localizacion': tesis.get('localizacion'),
+                'anio': tesis.get('anio'),
+                'mes': tesis.get('mes'),
+                'nota_publica': tesis.get('notaPublica'),
+                'anexos': tesis.get('anexos'),
+                'huella_digital': tesis.get('huellaDigital'),
+                'materias': tesis.get('materias', [])
+            }
+
+            # Use upsert to handle duplicates
+            self.supabase.table('tesis_documents').upsert(doc).execute()
+            return True
+        except Exception as e:
+            logger.error(f"Error inserting tesis {tesis.get('idTesis')}: {e}")
+            return False
     
-    def generate_embeddings(self, tesis: Dict) -> List[tuple]:
+    def generate_embeddings(self, tesis: Dict) -> int:
         """Generate embeddings for a tesis"""
         if self.dry_run:
             logger.info(f"[DRY RUN] Would generate embeddings for tesis {tesis.get('idTesis')}")
-            return []
-        
-        tesis_id = tesis.get('idTesis')
-        rubro = self.clean_text(tesis.get('rubro', ''))
-        texto = self.clean_text(tesis.get('texto', ''))
-        
-        embeddings_to_insert = []
-        
-        # Process rubro
-        if rubro:
-            chunks = self.text_processor.chunk_text(rubro, chunk_type='rubro')
-            for idx, chunk_text in enumerate(chunks):
-                response = self.openai_client.embeddings.create(
-                    model='text-embedding-3-small',
-                    input=chunk_text,
-                    dimensions=256
-                )
-                embedding = response.data[0].embedding
-                embeddings_to_insert.append((
-                    tesis_id,
-                    idx,
-                    chunk_text,
-                    'rubro',
-                    json.dumps(embedding)
-                ))
-        
-        # Process texto
-        if texto:
-            chunks = self.text_processor.chunk_text(texto, chunk_type='full')
-            for idx, chunk_text in enumerate(chunks, start=len(embeddings_to_insert)):
-                response = self.openai_client.embeddings.create(
-                    model='text-embedding-3-small',
-                    input=chunk_text,
-                    dimensions=256
-                )
-                embedding = response.data[0].embedding
-                embeddings_to_insert.append((
-                    tesis_id,
-                    idx,
-                    chunk_text,
-                    'full',
-                    json.dumps(embedding)
-                ))
-        
-        # Insert embeddings
-        if embeddings_to_insert:
-            self.db.insert_embeddings_batch(embeddings_to_insert)
-        
-        return embeddings_to_insert
+            return 0
+
+        try:
+            tesis_id = tesis.get('idTesis')
+            rubro = self.clean_text(tesis.get('rubro', ''))
+            texto = self.clean_text(tesis.get('texto', ''))
+
+            embeddings_to_insert = []
+
+            # Process rubro
+            if rubro:
+                chunks = self.text_processor.chunk_text(rubro, chunk_type='rubro')
+                for idx, chunk_text in enumerate(chunks):
+                    response = self.openai_client.embeddings.create(
+                        model='text-embedding-3-small',
+                        input=chunk_text,
+                        dimensions=256
+                    )
+                    embedding = response.data[0].embedding
+                    embeddings_to_insert.append({
+                        'id_tesis': tesis_id,
+                        'chunk_index': idx,
+                        'chunk_text': chunk_text,
+                        'chunk_type': 'rubro',
+                        'embedding_reduced': embedding  # Supabase will handle the array format
+                    })
+
+            # Process texto
+            if texto:
+                chunks = self.text_processor.chunk_text(texto, chunk_type='full')
+                for idx, chunk_text in enumerate(chunks, start=len(embeddings_to_insert)):
+                    response = self.openai_client.embeddings.create(
+                        model='text-embedding-3-small',
+                        input=chunk_text,
+                        dimensions=256
+                    )
+                    embedding = response.data[0].embedding
+                    embeddings_to_insert.append({
+                        'id_tesis': tesis_id,
+                        'chunk_index': idx,
+                        'chunk_text': chunk_text,
+                        'chunk_type': 'full',
+                        'embedding_reduced': embedding
+                    })
+
+            # Insert embeddings batch
+            if embeddings_to_insert:
+                self.supabase.table('tesis_embeddings').upsert(embeddings_to_insert).execute()
+
+            return len(embeddings_to_insert)
+        except Exception as e:
+            logger.error(f"Error generating embeddings for tesis {tesis.get('idTesis')}: {e}")
+            return 0
     
     def record_automation_run(self, status: str, new_count: int = 0, embeddings_count: int = 0, error: str = None):
         """Record automation run to database"""
         if self.dry_run:
             logger.info(f"[DRY RUN] Would record run: status={status}, new={new_count}, embeddings={embeddings_count}")
             return
-        
+
         try:
-            with self.db.get_connection() as conn:
-                with conn.cursor() as cur:
-                    cur.execute("""
-                        INSERT INTO tesis_automation_runs (
-                            run_type, status, new_tesis_count, new_embeddings_count, 
-                            error_message, last_processed_id
-                        ) VALUES (%s, %s, %s, %s, %s, (SELECT MAX(id_tesis) FROM tesis_documents))
-                    """, (self.run_type, status, new_count, embeddings_count, error))
+            # Get last processed ID
+            last_id_result = self.supabase.table('tesis_documents') \
+                .select('id_tesis') \
+                .order('id_tesis', desc=True) \
+                .limit(1) \
+                .execute()
+
+            last_id = last_id_result.data[0]['id_tesis'] if last_id_result.data else None
+
+            # Insert automation run record
+            self.supabase.table('tesis_automation_runs').insert({
+                'run_type': self.run_type,
+                'status': status,
+                'new_tesis_count': new_count,
+                'new_embeddings_count': embeddings_count,
+                'error_message': error,
+                'last_processed_id': last_id
+            }).execute()
         except Exception as e:
             logger.error(f"Error recording automation run: {e}")
     
@@ -296,10 +317,10 @@ class IncrementalUpdateManager:
                     # Insert document
                     if self.insert_tesis(tesis):
                         processed_count += 1
-                        
+
                         # Generate embeddings
-                        embeddings = self.generate_embeddings(tesis)
-                        embeddings_count += len(embeddings)
+                        num_embeddings = self.generate_embeddings(tesis)
+                        embeddings_count += num_embeddings
                         
                         if processed_count % 10 == 0:
                             logger.info(f"Progress: {processed_count}/{len(new_ids)} tesis, {embeddings_count} embeddings")
