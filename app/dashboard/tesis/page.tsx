@@ -76,6 +76,7 @@ export default function BuscadorTesisPage() {
   const [totalPages, setTotalPages] = useState(1)
   const [totalCount, setTotalCount] = useState(0)
   const [pageInput, setPageInput] = useState('')
+  const [lastSearchParams, setLastSearchParams] = useState('')
 
   // Load filter options and initial results on mount
   useEffect(() => {
@@ -110,15 +111,30 @@ export default function BuscadorTesisPage() {
       if (yearTo) params.append('yearTo', yearTo)
       if (monthTo && monthTo !== 'all') params.append('monthTo', monthTo)
       params.append('sort', customSortOrder || sortOrder)
+
+      // Build search params key (without page/limit) to detect if search changed
+      const searchParamsKey = params.toString()
+
+      // If search params are the same as last time (and we have a count), skip counting
+      const skipCount = searchParamsKey === lastSearchParams && totalCount > 0
+      if (skipCount) {
+        params.append('skipCount', 'true')
+      }
+
       params.append('page', page.toString())
-      params.append('limit', '20')
+      params.append('limit', '50')
 
       const response = await fetch(`/api/tesis/search?${params.toString()}`)
       const data = await response.json()
 
       setResults(data.results || [])
-      setTotalPages(data.pagination?.totalPages || 1)
-      setTotalCount(data.pagination?.totalCount || 0)
+
+      // Only update pagination if we got a new count
+      if (!skipCount) {
+        setTotalPages(data.pagination?.totalPages || 1)
+        setTotalCount(data.pagination?.totalCount || 0)
+        setLastSearchParams(searchParamsKey)
+      }
     } catch (error) {
       console.error('Error searching:', error)
       setResults([])
@@ -141,6 +157,7 @@ export default function BuscadorTesisPage() {
   }
 
   const handleSearch = () => {
+    setLastSearchParams('') // Reset to force count on new search
     performSearch(1)
   }
 
@@ -178,6 +195,7 @@ export default function BuscadorTesisPage() {
     setResults([])
     setSelectedTesis(null)
     setCurrentPage(1)
+    setLastSearchParams('') // Reset search params tracking
   }
 
   return (
@@ -539,7 +557,7 @@ export default function BuscadorTesisPage() {
                   <CardTitle>Resultados</CardTitle>
                   {totalCount > 0 && !loadingResults && (
                     <CardDescription className="mt-1">
-                      {((currentPage - 1) * 20) + 1}-{Math.min(currentPage * 20, totalCount)} de {totalCount.toLocaleString()} tesis
+                      {((currentPage - 1) * 50) + 1}-{Math.min(currentPage * 50, totalCount)} de {totalCount.toLocaleString()} tesis
                     </CardDescription>
                   )}
                 </div>

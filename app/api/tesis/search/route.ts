@@ -51,23 +51,17 @@ export async function GET(request: NextRequest) {
     const monthTo = searchParams.get('monthTo');
     const sortOrder = searchParams.get('sort') || 'newest';
     const page = parseInt(searchParams.get('page') || '1');
-    const limit = parseInt(searchParams.get('limit') || '20');
+    const limit = parseInt(searchParams.get('limit') || '50');
+    const skipCount = searchParams.get('skipCount') === 'true';
 
     // Parse materias if provided
     const materias = materiasParam ? materiasParam.split(',').map(m => m.trim()) : null;
 
     // Build WHERE clause
-    const conditions: string[] = ['1=1'];
+    const conditions: string[] = [];
     const params: any[] = [];
     let paramIndex = 1;
-
-    // Text search in rubro and texto (case-insensitive using trigram indexes)
-    if (searchQuery.trim()) {
-      params.push(`%${searchQuery}%`);
-      params.push(`%${searchQuery}%`);
-      conditions.push(`(rubro ILIKE $${paramIndex} OR texto ILIKE $${paramIndex + 1})`);
-      paramIndex += 2;
-    }
+    const hasTextSearch = searchQuery.trim().length > 0;
 
     // Materias filter (array overlap)
     if (materias && materias.length > 0) {
@@ -153,14 +147,14 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    const whereClause = conditions.join(' AND ');
+    // Build filter clause (everything except text search)
+    const filterClause = conditions.length > 0 ? conditions.join(' AND ') : '1=1';
 
-    // Get total count for pagination
-    const countResult = await query(
-      `SELECT COUNT(*) as total FROM tesis_documents WHERE ${whereClause}`,
-      params
-    );
-    const totalCount = parseInt(countResult.rows[0]?.total || '0');
+    // Build the main query - use UNION strategy for text search to enable index usage
+    let countQuery: string;
+    let resultsQuery: string;
+    let countParams: any[];
+    let resultsParams: any[];
 
     // Calculate offset
     const offset = (page - 1) * limit;
@@ -170,25 +164,86 @@ export async function GET(request: NextRequest) {
       ? 'ORDER BY anio ASC, id_tesis ASC'   // Oldest: ascending (2000, 2001, 2002...)
       : 'ORDER BY anio DESC, id_tesis DESC'; // Newest: descending (2024, 2023, 2022...)
 
-    // Get results with pagination
-    const resultsQuery = `
-      SELECT
-        id_tesis,
-        rubro,
-        LEFT(texto, 500) as texto_preview,
-        epoca,
-        instancia,
-        tipo_tesis,
-        anio,
-        materias,
-        tesis
-      FROM tesis_documents
-      WHERE ${whereClause}
-      ${orderByClause}
-      LIMIT $${paramIndex} OFFSET $${paramIndex + 1}
-    `;
+    if (hasTextSearch) {
+      // Use CTE with UNION to search rubro and texto separately - this allows both indexes to be used
+      // and sorts on minimal data before fetching full rows
+      const searchPattern = `%${searchQuery}%`;
 
-    const resultsParams = [...params, limit, offset];
+      countQuery = `
+        SELECT COUNT(DISTINCT id_tesis) as total
+        FROM (
+          SELECT id_tesis FROM tesis_documents
+          WHERE public.immutable_unaccent(texto) ILIKE $1 AND ${filterClause}
+          UNION
+          SELECT id_tesis FROM tesis_documents
+          WHERE public.immutable_unaccent(rubro) ILIKE $1 AND ${filterClause}
+        ) AS combined
+      `;
+      countParams = [searchPattern, ...params];
+
+      resultsQuery = `
+        WITH texto_matches AS (
+          SELECT id_tesis, anio FROM tesis_documents
+          WHERE public.immutable_unaccent(texto) ILIKE $1 AND ${filterClause}
+        ),
+        rubro_matches AS (
+          SELECT id_tesis, anio FROM tesis_documents
+          WHERE public.immutable_unaccent(rubro) ILIKE $1 AND ${filterClause}
+        ),
+        combined_sorted AS (
+          SELECT id_tesis, anio FROM texto_matches
+          UNION
+          SELECT id_tesis, anio FROM rubro_matches
+          ${orderByClause}
+          LIMIT $${paramIndex + 1} OFFSET $${paramIndex + 2}
+        )
+        SELECT
+          t.id_tesis,
+          t.rubro,
+          LEFT(t.texto, 500) as texto_preview,
+          t.epoca,
+          t.instancia,
+          t.tipo_tesis,
+          t.anio,
+          t.materias,
+          t.tesis
+        FROM tesis_documents t
+        INNER JOIN combined_sorted c ON t.id_tesis = c.id_tesis
+        ${orderByClause}
+      `;
+      resultsParams = [searchPattern, ...params, limit, offset];
+    } else {
+      // No text search - just use simple WHERE clause
+      countQuery = `SELECT COUNT(*) as total FROM tesis_documents WHERE ${filterClause}`;
+      countParams = params;
+
+      resultsQuery = `
+        SELECT
+          id_tesis,
+          rubro,
+          LEFT(texto, 500) as texto_preview,
+          epoca,
+          instancia,
+          tipo_tesis,
+          anio,
+          materias,
+          tesis
+        FROM tesis_documents
+        WHERE ${filterClause}
+        ${orderByClause}
+        LIMIT $${paramIndex} OFFSET $${paramIndex + 1}
+      `;
+      resultsParams = [...params, limit, offset];
+    }
+
+    // Get total count for pagination (skip if already known from previous request)
+    let totalCount = 0;
+    if (!skipCount) {
+      const countResult = await query(countQuery, countParams);
+      totalCount = parseInt(countResult.rows[0]?.total || '0');
+    }
+
+    // Get results with pagination
     const resultsData = await query(resultsQuery, resultsParams);
 
     // Calculate pagination metadata
