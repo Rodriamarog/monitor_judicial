@@ -247,46 +247,27 @@ class IncrementalUpdateManager:
 
         try:
             tesis_id = tesis.get('idTesis')
-            rubro = self.clean_text(tesis.get('rubro', ''))
-            texto = self.clean_text(tesis.get('texto', ''))
+
+            # Use prepare_document_for_embedding which returns [(chunk_text, chunk_type), ...]
+            chunks_with_types = self.text_processor.prepare_document_for_embedding(tesis)
 
             embeddings_to_insert = []
 
-            # Process rubro
-            if rubro:
-                chunks = self.text_processor.chunk_text(rubro, chunk_type='rubro')
-                for idx, chunk_text in enumerate(chunks):
-                    response = self.openai_client.embeddings.create(
-                        model='text-embedding-3-small',
-                        input=chunk_text,
-                        dimensions=256
-                    )
-                    embedding = response.data[0].embedding
-                    embeddings_to_insert.append({
-                        'id_tesis': tesis_id,
-                        'chunk_index': idx,
-                        'chunk_text': chunk_text,
-                        'chunk_type': 'rubro',
-                        'embedding_reduced': embedding  # Supabase will handle the array format
-                    })
-
-            # Process texto
-            if texto:
-                chunks = self.text_processor.chunk_text(texto, chunk_type='full')
-                for idx, chunk_text in enumerate(chunks, start=len(embeddings_to_insert)):
-                    response = self.openai_client.embeddings.create(
-                        model='text-embedding-3-small',
-                        input=chunk_text,
-                        dimensions=256
-                    )
-                    embedding = response.data[0].embedding
-                    embeddings_to_insert.append({
-                        'id_tesis': tesis_id,
-                        'chunk_index': idx,
-                        'chunk_text': chunk_text,
-                        'chunk_type': 'full',
-                        'embedding_reduced': embedding
-                    })
+            # Process each chunk
+            for idx, (chunk_text, chunk_type) in enumerate(chunks_with_types):
+                response = self.openai_client.embeddings.create(
+                    model='text-embedding-3-small',
+                    input=chunk_text,
+                    dimensions=256
+                )
+                embedding = response.data[0].embedding
+                embeddings_to_insert.append({
+                    'id_tesis': tesis_id,
+                    'chunk_index': idx,
+                    'chunk_text': chunk_text,
+                    'chunk_type': chunk_type,
+                    'embedding_reduced': embedding
+                })
 
             # Insert embeddings batch
             if embeddings_to_insert:
