@@ -65,6 +65,7 @@ export default function KanbanBoard() {
   const [editingTask, setEditingTask] = useState<Task | null>(null)
   const [editingColumnId, setEditingColumnId] = useState<string | null>(null)
   const [editingColumnTitle, setEditingColumnTitle] = useState("")
+  const [reloadTrigger, setReloadTrigger] = useState(0)
 
   // Load kanban data from database
   useEffect(() => {
@@ -179,7 +180,7 @@ export default function KanbanBoard() {
     }
 
     loadKanbanData()
-  }, [router, supabase])
+  }, [router, supabase, reloadTrigger])
 
   // Helper to format date for display
   const formatDisplayDate = (dateStr: string): string => {
@@ -682,7 +683,11 @@ export default function KanbanBoard() {
       {/* Edit Task Modal */}
       <TaskEditModal
         task={editingTask}
-        onClose={() => setEditingTask(null)}
+        onClose={() => {
+          setEditingTask(null)
+          // Trigger reload to reflect any changes made before closing
+          setReloadTrigger(prev => prev + 1)
+        }}
         onSave={handleUpdateTask}
         onDelete={handleDeleteTask}
         onSubtasksChange={reloadSubtasks}

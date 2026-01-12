@@ -80,10 +80,20 @@ export default function TaskEditModal({ task, onClose, onSave, onDelete, onSubta
   const [isDescriptionOpen, setIsDescriptionOpen] = useState(false)
   const supabase = createClient()
 
-  // Wrap onClose to track when it's called
-  const handleClose = () => {
+  // Wrap onClose to track when it's called and save any pending changes
+  const handleClose = async () => {
     console.log('[TaskEditModal] handleClose called')
     console.trace('[TaskEditModal] handleClose stack trace')
+
+    // Save title if it changed (only to DB, don't call onSave which would reopen modal)
+    if (task && title !== task.title) {
+      await supabase
+        .from('kanban_tasks')
+        .update({ title })
+        .eq('id', task.id)
+      // Note: Parent will reload data on next modal open
+    }
+
     onClose()
   }
 
@@ -165,8 +175,15 @@ export default function TaskEditModal({ task, onClose, onSave, onDelete, onSubta
     }
   }, [task?.id, editor])
 
-  const handleTitleBlur = async () => {
+  const handleTitleBlur = async (e?: React.FocusEvent<HTMLInputElement>) => {
     if (!task || title === task.title) return
+
+    // If blurring because user clicked "Guardar" button, don't save
+    // (the modal is closing anyway, no need to trigger a save that reopens it)
+    if (e?.relatedTarget?.closest('button[data-save-button="true"]')) {
+      return
+    }
+
     await updateTaskField({ title })
   }
 
@@ -371,7 +388,7 @@ export default function TaskEditModal({ task, onClose, onSave, onDelete, onSubta
           type="text"
           value={title}
           onChange={(e) => setTitle(e.target.value)}
-          onBlur={handleTitleBlur}
+          onBlur={(e) => handleTitleBlur(e)}
           className="text-3xl font-bold border-none outline-none px-0 py-2 bg-transparent focus:outline-none focus:ring-0 w-full text-foreground placeholder:text-muted-foreground"
           placeholder="Título de la tarea"
         />
@@ -632,6 +649,7 @@ export default function TaskEditModal({ task, onClose, onSave, onDelete, onSubta
             variant="default"
             size="sm"
             onClick={handleClose}
+            data-save-button="true"
           >
             Guardar
           </Button>
