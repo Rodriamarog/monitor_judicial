@@ -1,0 +1,161 @@
+<html>
+<head>
+  <meta charset="utf-8">
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      line-height: 1.6;
+      color: #333333;
+      margin: 0;
+      padding: 0;
+      background-color: #fafaf9;
+    }
+    .email-wrapper {
+      padding: 30px 10px;
+    }
+    .container {
+      max-width: 600px;
+      margin: 0 auto;
+      background: #ffffff;
+      border: 1px solid #e7e5e4;
+    }
+    .header {
+      background-color: #292524; /* Dark neutral matching your theme */
+      padding: 40px;
+      text-align: left;
+      border-bottom: 4px solid #d97706; /* Amber accent */
+    }
+    .header h1 {
+      margin: 0;
+      font-size: 24px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: #ffffff;
+    }
+    .header p {
+      margin: 5px 0 0;
+      font-size: 13px;
+      font-weight: 400;
+      color: #d1d1d1;
+      text-transform: uppercase;
+    }
+    .content {
+      padding: 40px;
+    }
+    .content h2 {
+      color: #292524;
+      font-size: 20px;
+      margin: 0 0 20px;
+      font-weight: 700;
+      border-bottom: 1px solid #f5f5f4;
+      padding-bottom: 10px;
+    }
+    .content p {
+      margin: 0 0 20px;
+      color: #333333;
+      font-size: 15px;
+    }
+    .button-container {
+      margin: 30px 0;
+    }
+    .button {
+      display: inline-block;
+      padding: 14px 30px;
+      background-color: #d97706; /* Amber primary color */
+      color: #ffffff !important;
+      text-decoration: none;
+      font-weight: 600;
+      font-size: 15px;
+      border-radius: 6px;
+    }
+    .button:hover {
+      background-color: #b45309; /* Amber-700 for hover */
+    }
+    .features {
+      background: #fafaf9;
+      border: 1px solid #e7e5e4;
+      padding: 20px;
+      margin: 30px 0;
+    }
+    .features-title {
+      font-weight: 700;
+      font-size: 14px;
+      color: #292524;
+      margin: 0 0 12px;
+      text-transform: uppercase;
+    }
+    .feature-item {
+      margin: 8px 0;
+      color: #444444;
+      font-size: 14px;
+    }
+    .security-note {
+      border-top: 1px solid #f5f5f4;
+      padding-top: 20px;
+      margin-top: 30px;
+    }
+    .security-note p {
+      margin: 0;
+      font-size: 12px;
+      color: #78716c;
+      font-style: italic;
+    }
+    .footer {
+      background: #fafaf9;
+      padding: 25px 40px;
+      border-top: 1px solid #e7e5e4;
+    }
+    .footer-brand {
+      font-weight: 700;
+      font-size: 14px;
+      color: #292524;
+      margin: 0;
+    }
+    .footer-tagline {
+      font-size: 12px;
+      color: #78716c;
+      margin: 4px 0 0;
+    }
+  </style>
+</head>
+<body>
+  <div class="email-wrapper">
+    <div class="container">
+      <div class="header">
+        <h1>Monitor Judicial</h1>
+        <p>Servicios de Monitoreo Legal Especializado</p>
+      </div>
+
+      <div class="content">
+        <h2>Verificación de Cuenta</h2>
+
+        <p>Estimado usuario,</p>
+
+        <p>Para finalizar su registro en el sistema <strong>Monitor Judicial</strong> y activar el servicio de alertas automáticas del Boletín Judicial, es necesario confirmar su identidad a través del siguiente enlace:</p>
+
+        <div class="button-container">
+          <a href="{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=email&next={{ .RedirectTo }}" class="button">CONFIRMAR IDENTIDAD</a>
+        </div>
+
+        <div class="features">
+          <div class="features-title">Resumen del servicio:</div>
+          <div class="feature-item">• Monitoreo automatizado de boletines.</div>
+          <div class="feature-item">• Notificaciones vía correo electrónico.</div>
+          <div class="feature-item">• Dashboard de seguimiento de expedientes.</div>
+          <div class="feature-item">• Historial de acuerdos consultados.</div>
+        </div>
+
+        <div class="security-note">
+          <p>Este es un mensaje automático. Por favor, no responda a este correo. Si tiene dudas, contacte al área de soporte técnico de Monitor Judicial. Este enlace es válido por 24 horas.</p>
+        </div>
+      </div>
+
+      <div class="footer">
+        <p class="footer-brand">MONITOR JUDICIAL</p>
+        <p class="footer-tagline">Tecnología aplicada a la gestión legal.</p>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
