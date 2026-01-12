@@ -23,6 +23,9 @@ from checkpoint_manager import CheckpointManager
 # Load environment variables
 load_dotenv()
 
+# Create logs directory if it doesn't exist
+Path('./logs').mkdir(exist_ok=True)
+
 # Configure logging
 logging.basicConfig(
     level=logging.INFO,
