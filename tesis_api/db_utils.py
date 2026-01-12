@@ -12,15 +12,34 @@ logger = logging.getLogger(__name__)
 
 class DatabaseManager:
     """Manages PostgreSQL database connections and operations"""
-    
-    def __init__(self, host: str, port: int, dbname: str, user: str, password: str):
+
+    def __init__(self, host: str, port: int, dbname: str, user: str, password: str, use_pooler: bool = False):
+        """
+        Initialize database manager
+
+        Args:
+            use_pooler: If True, uses connection pooler (port 6543) for better CI/CD compatibility
+        """
+        # Force IPv4 by resolving hostname if needed
+        import socket
+        resolved_host = host
+        if use_pooler and not host.replace('.', '').replace('-', '').isalnum():
+            try:
+                # Try to resolve to IPv4 address
+                resolved_host = socket.getaddrinfo(host, None, socket.AF_INET)[0][4][0]
+                logger.info(f"Resolved {host} to IPv4: {resolved_host}")
+            except Exception as e:
+                logger.warning(f"Could not resolve to IPv4, using hostname: {e}")
+
         self.connection_params = {
-            'host': host,
+            'host': resolved_host,
             'port': port,
             'dbname': dbname,
             'user': user,
             'password': password,
-            'sslmode': 'require'  # Required for Supabase
+            'sslmode': 'require',  # Required for Supabase
+            'connect_timeout': 10,
+            'options': '-c statement_timeout=30000'  # 30 second query timeout
         }
     
     @contextmanager

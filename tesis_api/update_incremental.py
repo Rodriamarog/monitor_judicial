@@ -54,14 +54,20 @@ class IncrementalUpdateManager:
         self.data_dir.mkdir(parents=True, exist_ok=True)
         Path('./logs').mkdir(exist_ok=True)
         
-        # Database connection
+        # Database connection (use pooler for CI/CD environments)
+        use_pooler = os.getenv('CI', 'false').lower() == 'true'
+        db_port = int(os.getenv('DB_PORT', 6543 if use_pooler else 5432))
+
         self.db = DatabaseManager(
             host=os.getenv('DB_HOST'),
-            port=int(os.getenv('DB_PORT', 5432)),
+            port=db_port,
             dbname=os.getenv('DB_NAME'),
             user=os.getenv('DB_USER'),
-            password=os.getenv('DB_PASSWORD')
+            password=os.getenv('DB_PASSWORD'),
+            use_pooler=use_pooler
         )
+
+        logger.info(f"Database config: host={os.getenv('DB_HOST')}, port={db_port}, pooler={use_pooler}")
         
         # Test database connection
         if not self.db.test_connection():
