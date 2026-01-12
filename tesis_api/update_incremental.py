@@ -96,15 +96,25 @@ class IncrementalUpdateManager:
             logger.error(f"Error getting last processed ID: {e}")
             return 0
     
-    def fetch_all_ids_from_api(self) -> List[int]:
-        """Fetch all tesis IDs from SCJN API"""
-        all_ids = []
+    def fetch_recent_ids_from_api(self, last_processed_id: int, max_pages: int = 50) -> List[int]:
+        """
+        Fetch only recent tesis IDs from SCJN API (much faster than fetching all 310k+)
+
+        Args:
+            last_processed_id: Stop when we encounter IDs <= this value
+            max_pages: Maximum pages to fetch (safety limit, default 50 pages = 10k IDs)
+
+        Returns:
+            List of IDs that are newer than last_processed_id
+        """
+        new_ids = []
         page = 0
         consecutive_empty = 0
-        
-        logger.info("Fetching all IDs from SCJN API...")
-        
-        while consecutive_empty < 5:
+        found_old_id = False
+
+        logger.info(f"Fetching recent IDs from SCJN API (starting from page 0, last_id={last_processed_id})...")
+
+        while consecutive_empty < 5 and page < max_pages and not found_old_id:
             try:
                 response = requests.get(
                     self.IDS_ENDPOINT,
@@ -113,33 +123,47 @@ class IncrementalUpdateManager:
                 )
                 response.raise_for_status()
                 ids = response.json()
-                
+
                 if not ids:
                     consecutive_empty += 1
                     logger.info(f"Empty page {page} ({consecutive_empty}/5)")
                 else:
                     consecutive_empty = 0
-                    all_ids.extend([int(id) for id in ids])
-                    logger.info(f"Page {page}: {len(ids)} IDs (total: {len(all_ids)})")
-                
+                    page_new_ids = []
+
+                    for id_val in ids:
+                        id_int = int(id_val)
+                        if id_int > last_processed_id:
+                            page_new_ids.append(id_int)
+                        else:
+                            # Found an ID we already have, we can stop
+                            found_old_id = True
+                            logger.info(f"Reached existing ID {id_int} on page {page}, stopping")
+                            break
+
+                    if page_new_ids:
+                        new_ids.extend(page_new_ids)
+                        logger.info(f"Page {page}: {len(page_new_ids)} new IDs (total new: {len(new_ids)})")
+                    else:
+                        logger.info(f"Page {page}: No new IDs")
+
                 page += 1
                 time.sleep(0.3)  # Rate limiting
-                
+
             except Exception as e:
                 logger.error(f"Error fetching page {page}: {e}")
                 break
-        
-        logger.info(f"Fetched {len(all_ids)} total IDs from API")
-        return all_ids
+
+        logger.info(f"Fetched {len(new_ids)} new IDs from API (scanned {page} pages)")
+        return new_ids
     
     def get_new_ids(self) -> List[int]:
         """Get IDs that are newer than the last processed ID"""
         last_id = self.get_last_processed_id()
-        all_ids = self.fetch_all_ids_from_api()
-        
-        new_ids = [id for id in all_ids if id > last_id]
+        new_ids = self.fetch_recent_ids_from_api(last_id)
+
         new_ids.sort()  # Process in order
-        
+
         logger.info(f"Found {len(new_ids)} new tesis (last_id={last_id})")
         return new_ids
     
