@@ -6,4 +6,4 @@ openai==1.6.1
 tiktoken==0.5.2
 numpy==1.26.2
 tqdm==4.66.1
-supabase==2.3.4
+supabase==2.10.0
