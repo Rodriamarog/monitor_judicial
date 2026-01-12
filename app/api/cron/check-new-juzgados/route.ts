@@ -143,7 +143,7 @@ export async function GET(request: NextRequest) {
       timestamp: new Date().toISOString(),
       summary: {
         newJuzgadosFound: results.newJuzgadosFound,
-        juzgados: newJuzgados.map(j => j.name),
+        juzgados: newJuzgados.map((j: any) => j.name),
         emailSent: results.emailSent,
         whatsappSent: results.whatsappSent,
         totalErrors: results.errors.length,
