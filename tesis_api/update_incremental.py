@@ -73,48 +73,59 @@ class IncrementalUpdateManager:
         
         logger.info(f"Initialized IncrementalUpdateManager (run_type={run_type}, dry_run={dry_run})")
     
-    def get_last_processed_id(self) -> int:
-        """Get the maximum id_tesis from the database"""
-        try:
-            # Use Supabase's RPC to call PostgreSQL MAX function
-            result = self.supabase.rpc('get_max_tesis_id').execute()
-
-            # If RPC doesn't exist, fall back to querying with order
-            if result.data is None:
-                result = self.supabase.table('tesis_documents') \
-                    .select('id_tesis') \
-                    .order('id_tesis', desc=True) \
-                    .limit(1) \
-                    .execute()
-                max_id = result.data[0]['id_tesis'] if result.data else 0
-            else:
-                max_id = result.data if isinstance(result.data, int) else 0
-
-            logger.info(f"Last processed ID: {max_id}")
-            return max_id
-        except Exception as e:
-            logger.error(f"Error getting last processed ID: {e}")
-            return 0
-    
-    def fetch_recent_ids_from_api(self, last_processed_id: int, max_pages: int = 50) -> List[int]:
+    def get_existing_ids(self, id_list: List[int]) -> set:
         """
-        Fetch only recent tesis IDs from SCJN API (much faster than fetching all 310k+)
+        Check which IDs from the list already exist in the database
 
         Args:
-            last_processed_id: Stop when we encounter IDs <= this value
-            max_pages: Maximum pages to fetch (safety limit, default 50 pages = 10k IDs)
+            id_list: List of tesis IDs to check
 
         Returns:
-            List of IDs that are newer than last_processed_id
+            Set of IDs that already exist in database
         """
-        new_ids = []
-        page = 0
+        try:
+            if not id_list:
+                return set()
+
+            # Query in batches of 1000 for efficiency
+            existing_ids = set()
+            batch_size = 1000
+
+            for i in range(0, len(id_list), batch_size):
+                batch = id_list[i:i+batch_size]
+                result = self.supabase.table('tesis_documents') \
+                    .select('id_tesis') \
+                    .in_('id_tesis', batch) \
+                    .execute()
+
+                if result.data:
+                    existing_ids.update(row['id_tesis'] for row in result.data)
+
+            logger.info(f"Found {len(existing_ids)} existing IDs out of {len(id_list)} checked")
+            return existing_ids
+        except Exception as e:
+            logger.error(f"Error checking existing IDs: {e}")
+            return set()
+    
+    def fetch_recent_ids_from_api(self, max_pages: int = 10) -> List[int]:
+        """
+        Fetch recent tesis IDs from SCJN API
+
+        Note: API returns IDs in non-sequential order, so we fetch a fixed
+        number of pages and then check which ones already exist in DB.
+
+        Args:
+            max_pages: Number of pages to fetch (default 10 pages = 2k IDs)
+
+        Returns:
+            List of all IDs fetched from API
+        """
+        all_ids = []
         consecutive_empty = 0
-        found_old_id = False
 
-        logger.info(f"Fetching recent IDs from SCJN API (starting from page 0, last_id={last_processed_id})...")
+        logger.info(f"Fetching recent IDs from SCJN API (max {max_pages} pages)...")
 
-        while consecutive_empty < 5 and page < max_pages and not found_old_id:
+        for page in range(max_pages):
             try:
                 response = requests.get(
                     self.IDS_ENDPOINT,
@@ -127,44 +138,48 @@ class IncrementalUpdateManager:
                 if not ids:
                     consecutive_empty += 1
                     logger.info(f"Empty page {page} ({consecutive_empty}/5)")
+                    if consecutive_empty >= 5:
+                        logger.info("Hit 5 consecutive empty pages, stopping")
+                        break
                 else:
                     consecutive_empty = 0
-                    page_new_ids = []
+                    page_ids = [int(id_val) for id_val in ids]
+                    all_ids.extend(page_ids)
+                    logger.info(f"Page {page}: {len(page_ids)} IDs (total: {len(all_ids)})")
 
-                    for id_val in ids:
-                        id_int = int(id_val)
-                        if id_int > last_processed_id:
-                            page_new_ids.append(id_int)
-                        else:
-                            # Found an ID we already have, we can stop
-                            found_old_id = True
-                            logger.info(f"Reached existing ID {id_int} on page {page}, stopping")
-                            break
-
-                    if page_new_ids:
-                        new_ids.extend(page_new_ids)
-                        logger.info(f"Page {page}: {len(page_new_ids)} new IDs (total new: {len(new_ids)})")
-                    else:
-                        logger.info(f"Page {page}: No new IDs")
-
-                page += 1
                 time.sleep(0.3)  # Rate limiting
 
             except Exception as e:
                 logger.error(f"Error fetching page {page}: {e}")
                 break
 
-        logger.info(f"Fetched {len(new_ids)} new IDs from API (scanned {page} pages)")
-        return new_ids
+        logger.info(f"Fetched {len(all_ids)} total IDs from {page + 1} pages")
+        return all_ids
     
     def get_new_ids(self) -> List[int]:
-        """Get IDs that are newer than the last processed ID"""
-        last_id = self.get_last_processed_id()
-        new_ids = self.fetch_recent_ids_from_api(last_id)
+        """
+        Get IDs that don't exist in the database yet
 
+        Strategy:
+        1. Fetch recent IDs from API (10 pages = ~2000 IDs)
+        2. Check which ones already exist in DB
+        3. Return only the new ones
+        """
+        # Fetch recent IDs from API
+        all_ids = self.fetch_recent_ids_from_api(max_pages=10)
+
+        if not all_ids:
+            logger.info("No IDs fetched from API")
+            return []
+
+        # Check which ones exist in database
+        existing_ids = self.get_existing_ids(all_ids)
+
+        # Filter to only new IDs
+        new_ids = [id for id in all_ids if id not in existing_ids]
         new_ids.sort()  # Process in order
 
-        logger.info(f"Found {len(new_ids)} new tesis (last_id={last_id})")
+        logger.info(f"Found {len(new_ids)} new tesis out of {len(all_ids)} fetched")
         return new_ids
     
     def download_tesis(self, tesis_id: int) -> Optional[Dict]:
