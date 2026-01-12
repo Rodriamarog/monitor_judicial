@@ -3,20 +3,26 @@ import { NextResponse } from 'next/server'
 import { NextRequest } from 'next/server'
 
 export async function GET(request: NextRequest) {
-  const { searchParams } = new URL(request.url)
+  const { searchParams, origin } = new URL(request.url)
   const code = searchParams.get('code')
   const next = searchParams.get('next') ?? '/dashboard'
 
   if (code) {
     const supabase = await createClient()
-    const { error } = await supabase.auth.exchangeCodeForSession(code)
+    const { data, error } = await supabase.auth.exchangeCodeForSession(code)
 
-    if (!error) {
+    if (!error && data.session) {
+      // Successfully exchanged code for session
       // Redirect to the dashboard or the next URL
-      return NextResponse.redirect(new URL(next, request.url))
+      return NextResponse.redirect(new URL(next, origin))
     }
+
+    // Log error for debugging
+    console.error('Auth callback error:', error)
   }
 
-  // If there's an error, redirect to login
-  return NextResponse.redirect(new URL('/login', request.url))
+  // If there's an error or no code, redirect to login with error message
+  const loginUrl = new URL('/login', origin)
+  loginUrl.searchParams.set('error', 'confirmation_failed')
+  return NextResponse.redirect(loginUrl)
 }

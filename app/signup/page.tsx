@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
@@ -21,6 +21,22 @@ export default function SignupPage() {
   const [loading, setLoading] = useState(false)
   const router = useRouter()
   const supabase = createClient()
+
+  // Check if user is already logged in when tab regains focus
+  // (happens after confirming email in another tab)
+  useEffect(() => {
+    const handleFocus = async () => {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (session) {
+        // User is now logged in, redirect to dashboard
+        router.push('/dashboard')
+        router.refresh()
+      }
+    }
+
+    window.addEventListener('focus', handleFocus)
+    return () => window.removeEventListener('focus', handleFocus)
+  }, [supabase, router])
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -46,7 +62,7 @@ export default function SignupPage() {
       email,
       password,
       options: {
-        emailRedirectTo: 'https://monitorjudicial.com.mx/dashboard',
+        emailRedirectTo: `${window.location.origin}/auth/callback?next=/dashboard`,
       },
     })
 
