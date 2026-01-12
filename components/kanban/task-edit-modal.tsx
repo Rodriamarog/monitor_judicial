@@ -184,7 +184,7 @@ export default function TaskEditModal({ task, onClose, onSave, onDelete, onSubta
     }
   }, [task?.id, editor])
 
-  const handleTitleBlur = async (e?: React.FocusEvent<HTMLInputElement>) => {
+  const handleTitleBlur = async (e?: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     if (!task || title === task.title) return
 
     // If blurring because user clicked "Guardar" button, don't save
