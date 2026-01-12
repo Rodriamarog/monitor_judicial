@@ -338,19 +338,50 @@ export default function KanbanBoard() {
     setHasChanges(true)
   }
 
-  const handleAddTask = (columnId: string, task: Omit<Task, "id" | "column_id">) => {
-    const newTask: Task = {
-      ...task,
-      id: crypto.randomUUID(),
+  const handleAddTask = async (columnId: string, task: Omit<Task, "id" | "column_id">) => {
+    if (!userId) {
+      console.error('No user ID available')
+      return
+    }
+
+    // Only include valid database fields
+    const newTask = {
       column_id: columnId,
+      user_id: userId,
+      title: task.title,
+      description: task.description || null,
       position: columns.find(col => col.id === columnId)?.tasks.length || 0,
+      labels: task.labels || [],
+      due_date: task.due_date || null,
+      calendar_event_id: task.calendar_event_id || null,
+      color: task.color || null,
+      deleted_at: null,
+    }
+
+    // Immediately persist to database
+    const { data, error } = await supabase
+      .from('kanban_tasks')
+      .insert(newTask)
+      .select()
+      .single()
+
+    if (error) {
+      console.error('Error creating task:', error)
+      alert('Error al crear la tarea')
+      return
+    }
+
+    // Add DB-confirmed task to state
+    const taskWithId: Task = {
+      ...data,
+      labels: data.labels || [],
     }
 
     setColumns((prev) =>
-      prev.map((column) => (column.id === columnId ? { ...column, tasks: [...column.tasks, newTask] } : column)),
+      prev.map((column) => (column.id === columnId ? { ...column, tasks: [...column.tasks, taskWithId] } : column)),
     )
     setAddTaskColumn(null)
-    setHasChanges(true)
+    // No need to set hasChanges since we already persisted
   }
 
   const reloadSubtasks = async () => {
@@ -414,7 +445,8 @@ export default function KanbanBoard() {
         tasks: column.tasks.filter((task) => task.id !== taskId),
       })),
     )
-    setEditingTask(null)
+    // Don't close modal here - let the modal close itself after deletion completes
+    // setEditingTask(null)
 
     // Actually delete from database (hard delete)
     try {
@@ -425,12 +457,15 @@ export default function KanbanBoard() {
 
       if (error) {
         console.error('Error deleting task:', error)
+        throw error // Propagate error so modal knows deletion failed
       } else {
         // Reload subtasks in case this task had subtasks
-        reloadSubtasks()
+        await reloadSubtasks()
       }
     } catch (err) {
       console.error('Error in handleDeleteTask:', err)
+      // Revert optimistic update on error
+      throw err
     }
   }
 
@@ -677,7 +712,7 @@ export default function KanbanBoard() {
       <AddTaskDialog
         open={addTaskColumn !== null}
         onClose={() => setAddTaskColumn(null)}
-        onAdd={(task) => addTaskColumn && handleAddTask(addTaskColumn, task)}
+        onAdd={async (task) => addTaskColumn && await handleAddTask(addTaskColumn, task)}
       />
 
       {/* Edit Task Modal */}

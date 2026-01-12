@@ -49,7 +49,7 @@ interface TaskEditModalProps {
   task: Task | null
   onClose: () => void
   onSave: (task: Task) => void
-  onDelete: (taskId: string) => void
+  onDelete: (taskId: string) => Promise<void>
   onSubtasksChange?: () => void
 }
 
@@ -336,8 +336,15 @@ export default function TaskEditModal({ task, onClose, onSave, onDelete, onSubta
       return
     }
 
-    onDelete(task.id)
-    handleClose()
+    try {
+      // Wait for deletion to complete before closing modal and triggering reload
+      await onDelete(task.id)
+      handleClose()
+    } catch (error) {
+      console.error('Error deleting task:', error)
+      alert('Error al eliminar la tarea')
+      // Don't close modal on error
+    }
   }
 
   const formatTimestamp = (timestamp: string | undefined) => {
