@@ -29,6 +29,7 @@ export interface Task {
   calendar_event_id?: string | null
   parent_task_id?: string | null // NEW: Parent task for subtasks
   is_completed?: boolean // NEW: Completion status (for subtasks)
+  assigned_to?: string | null // Email address of assigned user/collaborator
   position?: number
   color?: string
   comments?: Comment[]
