@@ -161,8 +161,9 @@ export default function KanbanBoard() {
               dueDate: t.due_date ? formatDisplayDate(t.due_date) : undefined,
               due_date: t.due_date,
               calendar_event_id: t.calendar_event_id,
-              parent_task_id: t.parent_task_id || null, // NEW
-              is_completed: t.is_completed || false, // NEW
+              parent_task_id: t.parent_task_id || null,
+              is_completed: t.is_completed || false,
+              assigned_to: t.assigned_to || null, // Load assignment from DB
               position: t.position,
               color: t.color,
               comments: [], // Comments not in DB schema yet - keep as UI-only

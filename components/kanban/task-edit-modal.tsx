@@ -665,7 +665,7 @@ export default function TaskEditModal({ task, onClose, onSave, onDelete, onSubta
                 <SelectContent>
                   <SelectItem value="unassigned">Sin asignar</SelectItem>
                   {userEmail && (
-                    <SelectItem value={userEmail}>{userEmail} (Tú)</SelectItem>
+                    <SelectItem value={userEmail}>{userEmail}</SelectItem>
                   )}
                   {collaboratorEmails.map(email => (
                     <SelectItem key={email} value={email}>{email}</SelectItem>
