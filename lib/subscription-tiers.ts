@@ -11,6 +11,7 @@ export interface TierConfig {
   name: string;
   displayName: string;
   maxCases: number;
+  maxCollaborators: number; // Number of additional collaborators allowed
   monthlyPrice: number; // Monthly price in MXN (cents: 199 = $1.99)
   yearlyPrice: number; // Yearly price in MXN (cents: 1999 = $19.99)
   description: string;
@@ -28,6 +29,7 @@ export const SUBSCRIPTION_TIERS: Record<SubscriptionTier, TierConfig> = {
     name: 'gratis',
     displayName: 'Gratis',
     maxCases: 5,
+    maxCollaborators: 0,
     monthlyPrice: 0,
     yearlyPrice: 0,
     description: 'Perfecto para comenzar',
@@ -43,6 +45,7 @@ export const SUBSCRIPTION_TIERS: Record<SubscriptionTier, TierConfig> = {
     name: 'pro50',
     displayName: 'Pro 50',
     maxCases: 50,
+    maxCollaborators: 0,
     monthlyPrice: 199,
     yearlyPrice: 1999,
     description: 'Para abogados independientes',
@@ -59,6 +62,7 @@ export const SUBSCRIPTION_TIERS: Record<SubscriptionTier, TierConfig> = {
     name: 'pro100',
     displayName: 'Pro 100',
     maxCases: 100,
+    maxCollaborators: 1,
     monthlyPrice: 399,
     yearlyPrice: 3499,
     description: 'Para profesionales independientes',
@@ -67,6 +71,7 @@ export const SUBSCRIPTION_TIERS: Record<SubscriptionTier, TierConfig> = {
       '100 casos monitoreados',
       'Alertas por email',
       'Alertas por WhatsApp',
+      '1 colaborador adicional',
       'Historial de 90 días',
       'Soporte por email',
     ],
@@ -76,6 +81,7 @@ export const SUBSCRIPTION_TIERS: Record<SubscriptionTier, TierConfig> = {
     name: 'pro250',
     displayName: 'Pro 250',
     maxCases: 250,
+    maxCollaborators: 1,
     monthlyPrice: 649,
     yearlyPrice: 4999,
     description: 'Para bufetes pequeños',
@@ -83,6 +89,7 @@ export const SUBSCRIPTION_TIERS: Record<SubscriptionTier, TierConfig> = {
       '250 casos monitoreados',
       'Alertas por email',
       'Alertas por WhatsApp',
+      '1 colaborador adicional',
       'Historial de 90 días',
       'Soporte prioritario',
       'Exportación de datos',
@@ -93,6 +100,7 @@ export const SUBSCRIPTION_TIERS: Record<SubscriptionTier, TierConfig> = {
     name: 'pro500',
     displayName: 'Pro 500',
     maxCases: 500,
+    maxCollaborators: 2,
     monthlyPrice: 999,
     yearlyPrice: 8999,
     description: 'Para despachos medianos',
@@ -100,6 +108,7 @@ export const SUBSCRIPTION_TIERS: Record<SubscriptionTier, TierConfig> = {
       '500 casos monitoreados',
       'Alertas por email',
       'Alertas por WhatsApp',
+      '2 colaboradores adicionales',
       'Historial ilimitado',
       'Soporte prioritario',
       'Exportación de datos',
@@ -111,6 +120,7 @@ export const SUBSCRIPTION_TIERS: Record<SubscriptionTier, TierConfig> = {
     name: 'pro1000',
     displayName: 'Pro 1000',
     maxCases: 1000,
+    maxCollaborators: 2,
     monthlyPrice: 1799,
     yearlyPrice: 12499,
     description: 'Para despachos grandes',
@@ -118,6 +128,7 @@ export const SUBSCRIPTION_TIERS: Record<SubscriptionTier, TierConfig> = {
       '1000 casos monitoreados',
       'Alertas por email',
       'Alertas por WhatsApp',
+      '2 colaboradores adicionales',
       'Historial ilimitado',
       'Soporte prioritario 24/7',
       'Exportación de datos',
@@ -182,4 +193,11 @@ export function formatPrice(price: number): string {
 export function getMonthlyEquivalent(yearlyPrice: number): string {
   const monthlyEquivalent = yearlyPrice / 12;
   return `$${monthlyEquivalent.toFixed(2)}`;
+}
+
+/**
+ * Get maximum collaborators allowed for a tier
+ */
+export function getMaxCollaborators(tier: string | null | undefined): number {
+  return getTierConfig(tier).maxCollaborators;
 }

@@ -236,7 +236,8 @@ export async function getUnsentAlerts(supabaseUrl: string, supabaseKey: string) 
         phone,
         full_name,
         whatsapp_enabled,
-        email_notifications_enabled
+        email_notifications_enabled,
+        collaborator_emails
       ),
       monitored_cases (
         case_number,

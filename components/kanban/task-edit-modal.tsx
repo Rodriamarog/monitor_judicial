@@ -78,6 +78,9 @@ export default function TaskEditModal({ task, onClose, onSave, onDelete, onSubta
   const [currentUser, setCurrentUser] = useState<{ id: string; email: string } | null>(null)
   const [saving, setSaving] = useState(false)
   const [isDescriptionOpen, setIsDescriptionOpen] = useState(false)
+  const [assignedTo, setAssignedTo] = useState<string | null>(null)
+  const [userEmail, setUserEmail] = useState<string>('')
+  const [collaboratorEmails, setCollaboratorEmails] = useState<string[]>([])
   const titleTextareaRef = useRef<HTMLTextAreaElement>(null)
   const supabase = createClient()
 
@@ -111,6 +114,7 @@ export default function TaskEditModal({ task, onClose, onSave, onDelete, onSubta
     if (task) {
       setTitle(task.title)
       setLabels(task.labels || [])
+      setAssignedTo(task.assigned_to || null)
 
       // Start with description collapsed (will show read-only view if has content)
       setIsDescriptionOpen(false)
@@ -138,12 +142,24 @@ export default function TaskEditModal({ task, onClose, onSave, onDelete, onSubta
     }
   }, [task])
 
-  // Load current user for assignee dropdown
+  // Load current user and collaborators for assignee dropdown
   useEffect(() => {
     async function loadUser() {
       const { data: { user } } = await supabase.auth.getUser()
       if (user) {
         setCurrentUser({ id: user.id, email: user.email || 'Usuario' })
+
+        // Load user profile with collaborators
+        const { data: profile } = await supabase
+          .from('user_profiles')
+          .select('email, collaborator_emails')
+          .eq('id', user.id)
+          .single()
+
+        if (profile) {
+          setUserEmail(profile.email || user.email || '')
+          setCollaboratorEmails(profile.collaborator_emails || [])
+        }
       }
     }
     loadUser()
@@ -628,6 +644,34 @@ export default function TaskEditModal({ task, onClose, onSave, onDelete, onSubta
                   ))}
                 </div>
               )}
+            </div>
+
+            {/* Asignado a */}
+            <div className="space-y-2">
+              <Label className="text-sm font-medium text-muted-foreground uppercase">
+                Asignado a
+              </Label>
+              <Select
+                value={assignedTo || 'unassigned'}
+                onValueChange={async (value) => {
+                  const newValue = value === 'unassigned' ? null : value
+                  setAssignedTo(newValue)
+                  await updateTaskField({ assigned_to: newValue })
+                }}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Sin asignar" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="unassigned">Sin asignar</SelectItem>
+                  {userEmail && (
+                    <SelectItem value={userEmail}>{userEmail} (Tú)</SelectItem>
+                  )}
+                  {collaboratorEmails.map(email => (
+                    <SelectItem key={email} value={email}>{email}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
             {/* Due Date */}

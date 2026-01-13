@@ -12,6 +12,7 @@ import { Loader2, CheckCircle2, AlertTriangle, FileText } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Switch } from '@/components/ui/switch'
 import { SubscriptionButton } from '@/components/subscription-button'
+import { CollaboratorsSection } from '@/components/collaborators-section'
 
 export default function SettingsPage() {
   const [loading, setLoading] = useState(true)
@@ -28,6 +29,9 @@ export default function SettingsPage() {
   const [calendarSuccess, setCalendarSuccess] = useState(false)
   const [tier, setTier] = useState('free')
   const [hasStripeCustomer, setHasStripeCustomer] = useState(false)
+  const [userEmail, setUserEmail] = useState('')
+  const [collaborators, setCollaborators] = useState<Array<{email: string}>>([])
+  const [collaboratorsSaving, setCollaboratorsSaving] = useState(false)
 
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -64,17 +68,23 @@ export default function SettingsPage() {
 
       const { data: profile, error: profileError } = await supabase
         .from('user_profiles')
-        .select('phone, whatsapp_enabled, email_notifications_enabled, subscription_tier, stripe_customer_id')
+        .select('email, phone, whatsapp_enabled, email_notifications_enabled, subscription_tier, stripe_customer_id, collaborator_emails')
         .eq('id', user.id)
         .single()
 
       if (profileError) throw profileError
 
+      setUserEmail(profile.email || user.email || '')
       setPhone(profile.phone || '')
       setWhatsappEnabled(profile.whatsapp_enabled || false)
       setEmailEnabled(profile.email_notifications_enabled !== false)
       setTier(profile.subscription_tier || 'free')
       setHasStripeCustomer(!!profile.stripe_customer_id)
+
+      // Parse collaborators from JSONB array (email only)
+      const emails = profile.collaborator_emails || []
+      const collabList = emails.map((email: string) => ({ email }))
+      setCollaborators(collabList)
 
       // Check unified Google (Calendar + Drive) status
       const googleStatus = await fetch('/api/google/status')
@@ -178,6 +188,38 @@ export default function SettingsPage() {
     }
   }
 
+  const handleCollaboratorsUpdate = async (newCollaborators: Array<{email: string}>) => {
+    setCollaboratorsSaving(true)
+    setError(null)
+
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) throw new Error('No autenticado')
+
+      // Convert to JSONB array (email only)
+      const collaboratorEmails = newCollaborators.map(c => c.email)
+
+      const { error: updateError } = await supabase
+        .from('user_profiles')
+        .update({
+          collaborator_emails: collaboratorEmails,
+          collaborator_phones: [], // Clear phones since we're email-only now
+        })
+        .eq('id', user.id)
+
+      if (updateError) throw updateError
+
+      setCollaborators(newCollaborators)
+      setSuccess(true)
+      setTimeout(() => setSuccess(false), 3000)
+    } catch (err) {
+      console.error('Error updating collaborators:', err)
+      setError(err instanceof Error ? err.message : 'Error al actualizar colaboradores')
+      throw err // Propagate error to component
+    } finally {
+      setCollaboratorsSaving(false)
+    }
+  }
 
   if (loading) {
     return (
@@ -402,6 +444,24 @@ export default function SettingsPage() {
               )}
             </Button>
           </form>
+        </CardContent>
+      </Card>
+
+      {/* Collaborators Card */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Colaboradores</CardTitle>
+          <CardDescription>
+            Agrega colaboradores que recibirán alertas por email
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <CollaboratorsSection
+            tier={tier}
+            userEmail={userEmail}
+            collaborators={collaborators}
+            onUpdate={handleCollaboratorsUpdate}
+          />
         </CardContent>
       </Card>
       </div>

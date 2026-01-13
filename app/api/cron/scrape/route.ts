@@ -264,6 +264,41 @@ export async function GET(request: NextRequest) {
             whatsappResult = { success: true };
           }
 
+          // Send to collaborators (email only - no WhatsApp to protect infrastructure)
+          const collaboratorEmails = userProfile.collaborator_emails || [];
+          for (const collabEmail of collaboratorEmails) {
+            try {
+              logger.info(`Sending email to collaborator ${collabEmail}`, userAlerts[0].id, {
+                alertCount: alerts.length
+              });
+
+              const collabEmailResult = await sendBatchAlertEmail({
+                userEmail: collabEmail,
+                userName: undefined, // No name for collaborators
+                bulletinDate: bulletinDate,
+                alerts: alerts,
+              });
+
+              if (collabEmailResult.success) {
+                logger.info(`✓ Collaborator email sent to ${collabEmail}`, userAlerts[0].id);
+                console.log(`✓ Sent collaborator email to ${collabEmail}`);
+              } else {
+                logger.error(`✗ Collaborator email failed to ${collabEmail}`, userAlerts[0].id, {
+                  error: collabEmailResult.error
+                });
+                console.error(`✗ Failed collaborator email to ${collabEmail}: ${collabEmailResult.error}`);
+              }
+
+              // Small delay between collaborator emails
+              await new Promise(resolve => setTimeout(resolve, 100));
+            } catch (collabEmailError) {
+              logger.error(`✗ Collaborator email exception for ${collabEmail}`, userAlerts[0].id, {
+                error: collabEmailError instanceof Error ? collabEmailError.message : String(collabEmailError)
+              });
+              console.error(`Collaborator email error for ${collabEmail}:`, collabEmailError);
+            }
+          }
+
           // Mark all alerts for this user as sent (or failed)
           for (const alert of userAlerts) {
             await markAlertAsSent(
