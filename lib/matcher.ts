@@ -63,6 +63,24 @@ export async function findAndCreateMatches(
     details: [],
   };
 
+  // Load juzgado aliases for name resolution
+  const { data: aliases, error: aliasError } = await supabase
+    .from('juzgado_aliases')
+    .select('alias, canonical_name');
+
+  if (aliasError) {
+    console.error('Error loading juzgado aliases:', aliasError);
+  }
+
+  // Create alias lookup map
+  const aliasMap = new Map<string, string>();
+  if (aliases) {
+    for (const { alias, canonical_name } of aliases) {
+      aliasMap.set(alias, canonical_name);
+    }
+    console.log(`Loaded ${aliasMap.size} juzgado aliases for matching`);
+  }
+
   // Get all bulletin entries for this date
   // Note: Supabase has a default 1000 row limit, so we need to fetch all pages
   let bulletinEntries: BulletinEntry[] = [];
@@ -148,7 +166,10 @@ export async function findAndCreateMatches(
   }> = [];
 
   for (const entry of bulletinEntries) {
-    const key = `${entry.case_number}|${entry.juzgado}`;
+    // Resolve alias to canonical name if it exists
+    const resolvedJuzgado = aliasMap.get(entry.juzgado) || entry.juzgado;
+
+    const key = `${entry.case_number}|${resolvedJuzgado}`;
     const matches = monitoredCasesMap.get(key);
 
     if (matches && matches.length > 0) {

@@ -262,6 +262,24 @@ export async function scrapeBulletin(
 export async function scrapeAllBulletins(date: string, supabaseUrl: string, supabaseKey: string) {
   const supabase = createClient(supabaseUrl, supabaseKey);
 
+  // Load juzgado aliases for name resolution
+  const { data: aliases, error: aliasError } = await supabase
+    .from('juzgado_aliases')
+    .select('alias, canonical_name');
+
+  if (aliasError) {
+    console.error('Error loading juzgado aliases:', aliasError);
+  }
+
+  // Create alias lookup map
+  const aliasMap = new Map<string, string>();
+  if (aliases) {
+    for (const { alias, canonical_name } of aliases) {
+      aliasMap.set(alias, canonical_name);
+    }
+    console.log(`Loaded ${aliasMap.size} juzgado aliases`);
+  }
+
   const results = {
     date,
     total_sources: BULLETIN_SOURCES.length,
@@ -312,15 +330,24 @@ export async function scrapeAllBulletins(date: string, supabaseUrl: string, supa
     });
 
     if (scraped.found && scraped.entries.length > 0) {
-      // Insert bulletin entries
-      const entriesToInsert = scraped.entries.map((entry) => ({
-        bulletin_date: date,
-        juzgado: entry.juzgado,
-        case_number: entry.case_number,
-        raw_text: entry.raw_text,
-        source: source.name,
-        bulletin_url: scraped.bulletin_url,
-      }));
+      // Insert bulletin entries with alias resolution
+      const entriesToInsert = scraped.entries.map((entry) => {
+        // Resolve alias to canonical name if it exists
+        const resolvedJuzgado = aliasMap.get(entry.juzgado) || entry.juzgado;
+
+        if (resolvedJuzgado !== entry.juzgado) {
+          console.log(`  → Resolved alias: "${entry.juzgado}" → "${resolvedJuzgado}"`);
+        }
+
+        return {
+          bulletin_date: date,
+          juzgado: resolvedJuzgado,
+          case_number: entry.case_number,
+          raw_text: entry.raw_text,
+          source: source.name,
+          bulletin_url: scraped.bulletin_url,
+        };
+      });
 
       // Detect duplicates within the scraped data
       const seen = new Map<string, typeof entriesToInsert[0]>();

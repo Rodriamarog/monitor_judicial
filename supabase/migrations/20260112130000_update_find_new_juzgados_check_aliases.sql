@@ -1,5 +1,5 @@
--- Create RPC function to find juzgados in bulletin_entries that don't exist in juzgados table
--- This is used by the daily cron job to detect new juzgados that need admin review
+-- Update find_new_juzgados function to exclude known aliases
+-- This prevents alerting admins about juzgados that are already mapped as aliases
 
 CREATE OR REPLACE FUNCTION find_new_juzgados()
 RETURNS TABLE (
@@ -46,8 +46,4 @@ BEGIN
 END;
 $$;
 
--- Grant execute permission to service role
-GRANT EXECUTE ON FUNCTION find_new_juzgados() TO service_role;
-
--- Add comment
-COMMENT ON FUNCTION find_new_juzgados() IS 'Finds juzgados appearing in bulletin_entries that are not yet in the juzgados source of truth table. Used by daily cron job to alert admin of new courts that need review.';
+COMMENT ON FUNCTION find_new_juzgados() IS 'Finds juzgados appearing in bulletin_entries that are not in the juzgados table and not known aliases. Used by daily cron job to alert admin of new courts that need review.';
