@@ -1,0 +1,39 @@
+{
+    "manifest_version": 3,
+    "name": "Exportador de Expedientes del Boletin Judicial",
+    "version": "1.0",
+    "description": "Exporta tus expedientes del Boletin Judicial Mexicano en formato JSON",
+    "permissions": [
+        "activeTab",
+        "scripting",
+        "downloads"
+    ],
+    "host_permissions": [
+        "https://www.buholegal.com/*"
+    ],
+    "icons": {
+        "16": "icon_16.png",
+        "32": "icon_32.png",
+        "48": "icon_48.png",
+        "128": "icon_128.png"
+    },
+    "action": {
+        "default_popup": "popup.html",
+        "default_icon": {
+            "16": "icon_16.png",
+            "32": "icon_32.png",
+            "48": "icon_48.png",
+            "128": "icon_128.png"
+        }
+    },
+    "content_scripts": [
+        {
+            "matches": [
+                "https://www.buholegal.com/miscasos_V2/alertas/*"
+            ],
+            "js": [
+                "content.js"
+            ]
+        }
+    ]
+}
