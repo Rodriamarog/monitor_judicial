@@ -4,11 +4,12 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Plus } from 'lucide-react'
+import { Plus, Upload } from 'lucide-react'
 import { CasesTable } from '@/components/cases-table'
 import { DowngradeBlockedAlert } from '@/components/downgrade-blocked-alert'
 import { StaleCasesAlert } from '@/components/stale-cases-alert'
 import { AddCaseDialog } from '@/components/add-case-dialog'
+import { ImportCasesDialog } from '@/components/import-cases-dialog'
 
 interface DashboardClientProps {
   casesWithAlerts: any[]
@@ -32,6 +33,7 @@ export function DashboardClient({
   onUpdate,
 }: DashboardClientProps) {
   const [addDialogOpen, setAddDialogOpen] = useState(false)
+  const [importDialogOpen, setImportDialogOpen] = useState(false)
 
   return (
     <div className="flex flex-col h-full gap-4 overflow-hidden">
@@ -57,10 +59,21 @@ export function DashboardClient({
               {caseCount} de {maxCases} casos monitoreados
             </p>
           </div>
-          <Button onClick={() => setAddDialogOpen(true)} className="gap-2 cursor-pointer">
-            <Plus className="h-4 w-4" />
-            Agregar Caso
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              onClick={() => setImportDialogOpen(true)}
+              variant="outline"
+              size="icon"
+              className="cursor-pointer"
+              title="Importar Expedientes desde JSON"
+            >
+              <Upload className="h-4 w-4" />
+            </Button>
+            <Button onClick={() => setAddDialogOpen(true)} className="gap-2 cursor-pointer">
+              <Plus className="h-4 w-4" />
+              Agregar Caso
+            </Button>
+          </div>
         </div>
 
         {/* Compact Stats Card */}
@@ -105,6 +118,9 @@ export function DashboardClient({
 
       {/* Add Case Dialog */}
       <AddCaseDialog open={addDialogOpen} onOpenChange={setAddDialogOpen} />
+
+      {/* Import Cases Dialog */}
+      <ImportCasesDialog open={importDialogOpen} onOpenChange={setImportDialogOpen} />
     </div>
   )
 }
