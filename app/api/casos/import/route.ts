@@ -34,6 +34,24 @@ function normalizeCaseNumber(input: string): string | null {
   return `${paddedCaseNum}/${year}`
 }
 
+// Find similar juzgado names (simple substring matching)
+function findSimilarJuzgados(input: string, validNames: Set<string>): string[] {
+  const inputUpper = input.toUpperCase()
+  const similar: string[] = []
+
+  for (const name of validNames) {
+    const nameUpper = name.toUpperCase()
+
+    // Check if input is a substring of valid name or vice versa
+    if (nameUpper.includes(inputUpper) || inputUpper.includes(nameUpper)) {
+      similar.push(name)
+      if (similar.length >= 3) break // Limit to 3 suggestions
+    }
+  }
+
+  return similar
+}
+
 export async function POST(request: NextRequest) {
   try {
     const supabase = await createClient()
@@ -85,6 +103,21 @@ export async function POST(request: NextRequest) {
       existingCases?.map((c) => `${c.case_number}|${c.juzgado}`) || []
     )
 
+    // Get all valid juzgado names from the database
+    const { data: juzgados, error: juzgadosError } = await supabase
+      .from('juzgados')
+      .select('name')
+
+    if (juzgadosError) {
+      console.error('Error fetching juzgados:', juzgadosError)
+      return NextResponse.json(
+        { error: 'Error al validar juzgados' },
+        { status: 500 }
+      )
+    }
+
+    const validJuzgadoNames = new Set(juzgados?.map((j) => j.name) || [])
+
     // Process cases
     const result: ImportResult = {
       total: importedCases.length,
@@ -120,6 +153,28 @@ export async function POST(request: NextRequest) {
         result.errors.push(
           `Caso ${i + 1} (${importedCase.Expediente}): Formato de expediente inválido`
         )
+        continue
+      }
+
+      // Validate juzgado exists in database
+      if (!validJuzgadoNames.has(importedCase.Juzgado)) {
+        result.failed++
+
+        // Find similar juzgado names to help the user
+        const similarJuzgados = findSimilarJuzgados(
+          importedCase.Juzgado,
+          validJuzgadoNames
+        )
+
+        let errorMsg = `Caso ${i + 1} (${normalizedCaseNumber}): Juzgado "${importedCase.Juzgado}" no encontrado en la base de datos.`
+
+        if (similarJuzgados.length > 0) {
+          errorMsg += ` ¿Quiso decir: ${similarJuzgados.join(', ')}?`
+        } else {
+          errorMsg += ` Verifique el nombre exacto o agrégalo manualmente.`
+        }
+
+        result.errors.push(errorMsg)
         continue
       }
 
