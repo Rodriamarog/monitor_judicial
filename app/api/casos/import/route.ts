@@ -134,6 +134,7 @@ export async function POST(request: NextRequest) {
       nombre: string | null
     }> = []
 
+    // PHASE 1: Validate all cases first (don't insert yet)
     for (let i = 0; i < importedCases.length; i++) {
       const importedCase = importedCases[i] as ImportedCase
 
@@ -188,15 +189,6 @@ export async function POST(request: NextRequest) {
         continue
       }
 
-      // Check if we have available slots
-      if (casesToInsert.length >= availableSlots) {
-        result.failed++
-        result.errors.push(
-          `Caso ${i + 1} (${normalizedCaseNumber}): Límite de ${maxCases} casos alcanzado`
-        )
-        continue
-      }
-
       // Add to insert queue
       casesToInsert.push({
         user_id: user.id,
@@ -209,7 +201,17 @@ export async function POST(request: NextRequest) {
       existingSet.add(key)
     }
 
-    // Bulk insert
+    // PHASE 2: Check if all valid cases fit within tier limits
+    if (casesToInsert.length > availableSlots) {
+      return NextResponse.json(
+        {
+          error: `No se puede importar. Intentas importar ${casesToInsert.length} caso${casesToInsert.length > 1 ? 's' : ''} pero solo tienes ${availableSlots} espacio${availableSlots !== 1 ? 's' : ''} disponible${availableSlots !== 1 ? 's' : ''}. Tu plan permite ${maxCases} casos y actualmente tienes ${currentCount}. ${casesToInsert.length > 0 ? 'Actualiza tu plan o elimina algunos casos existentes.' : ''}`,
+        },
+        { status: 400 }
+      )
+    }
+
+    // PHASE 3: Bulk insert (all or nothing)
     if (casesToInsert.length > 0) {
       const { data: insertedCases, error: insertError } = await supabase
         .from('monitored_cases')

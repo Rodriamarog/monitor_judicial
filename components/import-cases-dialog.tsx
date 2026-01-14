@@ -112,6 +112,7 @@ export function ImportCasesDialog({ open, onOpenChange }: ImportCasesDialogProps
       const data = await response.json()
 
       if (!response.ok) {
+        // Show tier limit errors prominently
         setError(data.error || 'Error al importar los casos')
         setImporting(false)
         return
