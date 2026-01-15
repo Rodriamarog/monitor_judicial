@@ -6,6 +6,7 @@
  */
 
 import { createClient } from '@supabase/supabase-js';
+import { generateSearchPatterns, normalizeName } from './name-variations';
 
 interface BulletinEntry {
   id: string;
@@ -219,7 +220,172 @@ export async function findAndCreateMatches(
 }
 
 /**
+ * Find name matches in bulletin entries and create alerts
+ * Similar to findAndCreateMatches() but for monitored_names instead of monitored_cases
+ *
+ * @param bulletinDate - Date to check
+ * @param supabaseUrl - Supabase URL
+ * @param supabaseKey - Supabase service role key
+ * @param isHistorical - If true, created alerts are marked as historical (no notifications sent)
+ */
+export async function findAndCreateNameMatches(
+  bulletinDate: string,
+  supabaseUrl: string,
+  supabaseKey: string,
+  isHistorical: boolean = false
+): Promise<{
+  matches_found: number;
+  alerts_created: number;
+  details: Array<{
+    user_id: string;
+    name: string;
+    case_number: string;
+    juzgado: string;
+  }>;
+}> {
+  const supabase = createClient(supabaseUrl, supabaseKey);
+
+  console.log(`[Name Matcher] Checking bulletins for ${bulletinDate} (historical: ${isHistorical})`);
+
+  // 1. Get all bulletin entries for this date
+  let bulletinEntries: BulletinEntry[] = [];
+  let hasMore = true;
+  let page = 0;
+  const pageSize = 1000;
+
+  while (hasMore) {
+    const { data, error: entriesError } = await supabase
+      .from('bulletin_entries')
+      .select('id, bulletin_date, juzgado, case_number, raw_text, source')
+      .eq('bulletin_date', bulletinDate)
+      .range(page * pageSize, (page + 1) * pageSize - 1);
+
+    if (entriesError) {
+      console.error('[Name Matcher] Error fetching bulletin entries:', entriesError);
+      throw entriesError;
+    }
+
+    if (!data || data.length === 0) {
+      hasMore = false;
+    } else {
+      bulletinEntries.push(...(data as BulletinEntry[]));
+      hasMore = data.length === pageSize;
+      page++;
+    }
+  }
+
+  console.log(`[Name Matcher] Checking ${bulletinEntries.length} bulletin entries for name matches`);
+
+  if (!bulletinEntries || bulletinEntries.length === 0) {
+    return { matches_found: 0, alerts_created: 0, details: [] };
+  }
+
+  // 2. Get all monitored names with user info
+  const { data: monitoredNames, error: namesError } = await supabase
+    .from('monitored_names')
+    .select(`
+      id,
+      user_id,
+      full_name,
+      normalized_name,
+      search_mode,
+      user_profiles (
+        email,
+        full_name,
+        email_notifications_enabled,
+        whatsapp_enabled,
+        phone,
+        collaborator_emails
+      )
+    `);
+
+  if (namesError) {
+    console.error('[Name Matcher] Error fetching monitored names:', namesError);
+    throw namesError;
+  }
+
+  console.log(`[Name Matcher] Checking against ${monitoredNames?.length || 0} monitored names`);
+
+  if (!monitoredNames || monitoredNames.length === 0) {
+    return { matches_found: 0, alerts_created: 0, details: [] };
+  }
+
+  // 3. Match each bulletin entry against all monitored names
+  let matchesFound = 0;
+  let alertsCreated = 0;
+  const matchDetails: Array<{
+    user_id: string;
+    name: string;
+    case_number: string;
+    juzgado: string;
+  }> = [];
+
+  for (const entry of bulletinEntries) {
+    // Normalize the raw_text for matching (remove accents, uppercase)
+    const normalizedText = normalizeName(entry.raw_text);
+
+    for (const monitoredName of monitoredNames) {
+      // Generate search patterns based on user's chosen mode
+      const searchPatterns = generateSearchPatterns(
+        monitoredName.full_name,
+        monitoredName.search_mode
+      );
+
+      // Check if ANY pattern matches the bulletin text
+      const matched = searchPatterns.some(pattern => {
+        const normalizedPattern = normalizeName(pattern);
+        return normalizedText.includes(normalizedPattern);
+      });
+
+      if (matched) {
+        matchesFound++;
+
+        // Create alert (with duplicate prevention via UNIQUE constraint)
+        const { error: alertError } = await supabase
+          .from('alerts')
+          .insert({
+            user_id: monitoredName.user_id,
+            monitored_name_id: monitoredName.id,
+            bulletin_entry_id: entry.id,
+            matched_on: 'name',
+            matched_value: monitoredName.full_name,
+            is_historical: isHistorical, // Historical alerts don't send notifications
+          })
+          .select()
+          .single();
+
+        if (alertError) {
+          // Ignore duplicate constraint errors (already alerted)
+          if (!alertError.message.includes('duplicate') && !alertError.message.includes('unique')) {
+            console.error('[Name Matcher] Error creating alert:', alertError);
+          }
+        } else {
+          alertsCreated++;
+          matchDetails.push({
+            user_id: monitoredName.user_id,
+            name: monitoredName.full_name,
+            case_number: entry.case_number,
+            juzgado: entry.juzgado,
+          });
+        }
+      }
+    }
+  }
+
+  console.log(`[Name Matcher] Found ${matchesFound} matches, created ${alertsCreated} new alerts`);
+
+  return {
+    matches_found: matchesFound,
+    alerts_created: alertsCreated,
+    details: matchDetails,
+  };
+}
+
+/**
  * Get unsent alerts (for WhatsApp notification sending)
+ * IMPORTANT:
+ * - Excludes historical alerts (is_historical = true)
+ * - Excludes name alerts with fuzzy search mode (no notifications for fuzzy matches)
  */
 export async function getUnsentAlerts(supabaseUrl: string, supabaseKey: string) {
   const supabase = createClient(supabaseUrl, supabaseKey);
@@ -229,6 +395,7 @@ export async function getUnsentAlerts(supabaseUrl: string, supabaseKey: string) 
     .select(`
       id,
       user_id,
+      matched_on,
       matched_value,
       created_at,
       user_profiles (
@@ -244,13 +411,21 @@ export async function getUnsentAlerts(supabaseUrl: string, supabaseKey: string) 
         juzgado,
         nombre
       ),
+      monitored_names (
+        full_name,
+        search_mode
+      ),
       bulletin_entries (
         bulletin_date,
         raw_text,
-        bulletin_url
+        bulletin_url,
+        juzgado,
+        case_number,
+        source
       )
     `)
     .eq('whatsapp_sent', false)
+    .eq('is_historical', false)
     .order('created_at', { ascending: true })
     .limit(100); // Process in batches of 100
 
@@ -259,7 +434,19 @@ export async function getUnsentAlerts(supabaseUrl: string, supabaseKey: string) 
     throw error;
   }
 
-  return alerts || [];
+  // Filter out fuzzy name matches (no notifications for those)
+  const filteredAlerts = (alerts || []).filter(alert => {
+    // If it's a name alert with fuzzy search mode, exclude it from notifications
+    if (alert.matched_on === 'name' && alert.monitored_names?.search_mode === 'fuzzy') {
+      console.log(`[Notifications] Skipping fuzzy name match: ${alert.monitored_names.full_name}`);
+      return false;
+    }
+    return true;
+  });
+
+  console.log(`[Notifications] Filtered ${alerts?.length || 0} alerts down to ${filteredAlerts.length} (excluded fuzzy matches)`);
+
+  return filteredAlerts;
 }
 
 /**

@@ -12,16 +12,24 @@ interface Alert {
   id: string
   created_at: string
   is_read: boolean
+  matched_on: 'case_number' | 'name'
+  is_historical?: boolean
   monitored_cases: {
     case_number: string
     juzgado: string
     nombre: string | null
+  } | null
+  monitored_names: {
+    full_name: string
+    search_mode: string
   } | null
   bulletin_entries: {
     bulletin_date: string
     raw_text: string
     bulletin_url: string
     source: string
+    juzgado: string
+    case_number: string
   } | null
 }
 
@@ -55,7 +63,9 @@ export function AlertsTable({ alerts }: AlertsTableProps) {
           <TableHeader>
             <TableRow>
               <TableHead>Fecha de Alerta</TableHead>
-              <TableHead>Expediente</TableHead>
+              <TableHead>
+                {alerts.length > 0 && alerts[0].matched_on === 'name' ? 'Nombre / Expediente' : 'Expediente'}
+              </TableHead>
               <TableHead className="hidden md:table-cell">Juzgado</TableHead>
               <TableHead className="hidden sm:table-cell">Boletín</TableHead>
               <TableHead className="text-right">Detalles</TableHead>
@@ -69,20 +79,39 @@ export function AlertsTable({ alerts }: AlertsTableProps) {
                   onClick={() => toggleExpand(alert.id)}
                 >
                   <TableCell className="font-medium">
-                    {formatTijuanaDate(alert.created_at)}
+                    <div>{formatTijuanaDate(alert.created_at)}</div>
+                    {alert.is_historical && (
+                      <Badge variant="secondary" className="text-xs mt-1">Histórica</Badge>
+                    )}
                   </TableCell>
-                  <TableCell className="font-mono text-sm">
-                    <div>
-                      {alert.monitored_cases?.case_number}
-                    </div>
-                    {alert.monitored_cases?.nombre && (
-                      <div className="text-xs text-muted-foreground mt-1 hidden sm:block">
-                        {alert.monitored_cases.nombre}
+                  <TableCell className="text-sm">
+                    {alert.matched_on === 'name' ? (
+                      <div>
+                        <div className="font-medium">
+                          {alert.monitored_names?.full_name}
+                        </div>
+                        <div className="text-xs text-muted-foreground mt-1">
+                          Encontrado en: {alert.bulletin_entries?.case_number}
+                        </div>
+                      </div>
+                    ) : (
+                      <div>
+                        <div className="font-mono">
+                          {alert.monitored_cases?.case_number}
+                        </div>
+                        {alert.monitored_cases?.nombre && (
+                          <div className="text-xs text-muted-foreground mt-1 hidden sm:block">
+                            {alert.monitored_cases.nombre}
+                          </div>
+                        )}
                       </div>
                     )}
                   </TableCell>
                   <TableCell className="hidden md:table-cell text-sm">
-                    {alert.monitored_cases?.juzgado}
+                    {alert.matched_on === 'name'
+                      ? alert.bulletin_entries?.juzgado
+                      : alert.monitored_cases?.juzgado
+                    }
                   </TableCell>
                   <TableCell className="hidden sm:table-cell text-sm">
                     {alert.bulletin_entries?.bulletin_date

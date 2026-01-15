@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Card, CardContent } from '@/components/ui/card'
-import { Bell, Loader2 } from 'lucide-react'
+import { Bell, Loader2, FileText, UserSearch } from 'lucide-react'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { AlertsTable } from '@/components/alerts-table'
@@ -30,16 +30,24 @@ interface Alert {
   id: string
   created_at: string
   is_read: boolean
+  matched_on: 'case_number' | 'name'
+  is_historical?: boolean
   monitored_cases: {
     case_number: string
     juzgado: string
     nombre: string | null
+  } | null
+  monitored_names: {
+    full_name: string
+    search_mode: string
   } | null
   bulletin_entries: {
     bulletin_date: string
     raw_text: string
     bulletin_url: string
     source: string
+    juzgado: string
+    case_number: string
   } | null
 }
 
@@ -49,6 +57,12 @@ interface MonitoredCase {
   nombre: string | null
 }
 
+interface MonitoredName {
+  id: string
+  full_name: string
+  search_mode: string
+}
+
 export default function AlertsPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -56,7 +70,13 @@ export default function AlertsPage() {
 
   const [alerts, setAlerts] = useState<Alert[]>([])
   const [cases, setCases] = useState<MonitoredCase[]>([])
+  const [names, setNames] = useState<MonitoredName[]>([])
   const [loading, setLoading] = useState(true)
+
+  // Alert type toggle: 'cases' or 'names'
+  const [alertType, setAlertType] = useState<'cases' | 'names'>(
+    (searchParams.get('type') as 'cases' | 'names') || 'cases'
+  )
 
   // Get today's date in YYYY-MM-DD format (Tijuana timezone)
   const getTodayDate = () => {
@@ -65,9 +85,11 @@ export default function AlertsPage() {
 
   // Filter states - default to today
   const [selectedCase, setSelectedCase] = useState<string>(searchParams.get('case') || 'all')
+  const [selectedName, setSelectedName] = useState<string>(searchParams.get('name') || 'all')
   const [dateFrom, setDateFrom] = useState<string>(searchParams.get('from') || getTodayDate())
   const [dateTo, setDateTo] = useState<string>(searchParams.get('to') || getTodayDate())
   const [caseComboboxOpen, setCaseComboboxOpen] = useState(false)
+  const [nameComboboxOpen, setNameComboboxOpen] = useState(false)
 
   useEffect(() => {
     async function fetchData() {
@@ -85,6 +107,15 @@ export default function AlertsPage() {
 
       setCases(casesData || [])
 
+      // Fetch user's monitored names for the filter dropdown
+      const { data: namesData } = await supabase
+        .from('monitored_names')
+        .select('id, full_name, search_mode')
+        .eq('user_id', user.id)
+        .order('full_name')
+
+      setNames(namesData || [])
+
       // Fetch alerts with filters
       let query = supabase
         .from('alerts')
@@ -95,18 +126,34 @@ export default function AlertsPage() {
             juzgado,
             nombre
           ),
+          monitored_names (
+            full_name,
+            search_mode
+          ),
           bulletin_entries (
             bulletin_date,
             raw_text,
             bulletin_url,
-            source
+            source,
+            juzgado,
+            case_number
           )
         `)
         .eq('user_id', user.id)
 
-      // Apply case filter if selected
-      if (selectedCase && selectedCase !== 'all') {
-        query = query.eq('monitored_case_id', selectedCase)
+      // Filter by alert type
+      if (alertType === 'cases') {
+        query = query.eq('matched_on', 'case_number')
+        // Apply case filter if selected
+        if (selectedCase && selectedCase !== 'all') {
+          query = query.eq('monitored_case_id', selectedCase)
+        }
+      } else {
+        query = query.eq('matched_on', 'name')
+        // Apply name filter if selected
+        if (selectedName && selectedName !== 'all') {
+          query = query.eq('monitored_name_id', selectedName)
+        }
       }
 
       const { data: alertsData } = await query.order('created_at', { ascending: false })
@@ -116,7 +163,7 @@ export default function AlertsPage() {
     }
 
     fetchData()
-  }, [selectedCase, router, supabase])
+  }, [selectedCase, selectedName, alertType, router, supabase])
 
   // Filter alerts by date range (using alert creation date)
   const filteredAlerts = useMemo(() => {
@@ -199,7 +246,10 @@ export default function AlertsPage() {
           <div>
             <h1 className="text-3xl font-bold">Alertas</h1>
             <p className="text-muted-foreground">
-              Historial de casos encontrados en boletines judiciales
+              {alertType === 'cases'
+                ? 'Historial de casos encontrados en boletines judiciales'
+                : 'Historial de nombres encontrados en boletines judiciales'
+              }
             </p>
           </div>
           <div className="text-right">
@@ -210,83 +260,176 @@ export default function AlertsPage() {
           </div>
         </div>
 
+        {/* Alert Type Toggle */}
+        <Card>
+          <CardContent className="py-3">
+            <div className="flex gap-2">
+              <Button
+                variant={alertType === 'cases' ? 'default' : 'outline'}
+                className="flex-1 gap-2"
+                onClick={() => setAlertType('cases')}
+              >
+                <FileText className="h-4 w-4" />
+                Alertas por Caso
+              </Button>
+              <Button
+                variant={alertType === 'names' ? 'default' : 'outline'}
+                className="flex-1 gap-2"
+                onClick={() => setAlertType('names')}
+              >
+                <UserSearch className="h-4 w-4" />
+                Alertas por Nombre
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
         {/* Filters */}
         <Card>
           <CardContent className="pt-6">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {/* Case Filter - Searchable Combobox */}
-            <div className="space-y-2">
-              <Label>Filtrar por Caso</Label>
-              <Popover open={caseComboboxOpen} onOpenChange={setCaseComboboxOpen}>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    role="combobox"
-                    aria-expanded={caseComboboxOpen}
-                    className="w-full justify-between"
-                  >
-                    {selectedCase === 'all'
-                      ? 'Todos los casos'
-                      : cases.find((c) => c.id === selectedCase)
-                      ? `${cases.find((c) => c.id === selectedCase)?.case_number}${
-                          cases.find((c) => c.id === selectedCase)?.nombre
-                            ? ` - ${cases.find((c) => c.id === selectedCase)?.nombre}`
-                            : ''
-                        }`
-                      : 'Seleccionar caso...'}
-                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-full p-0" align="start" side="bottom" avoidCollisions={false}>
-                  <Command>
-                    <CommandInput placeholder="Buscar caso..." />
-                    <CommandList>
-                      <CommandEmpty>No se encontró ningún caso.</CommandEmpty>
-                      <CommandGroup>
-                        <CommandItem
-                          value="all"
-                          onSelect={() => {
-                            setSelectedCase('all')
-                            setCaseComboboxOpen(false)
-                          }}
-                        >
-                          <Check
-                            className={cn(
-                              'mr-2 h-4 w-4',
-                              selectedCase === 'all' ? 'opacity-100' : 'opacity-0'
-                            )}
-                          />
-                          Todos los casos
-                        </CommandItem>
-                        {cases.map((c) => (
+            {/* Case or Name Filter - Searchable Combobox */}
+            {alertType === 'cases' ? (
+              <div className="space-y-2">
+                <Label>Filtrar por Caso</Label>
+                <Popover open={caseComboboxOpen} onOpenChange={setCaseComboboxOpen}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      role="combobox"
+                      aria-expanded={caseComboboxOpen}
+                      className="w-full justify-between"
+                    >
+                      {selectedCase === 'all'
+                        ? 'Todos los casos'
+                        : cases.find((c) => c.id === selectedCase)
+                        ? `${cases.find((c) => c.id === selectedCase)?.case_number}${
+                            cases.find((c) => c.id === selectedCase)?.nombre
+                              ? ` - ${cases.find((c) => c.id === selectedCase)?.nombre}`
+                              : ''
+                          }`
+                        : 'Seleccionar caso...'}
+                      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-full p-0" align="start" side="bottom" avoidCollisions={false}>
+                    <Command>
+                      <CommandInput placeholder="Buscar caso..." />
+                      <CommandList>
+                        <CommandEmpty>No se encontró ningún caso.</CommandEmpty>
+                        <CommandGroup>
                           <CommandItem
-                            key={c.id}
-                            value={`${c.case_number} ${c.nombre || ''}`}
+                            value="all"
                             onSelect={() => {
-                              setSelectedCase(c.id)
+                              setSelectedCase('all')
                               setCaseComboboxOpen(false)
                             }}
                           >
                             <Check
                               className={cn(
                                 'mr-2 h-4 w-4',
-                                selectedCase === c.id ? 'opacity-100' : 'opacity-0'
+                                selectedCase === 'all' ? 'opacity-100' : 'opacity-0'
                               )}
                             />
-                            <div className="flex flex-col">
-                              <span className="font-mono text-sm">{c.case_number}</span>
-                              {c.nombre && (
-                                <span className="text-xs text-muted-foreground">{c.nombre}</span>
-                              )}
-                            </div>
+                            Todos los casos
                           </CommandItem>
-                        ))}
-                      </CommandGroup>
-                    </CommandList>
-                  </Command>
-                </PopoverContent>
-              </Popover>
-            </div>
+                          {cases.map((c) => (
+                            <CommandItem
+                              key={c.id}
+                              value={`${c.case_number} ${c.nombre || ''}`}
+                              onSelect={() => {
+                                setSelectedCase(c.id)
+                                setCaseComboboxOpen(false)
+                              }}
+                            >
+                              <Check
+                                className={cn(
+                                  'mr-2 h-4 w-4',
+                                  selectedCase === c.id ? 'opacity-100' : 'opacity-0'
+                                )}
+                              />
+                              <div className="flex flex-col">
+                                <span className="font-mono text-sm">{c.case_number}</span>
+                                {c.nombre && (
+                                  <span className="text-xs text-muted-foreground">{c.nombre}</span>
+                                )}
+                              </div>
+                            </CommandItem>
+                          ))}
+                        </CommandGroup>
+                      </CommandList>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <Label>Filtrar por Nombre</Label>
+                <Popover open={nameComboboxOpen} onOpenChange={setNameComboboxOpen}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      role="combobox"
+                      aria-expanded={nameComboboxOpen}
+                      className="w-full justify-between"
+                    >
+                      {selectedName === 'all'
+                        ? 'Todos los nombres'
+                        : names.find((n) => n.id === selectedName)?.full_name || 'Seleccionar nombre...'}
+                      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-full p-0" align="start" side="bottom" avoidCollisions={false}>
+                    <Command>
+                      <CommandInput placeholder="Buscar nombre..." />
+                      <CommandList>
+                        <CommandEmpty>No se encontró ningún nombre.</CommandEmpty>
+                        <CommandGroup>
+                          <CommandItem
+                            value="all"
+                            onSelect={() => {
+                              setSelectedName('all')
+                              setNameComboboxOpen(false)
+                            }}
+                          >
+                            <Check
+                              className={cn(
+                                'mr-2 h-4 w-4',
+                                selectedName === 'all' ? 'opacity-100' : 'opacity-0'
+                              )}
+                            />
+                            Todos los nombres
+                          </CommandItem>
+                          {names.map((n) => (
+                            <CommandItem
+                              key={n.id}
+                              value={n.full_name}
+                              onSelect={() => {
+                                setSelectedName(n.id)
+                                setNameComboboxOpen(false)
+                              }}
+                            >
+                              <Check
+                                className={cn(
+                                  'mr-2 h-4 w-4',
+                                  selectedName === n.id ? 'opacity-100' : 'opacity-0'
+                                )}
+                              />
+                              <div className="flex flex-col">
+                                <span className="text-sm">{n.full_name}</span>
+                                <span className="text-xs text-muted-foreground">
+                                  {n.search_mode === 'exact' ? '🎯 Exacta' : '🔍 Con variaciones'}
+                                </span>
+                              </div>
+                            </CommandItem>
+                          ))}
+                        </CommandGroup>
+                      </CommandList>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
+              </div>
+            )}
 
             {/* Date From */}
             <div className="space-y-2">
@@ -374,12 +517,16 @@ export default function AlertsPage() {
               <p className="text-lg font-medium mb-2">No hay alertas</p>
               <p className="text-muted-foreground mb-4">
                 {alerts.length === 0
-                  ? 'Las alertas aparecerán aquí cuando sus casos sean encontrados en los boletines'
+                  ? alertType === 'cases'
+                    ? 'Las alertas aparecerán aquí cuando sus casos sean encontrados en los boletines'
+                    : 'Las alertas aparecerán aquí cuando los nombres monitoreados sean encontrados en los boletines'
                   : 'No se encontraron alertas con los filtros seleccionados'}
               </p>
               {alerts.length === 0 && (
-                <Link href="/dashboard/add">
-                  <Button>Agregar un caso</Button>
+                <Link href={alertType === 'cases' ? '/dashboard' : '/dashboard/nombres'}>
+                  <Button>
+                    {alertType === 'cases' ? 'Agregar un caso' : 'Agregar un nombre'}
+                  </Button>
                 </Link>
               )}
             </CardContent>

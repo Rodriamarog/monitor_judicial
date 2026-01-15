@@ -7,7 +7,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { scrapeAllBulletins } from '@/lib/scraper';
-import { findAndCreateMatches, getUnsentAlerts, markAlertAsSent } from '@/lib/matcher';
+import { findAndCreateMatches, findAndCreateNameMatches, getUnsentAlerts, markAlertAsSent } from '@/lib/matcher';
 import { sendBatchAlertEmail } from '@/lib/email';
 import { sendWhatsAppAlert, formatToWhatsApp } from '@/lib/whatsapp';
 import { createNotificationLogger } from '@/lib/notification-logger';
@@ -70,12 +70,25 @@ export async function GET(request: NextRequest) {
       total_entries: scrapeResults.total_entries,
     });
 
-    // Step 2: Find matches and create alerts
+    // Step 2: Find case matches and create alerts
     const matchResults = await findAndCreateMatches(targetDate, supabaseUrl, supabaseKey);
 
-    console.log('Match results:', {
+    console.log('Case match results:', {
       matches_found: matchResults.matches_found,
       alerts_created: matchResults.alerts_created,
+    });
+
+    // Step 3: Find name matches and create alerts (real-time, not historical)
+    const nameMatchResults = await findAndCreateNameMatches(
+      targetDate,
+      supabaseUrl,
+      supabaseKey,
+      false // isHistorical = false, so notifications WILL be sent
+    );
+
+    console.log('Name match results:', {
+      matches_found: nameMatchResults.matches_found,
+      alerts_created: nameMatchResults.alerts_created,
     });
 
     // Historical bulletins retained indefinitely for analysis (removed 90-day cleanup 2026-01-14)
@@ -311,9 +324,12 @@ export async function GET(request: NextRequest) {
       matching: {
         total_new_entries: matchResults.total_new_entries,
         total_monitored_cases: matchResults.total_monitored_cases,
-        matches_found: matchResults.matches_found,
-        alerts_created: matchResults.alerts_created,
-        sample_matches: matchResults.details.slice(0, 5),
+        case_matches_found: matchResults.matches_found,
+        case_alerts_created: matchResults.alerts_created,
+        name_matches_found: nameMatchResults.matches_found,
+        name_alerts_created: nameMatchResults.alerts_created,
+        sample_case_matches: matchResults.details.slice(0, 5),
+        sample_name_matches: nameMatchResults.details.slice(0, 5),
       },
       notifications: {
         emails_sent: emailResults.sent,

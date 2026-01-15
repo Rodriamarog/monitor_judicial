@@ -35,7 +35,7 @@ export default function NotFound() {
             <Link href="/dashboard">
               <Button variant="outline" className="gap-2 w-full sm:w-auto">
                 <Search className="h-4 w-4" />
-                Mis Casos
+                Monitoreo por Expediente
               </Button>
             </Link>
             <Link href="/pricing">

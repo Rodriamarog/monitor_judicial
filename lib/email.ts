@@ -27,6 +27,8 @@ interface CaseAlert {
   caseName?: string;
   rawText: string;
   bulletinUrl?: string;
+  matchedOn?: 'case_number' | 'name'; // Type of match
+  monitoredName?: string; // Name that was monitored (for name matches)
 }
 
 interface BatchAlertEmailData {
@@ -354,12 +356,21 @@ export async function sendBatchAlertEmail(data: BatchAlertEmailData): Promise<{ 
     ${alerts.map((alert, index) => `
     <div class="alert-box">
       <div class="case-header">
-        Caso ${index + 1} de ${alertCount}
+        ${alert.matchedOn === 'name' ? '👤 Coincidencia por Nombre' : '📋 Actualización de Caso'} ${index + 1} de ${alertCount}
       </div>
+      ${alert.matchedOn === 'name' ? `
+      <div class="detail-row">
+        <span class="label">Nombre Monitoreado:</span> ${alert.monitoredName || 'Desconocido'}
+      </div>
+      <div class="detail-row">
+        <span class="label">Encontrado en Expediente:</span> ${alert.caseNumber}
+      </div>
+      ` : `
       <div class="detail-row">
         <span class="label">Número de Expediente:</span> ${alert.caseNumber}
       </div>
       ${alert.caseName ? `<div class="detail-row"><span class="label">Referencia:</span> ${alert.caseName}</div>` : ''}
+      `}
       <div class="detail-row">
         <span class="label">Juzgado:</span> ${alert.juzgado}
       </div>

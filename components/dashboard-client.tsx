@@ -54,7 +54,7 @@ export function DashboardClient({
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold">Mis Casos</h1>
+            <h1 className="text-3xl font-bold">Monitoreo por Expediente</h1>
             <p className="text-muted-foreground">
               {caseCount} de {maxCases} casos monitoreados
             </p>

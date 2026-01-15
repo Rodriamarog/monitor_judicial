@@ -30,7 +30,7 @@ interface SidebarProps {
 }
 
 const navItems = [
-  { href: '/dashboard', label: 'Mis Casos', icon: FileText },
+  { href: '/dashboard', label: 'Monitoreo por Expediente', icon: FileText },
   { href: '/dashboard/alerts', label: 'Alertas', icon: Bell },
   { href: '/dashboard/calendar', label: 'Calendario', icon: Calendar },
   { href: '/dashboard/proyectos', label: 'Proyectos', icon: Kanban },

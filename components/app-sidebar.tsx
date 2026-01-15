@@ -19,6 +19,7 @@ import {
   Sparkles,
   Menu,
   HelpCircle,
+  UserSearch,
 } from "lucide-react"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { SignOutButton } from "@/components/sign-out-button"
@@ -49,7 +50,8 @@ const navigation: NavSection[] = [
   {
     title: "MONITOREO",
     items: [
-      { href: '/dashboard', label: 'Mis Casos', icon: FileText },
+      { href: '/dashboard', label: 'Monitoreo por Expediente', icon: FileText },
+      { href: '/dashboard/nombres', label: 'Monitoreo Por Nombre', icon: UserSearch },
       { href: '/dashboard/alerts', label: 'Alertas', icon: Bell },
     ],
   },

@@ -230,16 +230,13 @@ export function ImportCasesDialog({ open, onOpenChange }: ImportCasesDialogProps
                   <AlertCircle className="h-4 w-4" />
                   <AlertDescription>
                     <p className="font-medium mb-2">Errores encontrados:</p>
-                    <ul className="list-disc list-inside space-y-1 text-sm">
-                      {result.errors.slice(0, 10).map((err, idx) => (
-                        <li key={idx}>{err}</li>
-                      ))}
-                      {result.errors.length > 10 && (
-                        <li className="text-muted-foreground">
-                          ...y {result.errors.length - 10} más
-                        </li>
-                      )}
-                    </ul>
+                    <div className="max-h-40 overflow-y-auto">
+                      <ul className="list-disc list-inside space-y-1 text-sm">
+                        {result.errors.map((err, idx) => (
+                          <li key={idx}>{err}</li>
+                        ))}
+                      </ul>
+                    </div>
                   </AlertDescription>
                 </Alert>
               )}

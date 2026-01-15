@@ -31,7 +31,7 @@ export function MobileNav() {
           <Link href="/dashboard" onClick={() => setOpen(false)}>
             <Button variant="ghost" className="w-full justify-start gap-2">
               <FileText className="h-4 w-4" />
-              Mis Casos
+              Monitoreo por Expediente
             </Button>
           </Link>
           <Link href="/dashboard/alerts" onClick={() => setOpen(false)}>
