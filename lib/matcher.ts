@@ -437,8 +437,11 @@ export async function getUnsentAlerts(supabaseUrl: string, supabaseKey: string) 
   // Filter out fuzzy name matches (no notifications for those)
   const filteredAlerts = (alerts || []).filter(alert => {
     // If it's a name alert with fuzzy search mode, exclude it from notifications
-    if (alert.matched_on === 'name' && alert.monitored_names?.search_mode === 'fuzzy') {
-      console.log(`[Notifications] Skipping fuzzy name match: ${alert.monitored_names.full_name}`);
+    // Supabase returns joined tables as arrays
+    const monitoredName = Array.isArray(alert.monitored_names) ? alert.monitored_names[0] : alert.monitored_names;
+
+    if (alert.matched_on === 'name' && monitoredName?.search_mode === 'fuzzy') {
+      console.log(`[Notifications] Skipping fuzzy name match: ${monitoredName.full_name}`);
       return false;
     }
     return true;
