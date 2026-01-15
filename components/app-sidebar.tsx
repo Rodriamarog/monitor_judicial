@@ -20,6 +20,7 @@ import {
   Menu,
   HelpCircle,
   UserSearch,
+  Search,
 } from "lucide-react"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { SignOutButton } from "@/components/sign-out-button"
@@ -53,6 +54,12 @@ const navigation: NavSection[] = [
       { href: '/dashboard', label: 'Monitoreo por Expediente', icon: FileText },
       { href: '/dashboard/nombres', label: 'Monitoreo Por Nombre', icon: UserSearch },
       { href: '/dashboard/alerts', label: 'Alertas', icon: Bell },
+    ],
+  },
+  {
+    title: "INVESTIGACION",
+    items: [
+      { href: '/dashboard/investigacion/busquedas-estatales', label: 'Búsquedas Estatales', icon: Search },
     ],
   },
   {
