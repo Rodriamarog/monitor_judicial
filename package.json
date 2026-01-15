@@ -18,7 +18,9 @@
     "test:multi-cases": "tsx scripts/test-multiple-cases.ts",
     "test:logger": "tsx scripts/test-notification-logger.ts",
     "logs": "tsx scripts/view-notification-logs.ts",
-    "diagnose": "tsx scripts/diagnose-missing-cases.ts"
+    "diagnose": "tsx scripts/diagnose-missing-cases.ts",
+    "backfill:bulletins": "tsx scripts/backfill-historical-bulletins.ts",
+    "analyze:juzgados": "tsx scripts/analyze-historical-juzgados.ts"
   },
   "dependencies": {
     "@ai-sdk/openai": "^2.0.86",

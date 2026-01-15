@@ -78,54 +78,7 @@ export async function GET(request: NextRequest) {
       alerts_created: matchResults.alerts_created,
     });
 
-    // Step 2.5: Cleanup old bulletin entries (keep 90 days)
-    let cleanupResults = {
-      deleted_entries: 0,
-      deleted_scrape_logs: 0,
-    };
-
-    try {
-      const { createClient } = await import('@supabase/supabase-js');
-      const supabase = createClient(supabaseUrl, supabaseKey);
-
-      // Delete bulletin entries older than 90 days
-      const ninetyDaysAgo = new Date();
-      ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
-      const cutoffDate = ninetyDaysAgo.toISOString().split('T')[0];
-
-      const { data: deletedEntries, error: entriesError } = await supabase
-        .from('bulletin_entries')
-        .delete()
-        .lt('bulletin_date', cutoffDate)
-        .select('id');
-
-      if (entriesError) {
-        console.error('Error deleting old bulletin entries:', entriesError);
-      } else {
-        cleanupResults.deleted_entries = deletedEntries?.length || 0;
-        if (cleanupResults.deleted_entries > 0) {
-          console.log(`Cleaned up ${cleanupResults.deleted_entries} bulletin entries older than ${cutoffDate}`);
-        }
-      }
-
-      // Delete scrape logs older than 90 days
-      const { data: deletedLogs, error: logsError } = await supabase
-        .from('scrape_log')
-        .delete()
-        .lt('bulletin_date', cutoffDate)
-        .select('id');
-
-      if (logsError) {
-        console.error('Error deleting old scrape logs:', logsError);
-      } else {
-        cleanupResults.deleted_scrape_logs = deletedLogs?.length || 0;
-        if (cleanupResults.deleted_scrape_logs > 0) {
-          console.log(`Cleaned up ${cleanupResults.deleted_scrape_logs} scrape logs older than ${cutoffDate}`);
-        }
-      }
-    } catch (cleanupError) {
-      console.error('Cleanup error:', cleanupError);
-    }
+    // Historical bulletins retained indefinitely for analysis (removed 90-day cleanup 2026-01-14)
 
     // Step 3: Send email notifications for new alerts
     let emailResults = {
@@ -361,10 +314,6 @@ export async function GET(request: NextRequest) {
         matches_found: matchResults.matches_found,
         alerts_created: matchResults.alerts_created,
         sample_matches: matchResults.details.slice(0, 5),
-      },
-      cleanup: {
-        deleted_entries: cleanupResults.deleted_entries,
-        deleted_scrape_logs: cleanupResults.deleted_scrape_logs,
       },
       notifications: {
         emails_sent: emailResults.sent,

@@ -36,7 +36,7 @@ const navItems = [
   { href: '/dashboard/proyectos', label: 'Proyectos', icon: Kanban },
   { href: '/dashboard/machotes', label: 'Machotes', icon: FileText },
   { href: '/dashboard/tesis', label: 'Buscador de Tesis', icon: BookOpen },
-  { href: '/dashboard/ai-assistant', label: 'Asistente Legal IA', icon: Sparkles },
+  { href: '/dashboard/ai-assistant', label: 'Asistente Legal IA', icon: Sparkles, disabled: true, badge: 'Proximamente' },
   { href: '/dashboard/settings', label: 'Configuración', icon: Settings },
 ]
 
@@ -59,23 +59,42 @@ export function Sidebar({ email, tier, hasStripeCustomer }: SidebarProps) {
 
       {/* Navigation */}
       <nav className="flex-1 py-4 px-2 space-y-1">
-        {navItems.map((item) => {
+        {navItems.map((item: any) => {
           const Icon = item.icon
           const isActive = pathname === item.href
           return (
-            <Link key={item.href} href={item.href}>
+            <Link
+              key={item.href}
+              href={item.disabled ? "#" : item.href}
+              onClick={(e) => {
+                if (item.disabled) {
+                  e.preventDefault()
+                  return
+                }
+                setIsMobileOpen(false)
+              }}
+            >
               <Button
                 variant="ghost"
                 className={cn(
                   'w-full justify-start gap-3 transition-colors',
                   isActive && 'bg-muted text-foreground hover:bg-muted',
                   !isActive && 'hover:bg-accent/50',
+                  item.disabled && 'opacity-50 cursor-not-allowed hover:bg-transparent',
                   isCollapsed && 'justify-center'
                 )}
-                onClick={() => setIsMobileOpen(false)}
               >
                 <Icon className="h-5 w-5 flex-shrink-0" />
-                {!isCollapsed && <span>{item.label}</span>}
+                {!isCollapsed && (
+                  <div className="flex flex-1 items-center justify-between gap-2 overflow-hidden">
+                    <span className="truncate">{item.label}</span>
+                    {item.badge && (
+                      <span className="rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-bold text-amber-600 dark:bg-amber-950/40 dark:text-amber-500">
+                        {item.badge}
+                      </span>
+                    )}
+                  </div>
+                )}
               </Button>
             </Link>
           )

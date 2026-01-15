@@ -65,8 +65,10 @@ class IncrementalUpdateManager:
         logger.info(f"Initialized Supabase client: {supabase_url}")
         
         # Initialize OpenAI for embeddings
-        import openai
-        self.openai_client = openai.OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
+        # Disabled 2026-01-14: Embeddings moved to Hetzner server
+        # import openai
+        # self.openai_client = openai.OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
+        self.openai_client = None  # Disabled - no embeddings generated
         
         # Text processor
         self.text_processor = LegalTextProcessor()
@@ -338,12 +340,13 @@ class IncrementalUpdateManager:
                     if self.insert_tesis(tesis):
                         processed_count += 1
 
-                        # Generate embeddings
-                        num_embeddings = self.generate_embeddings(tesis)
-                        embeddings_count += num_embeddings
-                        
+                        # Skip embedding generation - moved to Hetzner (2026-01-14)
+                        # num_embeddings = self.generate_embeddings(tesis)
+                        # embeddings_count += num_embeddings
+                        num_embeddings = 0  # No embeddings generated
+
                         if processed_count % 10 == 0:
-                            logger.info(f"Progress: {processed_count}/{len(new_ids)} tesis, {embeddings_count} embeddings")
+                            logger.info(f"Progress: {processed_count}/{len(new_ids)} tesis (no embeddings - moved to Hetzner)")
                     else:
                         failed_ids.append(tesis_id)
                     
@@ -356,7 +359,7 @@ class IncrementalUpdateManager:
             duration = (datetime.now() - start_time).total_seconds()
             logger.info(f"Completed in {duration:.1f}s")
             logger.info(f"Processed: {processed_count}/{len(new_ids)}")
-            logger.info(f"Embeddings created: {embeddings_count}")
+            logger.info(f"Embeddings created: {embeddings_count} (embedding generation disabled - moved to Hetzner)")
             if failed_ids:
                 logger.warning(f"Failed IDs: {failed_ids}")
             

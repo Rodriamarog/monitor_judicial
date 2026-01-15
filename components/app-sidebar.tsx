@@ -29,6 +29,8 @@ interface NavItem {
   icon: React.ElementType
   label: string
   href: string
+  disabled?: boolean
+  badge?: string
 }
 
 interface NavSection {
@@ -63,7 +65,7 @@ const navigation: NavSection[] = [
     title: "TESIS",
     items: [
       { href: '/dashboard/tesis', label: 'Buscador de Tesis', icon: BookOpen },
-      { href: '/dashboard/ai-assistant', label: 'Asistente Legal IA', icon: Sparkles },
+      { href: '/dashboard/ai-assistant', label: 'Asistente Legal IA', icon: Sparkles, disabled: true, badge: 'Proximamente' },
     ],
   },
   {
@@ -110,13 +112,20 @@ export function AppSidebar({ email, tier, hasStripeCustomer }: AppSidebarProps) 
                 return (
                   <li key={item.href}>
                     <Link
-                      href={item.href}
-                      onClick={() => setIsMobileOpen(false)}
+                      href={item.disabled ? "#" : item.href}
+                      onClick={(e) => {
+                        if (item.disabled) {
+                          e.preventDefault()
+                          return
+                        }
+                        setIsMobileOpen(false)
+                      }}
                       className={cn(
                         "group flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200",
                         isActive
                           ? "bg-sidebar-primary text-sidebar-primary-foreground"
                           : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground",
+                        item.disabled && "opacity-50 cursor-not-allowed hover:bg-transparent hover:text-sidebar-foreground/70",
                         isCollapsed && "justify-center px-2",
                       )}
                     >
@@ -124,9 +133,19 @@ export function AppSidebar({ email, tier, hasStripeCustomer }: AppSidebarProps) 
                         className={cn(
                           "h-5 w-5 shrink-0 transition-transform group-hover:scale-110",
                           isActive && "text-sidebar-primary-foreground",
+                          item.disabled && "group-hover:scale-100"
                         )}
                       />
-                      {!isCollapsed && <span className="flex-1">{item.label}</span>}
+                      {!isCollapsed && (
+                        <div className="flex flex-1 items-center justify-between gap-2 overflow-hidden">
+                          <span className="truncate">{item.label}</span>
+                          {item.badge && (
+                            <span className="rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-bold text-amber-600 dark:bg-amber-950/40 dark:text-amber-500">
+                              {item.badge}
+                            </span>
+                          )}
+                        </div>
+                      )}
                     </Link>
                   </li>
                 )

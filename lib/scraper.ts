@@ -8,7 +8,7 @@ import { createClient } from '@supabase/supabase-js';
 import * as cheerio from 'cheerio';
 import { normalizeJuzgado } from './normalize-juzgado';
 
-const BULLETIN_SOURCES = [
+export const BULLETIN_SOURCES = [
   { code: 'ti', name: 'tijuana', label: 'Tijuana' },
   { code: 'me', name: 'mexicali', label: 'Mexicali' },
   { code: 'en', name: 'ensenada', label: 'Ensenada' },
