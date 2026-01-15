@@ -59,7 +59,7 @@ const navigation: NavSection[] = [
   {
     title: "INVESTIGACION",
     items: [
-      { href: '/dashboard/investigacion/busquedas-estatales', label: 'Búsquedas Estatales', icon: Search },
+      { href: '/dashboard/investigacion/busquedas-estatales', label: 'Antecedentes Legales', icon: Search },
     ],
   },
   {

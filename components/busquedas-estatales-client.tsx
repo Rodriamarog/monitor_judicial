@@ -140,7 +140,7 @@ export function BusquedasEstatalesClient({ userId }: BusquedasEstatalesClientPro
                         <Scale className="h-8 w-8 text-primary" />
                     </div>
                 </div>
-                <h1 className="text-2xl font-bold mb-2">Formulario de búsqueda</h1>
+                <h1 className="text-2xl font-bold mb-2">Antecedentes Legales</h1>
                 <p className="text-sm text-muted-foreground">
                     Busca nombres en todos los boletines judiciales del estado
                 </p>
