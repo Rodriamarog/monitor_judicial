@@ -6,8 +6,12 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { Search, Loader2, Scale } from 'lucide-react';
+import { Search, Loader2, FileText, Printer, Download } from 'lucide-react';
 import { BusquedasResultsTable } from '@/components/busquedas-results-table';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { pdf, PDFViewer } from '@react-pdf/renderer';
+import { AntecedentesPDFDocument } from '@/components/antecedentes-pdf-document';
 
 interface SearchResult {
     id: string;
@@ -73,7 +77,6 @@ export function BusquedasEstatalesClient({ userId }: BusquedasEstatalesClientPro
     const [nombre, setNombre] = useState('');
     const [apellidoPaterno, setApellidoPaterno] = useState('');
     const [apellidoMaterno, setApellidoMaterno] = useState('');
-    const [detalle, setDetalle] = useState('no');
     const [periodo, setPeriodo] = useState('10_años');
     const [estado, setEstado] = useState('Baja California');
     const [curp, setCurp] = useState('');
@@ -82,6 +85,14 @@ export function BusquedasEstatalesClient({ userId }: BusquedasEstatalesClientPro
     const [results, setResults] = useState<SearchResult[]>([]);
     const [hasSearched, setHasSearched] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [showResultsDialog, setShowResultsDialog] = useState(false);
+    const [searchParams, setSearchParams] = useState({
+        fullName: '',
+        estado: '',
+        periodo: '',
+        curp: '',
+        rfc: '',
+    });
 
     const handleSearch = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -123,6 +134,18 @@ export function BusquedasEstatalesClient({ userId }: BusquedasEstatalesClientPro
             const data = await response.json();
             setResults(data.results || []);
             setHasSearched(true);
+
+            // Store search parameters for report
+            setSearchParams({
+                fullName,
+                estado,
+                periodo,
+                curp: curp || '',
+                rfc: rfc || '',
+            });
+
+            // Open results dialog
+            setShowResultsDialog(true);
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Error desconocido');
             setResults([]);
@@ -131,34 +154,77 @@ export function BusquedasEstatalesClient({ userId }: BusquedasEstatalesClientPro
         }
     };
 
+    const handlePrint = () => {
+        window.print();
+    };
+
+    const handleDownloadPDF = async () => {
+        try {
+            // Generate PDF using react-pdf
+            const pdfDocument = (
+                <AntecedentesPDFDocument
+                    searchParams={searchParams}
+                    results={results}
+                    getPeriodoLabel={getPeriodoLabel}
+                />
+            );
+
+            const blob = await pdf(pdfDocument).toBlob();
+
+            // Create download link
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `Antecedentes_Legales_${searchParams.fullName.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+        } catch (error) {
+            console.error('Error generating PDF:', error);
+            alert('Error al generar el PDF. Por favor intente de nuevo.');
+        }
+    };
+
+    const getPeriodoLabel = (value: string) => {
+        const option = PERIOD_OPTIONS.find(o => o.value === value);
+        return option?.label || value;
+    };
+
     return (
         <div className="flex flex-col h-full gap-6 overflow-hidden">
-            {/* Header with Logo */}
+            {/* Header */}
             <div className="flex-shrink-0 text-center">
-                <div className="flex justify-center mb-4">
-                    <div className="flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
-                        <Scale className="h-8 w-8 text-primary" />
-                    </div>
-                </div>
                 <h1 className="text-2xl font-bold mb-2">Antecedentes Legales</h1>
                 <p className="text-sm text-muted-foreground">
                     Busca nombres en todos los boletines judiciales del estado
                 </p>
             </div>
 
-            {/* Two Column Layout */}
-            <div className="flex-1 grid grid-cols-1 lg:grid-cols-2 gap-6 overflow-auto">
-                {/* Left Column - Datos de la persona */}
+            {/* Wider form layout */}
+            <div className="flex-1 flex flex-col gap-6 overflow-auto max-w-5xl mx-auto w-full">
+                {/* Datos de la persona */}
                 <Card>
                     <CardHeader>
                         <CardTitle>Datos de la persona</CardTitle>
                     </CardHeader>
                     <CardContent>
                         <form onSubmit={handleSearch} className="space-y-6">
-                            {/* Tipo de persona */}
+                            {/* Row 1: Tipo de persona */}
                             <div className="space-y-3">
                                 <Label>Tipo de persona</Label>
-                                <RadioGroup value={tipoPersona} onValueChange={setTipoPersona}>
+                                <RadioGroup
+                                    value={tipoPersona}
+                                    onValueChange={(value) => {
+                                        setTipoPersona(value);
+                                        // Clear fields not needed for moral persons
+                                        if (value === 'moral') {
+                                            setApellidoPaterno('');
+                                            setApellidoMaterno('');
+                                            setCurp('');
+                                        }
+                                    }}
+                                >
                                     <div className="flex items-center space-x-6">
                                         <div className="flex items-center space-x-2">
                                             <RadioGroupItem value="fisica" id="fisica" />
@@ -172,57 +238,106 @@ export function BusquedasEstatalesClient({ userId }: BusquedasEstatalesClientPro
                                 </RadioGroup>
                             </div>
 
-                            {/* Nombre(s) */}
-                            <div className="space-y-2">
-                                <Label htmlFor="nombre">Nombre(s)</Label>
-                                <Input
-                                    id="nombre"
-                                    placeholder=""
-                                    value={nombre}
-                                    onChange={(e) => setNombre(e.target.value)}
-                                />
-                            </div>
-
-                            {/* Apellido Paterno */}
-                            <div className="space-y-2">
-                                <Label htmlFor="apellidoPaterno">Apellido Paterno</Label>
-                                <Input
-                                    id="apellidoPaterno"
-                                    placeholder=""
-                                    value={apellidoPaterno}
-                                    onChange={(e) => setApellidoPaterno(e.target.value)}
-                                />
-                            </div>
-
-                            {/* Apellido Materno */}
-                            <div className="space-y-2">
-                                <Label htmlFor="apellidoMaterno">Apellido Materno</Label>
-                                <Input
-                                    id="apellidoMaterno"
-                                    placeholder=""
-                                    value={apellidoMaterno}
-                                    onChange={(e) => setApellidoMaterno(e.target.value)}
-                                />
-                            </div>
-
-                            {/* Detalle */}
-                            <div className="space-y-3">
-                                <Label>Detalle</Label>
-                                <RadioGroup value={detalle} onValueChange={setDetalle}>
-                                    <div className="flex items-center space-x-6">
-                                        <div className="flex items-center space-x-2">
-                                            <RadioGroupItem value="si" id="si" />
-                                            <Label htmlFor="si" className="font-normal cursor-pointer">Sí</Label>
-                                        </div>
-                                        <div className="flex items-center space-x-2">
-                                            <RadioGroupItem value="no" id="no" />
-                                            <Label htmlFor="no" className="font-normal cursor-pointer">No</Label>
-                                        </div>
+                            {/* Row 2: Name fields - Different for Física vs Moral */}
+                            {tipoPersona === 'fisica' ? (
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                    {/* Nombre(s) */}
+                                    <div className="space-y-2">
+                                        <Label htmlFor="nombre">Nombre(s)</Label>
+                                        <Input
+                                            id="nombre"
+                                            placeholder=""
+                                            value={nombre}
+                                            onChange={(e) => setNombre(e.target.value)}
+                                        />
                                     </div>
-                                </RadioGroup>
-                            </div>
 
-                            {/* Periodo de búsqueda */}
+                                    {/* Apellido Paterno */}
+                                    <div className="space-y-2">
+                                        <Label htmlFor="apellidoPaterno">Apellido Paterno</Label>
+                                        <Input
+                                            id="apellidoPaterno"
+                                            placeholder=""
+                                            value={apellidoPaterno}
+                                            onChange={(e) => setApellidoPaterno(e.target.value)}
+                                        />
+                                    </div>
+
+                                    {/* Apellido Materno */}
+                                    <div className="space-y-2">
+                                        <Label htmlFor="apellidoMaterno">Apellido Materno</Label>
+                                        <Input
+                                            id="apellidoMaterno"
+                                            placeholder=""
+                                            value={apellidoMaterno}
+                                            onChange={(e) => setApellidoMaterno(e.target.value)}
+                                        />
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="space-y-2">
+                                    {/* Nombre - For Moral persons (companies) */}
+                                    <Label htmlFor="nombre">Nombre</Label>
+                                    <Input
+                                        id="nombre"
+                                        placeholder="Razón social de la empresa"
+                                        value={nombre}
+                                        onChange={(e) => setNombre(e.target.value)}
+                                    />
+                                </div>
+                            )}
+
+                            {/* Row 3: CURP and RFC - Different for Física vs Moral */}
+                            {tipoPersona === 'fisica' ? (
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    {/* CURP Field */}
+                                    <div className="space-y-2">
+                                        <Label htmlFor="curp">CURP (Opcional)</Label>
+                                        <Input
+                                            id="curp"
+                                            placeholder=""
+                                            value={curp}
+                                            onChange={(e) => setCurp(e.target.value.toUpperCase())}
+                                            maxLength={18}
+                                        />
+                                        <p className="text-xs text-muted-foreground">
+                                            Validado ante el Registro Nacional de Población
+                                        </p>
+                                    </div>
+
+                                    {/* RFC Field */}
+                                    <div className="space-y-2">
+                                        <Label htmlFor="rfc">RFC (Opcional)</Label>
+                                        <Input
+                                            id="rfc"
+                                            placeholder=""
+                                            value={rfc}
+                                            onChange={(e) => setRfc(e.target.value.toUpperCase())}
+                                            maxLength={13}
+                                        />
+                                        <p className="text-xs text-muted-foreground">
+                                            Validado ante el SAT
+                                        </p>
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="space-y-2">
+                                    {/* RFC Field only for Moral persons */}
+                                    <Label htmlFor="rfc">RFC (Opcional)</Label>
+                                    <Input
+                                        id="rfc"
+                                        placeholder=""
+                                        value={rfc}
+                                        onChange={(e) => setRfc(e.target.value.toUpperCase())}
+                                        maxLength={13}
+                                    />
+                                    <p className="text-xs text-muted-foreground">
+                                        Validado ante el SAT
+                                    </p>
+                                </div>
+                            )}
+
+                            {/* Row 4: Periodo de búsqueda */}
                             <div className="space-y-2">
                                 <Label htmlFor="periodo">Periodo de búsqueda</Label>
                                 <p className="text-xs text-muted-foreground">(Opcional)</p>
@@ -263,13 +378,16 @@ export function BusquedasEstatalesClient({ userId }: BusquedasEstatalesClientPro
                     </CardContent>
                 </Card>
 
-                {/* Right Column - Tipo de búsqueda */}
+                {/*
+                Commented out until we have multiple states available
+
+                Right Column - Tipo de búsqueda
                 <Card>
                     <CardHeader>
                         <CardTitle>Tipo de búsqueda</CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-6">
-                        {/* Tipo de búsqueda */}
+                        Tipo de búsqueda
                         <div className="space-y-3">
                             <Label>Tipo de búsqueda</Label>
                             <RadioGroup value="estatal" disabled>
@@ -289,7 +407,7 @@ export function BusquedasEstatalesClient({ userId }: BusquedasEstatalesClientPro
                             </p>
                         </div>
 
-                        {/* Estado */}
+                        Estado
                         <div className="space-y-2">
                             <Label htmlFor="estado">Estado</Label>
                             <select
@@ -305,69 +423,156 @@ export function BusquedasEstatalesClient({ userId }: BusquedasEstatalesClientPro
                                 ))}
                             </select>
                         </div>
-
-                        {/* CURP Field */}
-                        <div className="space-y-2">
-                            <Label htmlFor="curp">CURP (Opcional)</Label>
-                            <Input
-                                id="curp"
-                                placeholder=""
-                                value={curp}
-                                onChange={(e) => setCurp(e.target.value.toUpperCase())}
-                                maxLength={18}
-                            />
-                            <p className="text-xs text-muted-foreground">
-                                El CURP proporcionado será validado ante el Registro Nacional de Población.
-                            </p>
-                        </div>
-
-                        {/* RFC Field */}
-                        <div className="space-y-2">
-                            <Label htmlFor="rfc">RFC (Opcional)</Label>
-                            <Input
-                                id="rfc"
-                                placeholder=""
-                                value={rfc}
-                                onChange={(e) => setRfc(e.target.value.toUpperCase())}
-                                maxLength={13}
-                            />
-                            <p className="text-xs text-muted-foreground">
-                                El RFC proporcionado será validada ante el SAT y se realizará una búsqueda del mismo en las listas negras del SAT.
-                            </p>
-                        </div>
                     </CardContent>
                 </Card>
+                */}
             </div>
 
-            {/* Results Section */}
+            {/* Results Notification */}
             {hasSearched && (
-                <Card className="flex-shrink-0">
-                    <CardHeader>
-                        <CardTitle>
-                            Resultados de la búsqueda
-                            {results.length > 0 && (
-                                <span className="ml-2 text-sm font-normal text-muted-foreground">
-                                    ({results.length} {results.length === 1 ? 'boletín encontrado' : 'boletines encontrados'})
-                                </span>
-                            )}
-                        </CardTitle>
-                        <CardDescription>
-                            Boletines que contienen el nombre buscado
-                        </CardDescription>
-                    </CardHeader>
-                    <CardContent className="max-h-[400px] overflow-auto">
-                        {results.length === 0 ? (
-                            <div className="text-center py-8">
-                                <p className="text-muted-foreground">
-                                    No se encontraron resultados para esta búsqueda
-                                </p>
+                <Alert className="flex-shrink-0">
+                    <FileText className="h-4 w-4" />
+                    <AlertDescription className="flex items-center justify-between">
+                        <span>
+                            {results.length > 0
+                                ? `Búsqueda completada: ${results.length} ${results.length === 1 ? 'boletín encontrado' : 'boletines encontrados'}`
+                                : 'Búsqueda completada: No se encontraron resultados'
+                            }
+                        </span>
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setShowResultsDialog(true)}
+                        >
+                            Ver Reporte Completo
+                        </Button>
+                    </AlertDescription>
+                </Alert>
+            )}
+
+            {/* Results Dialog */}
+            <Dialog open={showResultsDialog} onOpenChange={setShowResultsDialog}>
+                <DialogContent className="max-w-7xl max-h-[90vh] overflow-hidden flex flex-col">
+                    <DialogHeader className="print:block">
+                        <DialogTitle className="text-2xl">Reporte de Antecedentes Legales</DialogTitle>
+                        <DialogDescription>
+                            Resultados de la búsqueda en boletines judiciales
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    <div className="flex-1 overflow-hidden grid grid-cols-2 gap-4 print:grid-cols-1 print:overflow-visible">
+                        {/* Left Column - Results */}
+                        <div className="overflow-auto print:overflow-visible">
+                        {/* Print Header - Only visible when printing */}
+                        <div className="hidden print:block mb-6 pb-4 border-b">
+                            <h1 className="text-3xl font-bold mb-2">Reporte de Antecedentes Legales</h1>
+                            <p className="text-sm text-gray-600">Generado el {new Date().toLocaleDateString('es-MX', {
+                                year: 'numeric',
+                                month: 'long',
+                                day: 'numeric',
+                                hour: '2-digit',
+                                minute: '2-digit'
+                            })}</p>
+                        </div>
+
+                        {/* Search Parameters Summary */}
+                        <div className="mb-6 p-4 bg-gray-50 rounded-lg print:bg-white print:border print:border-gray-300">
+                            <h3 className="font-semibold text-lg mb-3">Parámetros de Búsqueda</h3>
+                            <div className="grid grid-cols-2 gap-3 text-sm">
+                                <div>
+                                    <span className="font-medium">Nombre:</span>
+                                    <span className="ml-2">{searchParams.fullName}</span>
+                                </div>
+                                <div>
+                                    <span className="font-medium">Estado:</span>
+                                    <span className="ml-2">{searchParams.estado}</span>
+                                </div>
+                                <div>
+                                    <span className="font-medium">Periodo:</span>
+                                    <span className="ml-2">{getPeriodoLabel(searchParams.periodo)}</span>
+                                </div>
+                                {searchParams.curp && (
+                                    <div>
+                                        <span className="font-medium">CURP:</span>
+                                        <span className="ml-2">{searchParams.curp}</span>
+                                    </div>
+                                )}
+                                {searchParams.rfc && (
+                                    <div>
+                                        <span className="font-medium">RFC:</span>
+                                        <span className="ml-2">{searchParams.rfc}</span>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+
+                        {/* Results Summary */}
+                        <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg print:bg-white print:border-green-300">
+                            <h3 className="font-semibold text-lg mb-2">Resumen de Resultados</h3>
+                            <p className="text-2xl font-bold text-green-700">
+                                {results.length} {results.length === 1 ? 'Boletín Encontrado' : 'Boletines Encontrados'}
+                            </p>
+                            <p className="text-sm text-gray-600 mt-1">
+                                {results.length > 0
+                                    ? 'Se encontraron menciones del nombre buscado en los siguientes boletines judiciales:'
+                                    : 'No se encontraron menciones del nombre buscado en los boletines judiciales del estado seleccionado.'
+                                }
+                            </p>
+                        </div>
+
+                        {/* Results Table */}
+                        {results.length > 0 ? (
+                            <div className="mb-6">
+                                <h3 className="font-semibold text-lg mb-3">Detalle de Boletines</h3>
+                                <BusquedasResultsTable results={results} />
                             </div>
                         ) : (
-                            <BusquedasResultsTable results={results} />
+                            <div className="text-center py-8 text-gray-500">
+                                <p>No se encontraron antecedentes legales para los parámetros especificados.</p>
+                            </div>
                         )}
-                    </CardContent>
-                </Card>
-            )}
+
+                        {/* Footer Note */}
+                        <div className="mt-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg text-sm print:bg-white print:border-yellow-300">
+                            <p className="font-medium mb-1">Nota Importante:</p>
+                            <p className="text-gray-700">
+                                Este reporte muestra únicamente menciones encontradas en boletines judiciales públicos.
+                                La presencia de un nombre en un boletín no implica responsabilidad legal o condena.
+                                Para información legal precisa, consulte con un profesional del derecho o verifique
+                                directamente con las autoridades judiciales correspondientes.
+                            </p>
+                        </div>
+                        </div>
+
+                        {/* Right Column - PDF Preview */}
+                        <div className="overflow-hidden print:hidden border border-gray-200 rounded-lg">
+                            <PDFViewer width="100%" height="100%" className="rounded-lg">
+                                <AntecedentesPDFDocument
+                                    searchParams={searchParams}
+                                    results={results}
+                                    getPeriodoLabel={getPeriodoLabel}
+                                />
+                            </PDFViewer>
+                        </div>
+                    </div>
+
+                    {/* Action Buttons - Hidden when printing */}
+                    <div className="flex gap-2 justify-end pt-4 border-t print:hidden">
+                        <Button
+                            variant="outline"
+                            onClick={() => setShowResultsDialog(false)}
+                        >
+                            Cerrar
+                        </Button>
+                        <Button
+                            onClick={handleDownloadPDF}
+                        >
+                            <Download className="mr-2 h-4 w-4" />
+                            Descargar PDF
+                        </Button>
+                    </div>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }

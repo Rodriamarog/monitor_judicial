@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import React, { useState } from 'react';
 import {
     Table,
     TableBody,
@@ -66,8 +66,8 @@ export function BusquedasResultsTable({ results }: BusquedasResultsTableProps) {
                     {results.map((result) => {
                         const isExpanded = expandedRows.has(result.id);
                         return (
-                            <>
-                                <TableRow key={result.id} className="cursor-pointer hover:bg-muted/50">
+                            <React.Fragment key={result.id}>
+                                <TableRow className="cursor-pointer hover:bg-muted/50">
                                     <TableCell onClick={() => toggleRow(result.id)}>
                                         <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
                                             {isExpanded ? (
@@ -116,7 +116,7 @@ export function BusquedasResultsTable({ results }: BusquedasResultsTableProps) {
                                         </TableCell>
                                     </TableRow>
                                 )}
-                            </>
+                            </React.Fragment>
                         );
                     })}
                 </TableBody>

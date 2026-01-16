@@ -49,17 +49,12 @@ interface AppSidebarProps {
 
 const navigation: NavSection[] = [
   {
-    title: "MONITOREO",
+    title: "MONITOREO E INVESTIGACIÓN",
     items: [
       { href: '/dashboard', label: 'Monitoreo por Expediente', icon: FileText },
       { href: '/dashboard/nombres', label: 'Monitoreo Por Nombre', icon: UserSearch },
       { href: '/dashboard/alerts', label: 'Alertas', icon: Bell },
-    ],
-  },
-  {
-    title: "INVESTIGACION",
-    items: [
-      { href: '/dashboard/investigacion/busquedas-estatales', label: 'Antecedentes Legales', icon: Search },
+      { href: '/dashboard/investigacion', label: 'Investigación', icon: Search },
     ],
   },
   {
