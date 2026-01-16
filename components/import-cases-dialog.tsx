@@ -26,6 +26,8 @@ interface ImportResult {
   failed: number
   skipped: number
   errors: string[]
+  totalMatches?: number
+  totalAlerts?: number
 }
 
 export function ImportCasesDialog({ open, onOpenChange }: ImportCasesDialogProps) {
@@ -33,6 +35,19 @@ export function ImportCasesDialog({ open, onOpenChange }: ImportCasesDialogProps
   const [importing, setImporting] = useState(false)
   const [result, setResult] = useState<ImportResult | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [streamProgress, setStreamProgress] = useState<{
+    phase: 'validation' | 'insertion' | 'matching' | null
+    current: number
+    total: number
+    message: string
+    matchStats?: { totalMatches: number; totalAlerts: number }
+  }>({
+    phase: null,
+    current: 0,
+    total: 0,
+    message: '',
+    matchStats: { totalMatches: 0, totalAlerts: 0 },
+  })
   const fileInputRef = useRef<HTMLInputElement>(null)
   const router = useRouter()
 
@@ -73,6 +88,13 @@ export function ImportCasesDialog({ open, onOpenChange }: ImportCasesDialogProps
     setImporting(true)
     setError(null)
     setResult(null)
+    setStreamProgress({
+      phase: null,
+      current: 0,
+      total: 0,
+      message: '',
+      matchStats: { totalMatches: 0, totalAlerts: 0 },
+    })
 
     try {
       // Read file content
@@ -100,36 +122,112 @@ export function ImportCasesDialog({ open, onOpenChange }: ImportCasesDialogProps
         return
       }
 
-      // Send to API for bulk import
+      // Start streaming import
       const response = await fetch('/api/casos/import', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ cases: jsonData }),
       })
 
-      const data = await response.json()
-
-      if (!response.ok) {
-        // Show tier limit errors prominently
-        setError(data.error || 'Error al importar los casos')
+      if (!response.ok || !response.body) {
+        const data = await response.json().catch(() => ({}))
+        setError(data.error || 'Error al importar casos')
         setImporting(false)
         return
       }
 
-      setResult(data.result)
+      // Consume streaming response
+      const reader = response.body.getReader()
+      const decoder = new TextDecoder()
+      let buffer = ''
 
-      // Refresh the page after successful import
-      if (data.result.success > 0) {
-        setTimeout(() => {
-          router.refresh()
-        }, 2000)
+      while (true) {
+        const { done, value } = await reader.read()
+
+        if (done) break
+
+        // Decode chunk and append to buffer
+        buffer += decoder.decode(value, { stream: true })
+
+        // Process complete JSON messages (newline-delimited)
+        const lines = buffer.split('\n')
+        buffer = lines.pop() || '' // Keep incomplete line in buffer
+
+        for (const line of lines) {
+          if (!line.trim()) continue
+
+          try {
+            const message = JSON.parse(line)
+
+            switch (message.type) {
+              case 'phase':
+                setStreamProgress((prev) => ({
+                  ...prev,
+                  phase: message.phase,
+                  message: message.message,
+                  total: message.total,
+                }))
+                break
+
+              case 'validation_progress':
+                setStreamProgress((prev) => ({
+                  ...prev,
+                  phase: 'validation',
+                  current: message.current,
+                  total: message.total,
+                  message: `Validando caso ${message.current} de ${message.total}`,
+                }))
+                break
+
+              case 'insertion_complete':
+                setStreamProgress((prev) => ({
+                  ...prev,
+                  phase: 'insertion',
+                  message: `${message.inserted} casos insertados exitosamente`,
+                }))
+                break
+
+              case 'matching_progress':
+                setStreamProgress((prev) => ({
+                  ...prev,
+                  phase: 'matching',
+                  current: message.current,
+                  total: message.total,
+                  message: `Buscando ${message.caseNumber} en ${message.juzgado}`,
+                  matchStats: {
+                    totalMatches:
+                      (prev.matchStats?.totalMatches || 0) + message.matchesFound,
+                    totalAlerts:
+                      (prev.matchStats?.totalAlerts || 0) + message.alertsCreated,
+                  },
+                }))
+                break
+
+              case 'complete':
+                setResult(message.result)
+                setImporting(false)
+
+                // Refresh page after successful import
+                if (message.result.success > 0) {
+                  setTimeout(() => {
+                    router.refresh()
+                  }, 2000)
+                }
+                break
+
+              case 'error':
+                setError(message.error)
+                setImporting(false)
+                break
+            }
+          } catch (parseError) {
+            console.error('Error parsing stream message:', parseError)
+          }
+        }
       }
     } catch (err) {
       console.error('Import error:', err)
       setError(err instanceof Error ? err.message : 'Error inesperado al importar')
-    } finally {
       setImporting(false)
     }
   }
@@ -198,9 +296,37 @@ export function ImportCasesDialog({ open, onOpenChange }: ImportCasesDialogProps
             <div className="space-y-3">
               <div className="flex items-center gap-2">
                 <Loader2 className="h-4 w-4 animate-spin" />
-                <span className="text-sm">Importando expedientes...</span>
+                <span className="text-sm">
+                  {streamProgress.message || 'Iniciando importación...'}
+                </span>
               </div>
-              <Progress value={50} className="w-full" />
+
+              {streamProgress.phase && streamProgress.total > 0 && (
+                <div className="space-y-2">
+                  <Progress
+                    value={(streamProgress.current / streamProgress.total) * 100}
+                    className="w-full"
+                  />
+                  <div className="flex justify-between text-xs text-muted-foreground">
+                    <span>
+                      {streamProgress.phase === 'validation' && 'Validando casos'}
+                      {streamProgress.phase === 'insertion' && 'Insertando casos'}
+                      {streamProgress.phase === 'matching' &&
+                        'Buscando coincidencias históricas'}
+                    </span>
+                    <span>
+                      {streamProgress.current} / {streamProgress.total}
+                    </span>
+                  </div>
+
+                  {streamProgress.phase === 'matching' && streamProgress.matchStats && (
+                    <div className="text-xs text-green-600">
+                      ✓ {streamProgress.matchStats.totalMatches} coincidencias
+                      encontradas
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           )}
 
@@ -209,19 +335,19 @@ export function ImportCasesDialog({ open, onOpenChange }: ImportCasesDialogProps
             <div className="space-y-4">
               <div className="grid grid-cols-3 gap-4">
                 <div className="border rounded-lg p-4 text-center">
+                  <FileJson className="h-8 w-8 mx-auto mb-2 text-blue-500" />
+                  <p className="text-2xl font-bold">{result.total}</p>
+                  <p className="text-xs text-muted-foreground">Total</p>
+                </div>
+                <div className="border rounded-lg p-4 text-center">
                   <CheckCircle className="h-8 w-8 mx-auto mb-2 text-green-500" />
-                  <p className="text-2xl font-bold">{result.success}</p>
-                  <p className="text-xs text-muted-foreground">Importados</p>
+                  <p className="text-2xl font-bold">{result.success + result.skipped}</p>
+                  <p className="text-xs text-muted-foreground">Exitosos</p>
                 </div>
                 <div className="border rounded-lg p-4 text-center">
                   <XCircle className="h-8 w-8 mx-auto mb-2 text-red-500" />
                   <p className="text-2xl font-bold">{result.failed}</p>
                   <p className="text-xs text-muted-foreground">Fallidos</p>
-                </div>
-                <div className="border rounded-lg p-4 text-center">
-                  <AlertCircle className="h-8 w-8 mx-auto mb-2 text-yellow-500" />
-                  <p className="text-2xl font-bold">{result.skipped}</p>
-                  <p className="text-xs text-muted-foreground">Omitidos</p>
                 </div>
               </div>
 
@@ -241,14 +367,17 @@ export function ImportCasesDialog({ open, onOpenChange }: ImportCasesDialogProps
                 </Alert>
               )}
 
-              {result.success > 0 && (
-                <Alert>
-                  <CheckCircle className="h-4 w-4 text-green-500" />
-                  <AlertDescription>
-                    Se importaron exitosamente {result.success} caso{result.success > 1 ? 's' : ''}
-                  </AlertDescription>
-                </Alert>
-              )}
+              {result.totalMatches !== undefined &&
+                result.totalMatches > 0 && (
+                  <Alert className="border-green-200 bg-green-50">
+                    <CheckCircle className="h-4 w-4 text-green-600" />
+                    <AlertDescription className="text-green-800">
+                      Se encontraron <strong>{result.totalMatches}</strong>{' '}
+                      coincidencias en el archivo histórico de 20 años (
+                      {result.totalAlerts} alertas creadas)
+                    </AlertDescription>
+                  </Alert>
+                )}
             </div>
           )}
         </div>

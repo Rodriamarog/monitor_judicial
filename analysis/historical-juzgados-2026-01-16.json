@@ -1,0 +1,156 @@
+{
+  "summary": {
+    "total_unique": 18,
+    "in_master": 1,
+    "new_found": 17,
+    "possible_aliases": 0
+  },
+  "analysis": [
+    {
+      "juzgado": "JUZGADO CUARTO CIVIL MEXICALI",
+      "first_seen": "2006-01-09",
+      "last_seen": "2006-01-10",
+      "total_appearances": 75,
+      "in_master_table": false
+    },
+    {
+      "juzgado": "JUZGADO PRIMERO CIVIL MEXICALI",
+      "first_seen": "2006-01-09",
+      "last_seen": "2006-01-09",
+      "total_appearances": 49,
+      "in_master_table": false
+    },
+    {
+      "juzgado": "JUZGADO PRIMERO DE LO FAMILIAR ENSENADA",
+      "first_seen": "2006-01-09",
+      "last_seen": "2006-01-09",
+      "total_appearances": 48,
+      "in_master_table": false
+    },
+    {
+      "juzgado": "JUZGADO PRIMERO DE LO FAMILIAR TIJUANA",
+      "first_seen": "2006-01-09",
+      "last_seen": "2006-01-09",
+      "total_appearances": 98,
+      "in_master_table": false
+    },
+    {
+      "juzgado": "JUZGADO PRIMERO FAMILIAR MEXICALI B.C., A 15 Diciembre 2005",
+      "first_seen": "2006-01-09",
+      "last_seen": "2006-01-09",
+      "total_appearances": 64,
+      "in_master_table": false
+    },
+    {
+      "juzgado": "JUZGADO QUINTO CIVIL MEXICALI",
+      "first_seen": "2006-01-09",
+      "last_seen": "2006-01-09",
+      "total_appearances": 55,
+      "in_master_table": false
+    },
+    {
+      "juzgado": "JUZGADO SEGUNDO CIVIL ENSENADA",
+      "first_seen": "2006-01-09",
+      "last_seen": "2006-01-09",
+      "total_appearances": 32,
+      "in_master_table": false
+    },
+    {
+      "juzgado": "JUZGADO SEGUNDO CIVIL MEXICALI",
+      "first_seen": "2006-01-09",
+      "last_seen": "2006-01-09",
+      "total_appearances": 66,
+      "in_master_table": false
+    },
+    {
+      "juzgado": "JUZGADO SEGUNDO DE PAZ CIVIL, DE MEXICALI",
+      "first_seen": "2006-01-09",
+      "last_seen": "2006-01-09",
+      "total_appearances": 10,
+      "in_master_table": false
+    },
+    {
+      "juzgado": "JUZGADO SEGUNDO FAMILIAR MEXICALI B.C., A 15 Diciembre 2005",
+      "first_seen": "2006-01-09",
+      "last_seen": "2006-01-09",
+      "total_appearances": 37,
+      "in_master_table": false
+    },
+    {
+      "juzgado": "JUZGADO SEGUNDO FAMILIAR TIJUANA B.C., A 15 Diciembre 2005",
+      "first_seen": "2006-01-09",
+      "last_seen": "2006-01-09",
+      "total_appearances": 50,
+      "in_master_table": false
+    },
+    {
+      "juzgado": "JUZGADO TERCERO CIVIL ENSENADA",
+      "first_seen": "2006-01-09",
+      "last_seen": "2006-01-09",
+      "total_appearances": 14,
+      "in_master_table": false
+    },
+    {
+      "juzgado": "JUZGADO TERCERO CIVIL MEXICALI",
+      "first_seen": "2006-01-09",
+      "last_seen": "2006-01-09",
+      "total_appearances": 69,
+      "in_master_table": false
+    },
+    {
+      "juzgado": "JUZGADO TERCERO DE LO FAMILIAR MEXICALI",
+      "first_seen": "2006-01-09",
+      "last_seen": "2006-01-09",
+      "total_appearances": 40,
+      "in_master_table": false
+    },
+    {
+      "juzgado": "JUZGADO TERCERO DE LO FAMILIAR TIJUANA",
+      "first_seen": "2006-01-09",
+      "last_seen": "2006-01-09",
+      "total_appearances": 23,
+      "in_master_table": false
+    },
+    {
+      "juzgado": "H. TRIBUNAL SUPERIOR DE JUSTICIA DEL ESTADO DE BAJA CALIFORNIA",
+      "first_seen": "2006-01-10",
+      "last_seen": "2006-01-10",
+      "total_appearances": 151,
+      "in_master_table": true
+    },
+    {
+      "juzgado": "JUZGADO MIXTO DE PAZ, ENSENADA",
+      "first_seen": "2006-01-10",
+      "last_seen": "2006-01-10",
+      "total_appearances": 8,
+      "in_master_table": false
+    },
+    {
+      "juzgado": "JUZGADO PRIMERO CIVIL ENSENADA",
+      "first_seen": "2006-01-10",
+      "last_seen": "2006-01-10",
+      "total_appearances": 111,
+      "in_master_table": false
+    }
+  ],
+  "newJuzgados": [
+    "JUZGADO CUARTO CIVIL MEXICALI",
+    "JUZGADO PRIMERO CIVIL MEXICALI",
+    "JUZGADO PRIMERO DE LO FAMILIAR ENSENADA",
+    "JUZGADO PRIMERO DE LO FAMILIAR TIJUANA",
+    "JUZGADO PRIMERO FAMILIAR MEXICALI B.C., A 15 Diciembre 2005",
+    "JUZGADO QUINTO CIVIL MEXICALI",
+    "JUZGADO SEGUNDO CIVIL ENSENADA",
+    "JUZGADO SEGUNDO CIVIL MEXICALI",
+    "JUZGADO SEGUNDO DE PAZ CIVIL, DE MEXICALI",
+    "JUZGADO SEGUNDO FAMILIAR MEXICALI B.C., A 15 Diciembre 2005",
+    "JUZGADO SEGUNDO FAMILIAR TIJUANA B.C., A 15 Diciembre 2005",
+    "JUZGADO TERCERO CIVIL ENSENADA",
+    "JUZGADO TERCERO CIVIL MEXICALI",
+    "JUZGADO TERCERO DE LO FAMILIAR MEXICALI",
+    "JUZGADO TERCERO DE LO FAMILIAR TIJUANA",
+    "JUZGADO MIXTO DE PAZ, ENSENADA",
+    "JUZGADO PRIMERO CIVIL ENSENADA"
+  ],
+  "possibleAliases": []
+}

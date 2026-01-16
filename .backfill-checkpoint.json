@@ -1,8 +1,109 @@
 {
-  "lastProcessedDate": "2014-06-24",
-  "totalBulletinsProcessed": 4126,
-  "totalEntriesInserted": 6207779,
+  "lastProcessedDate": "2005-12-31",
+  "totalBulletinsProcessed": 7215,
+  "totalEntriesInserted": 8491959,
   "startedAt": "2026-01-15T01:33:43.686Z",
-  "lastUpdatedAt": "2026-01-15T07:56:43.034Z",
-  "errors": []
+  "lastUpdatedAt": "2026-01-15T12:12:09.250Z",
+  "errors": [
+    {
+      "date": "2006-12-04",
+      "source": "ensenada",
+      "error": "[object Object]"
+    },
+    {
+      "date": "2006-11-30",
+      "source": "tijuana",
+      "error": "[object Object]"
+    },
+    {
+      "date": "2006-11-21",
+      "source": "segunda_instancia",
+      "error": "[object Object]"
+    },
+    {
+      "date": "2006-11-13",
+      "source": "tijuana",
+      "error": "[object Object]"
+    },
+    {
+      "date": "2006-11-11",
+      "source": "tecate",
+      "error": "[object Object]"
+    },
+    {
+      "date": "2006-11-10",
+      "source": "juzgados_mixtos",
+      "error": "[object Object]"
+    },
+    {
+      "date": "2006-11-06",
+      "source": "tijuana",
+      "error": "[object Object]"
+    },
+    {
+      "date": "2006-10-30",
+      "source": "juzgados_mixtos",
+      "error": "[object Object]"
+    },
+    {
+      "date": "2006-10-27",
+      "source": "tecate",
+      "error": "[object Object]"
+    },
+    {
+      "date": "2006-10-26",
+      "source": "segunda_instancia",
+      "error": "[object Object]"
+    },
+    {
+      "date": "2006-10-23",
+      "source": "segunda_instancia",
+      "error": "[object Object]"
+    },
+    {
+      "date": "2006-10-04",
+      "source": "segunda_instancia",
+      "error": "[object Object]"
+    },
+    {
+      "date": "2006-09-26",
+      "source": "ensenada",
+      "error": "[object Object]"
+    },
+    {
+      "date": "2006-09-25",
+      "source": "mexicali",
+      "error": "[object Object]"
+    },
+    {
+      "date": "2006-09-22",
+      "source": "mexicali",
+      "error": "[object Object]"
+    },
+    {
+      "date": "2006-09-17",
+      "source": "mexicali",
+      "error": "[object Object]"
+    },
+    {
+      "date": "2006-08-30",
+      "source": "mexicali",
+      "error": "[object Object]"
+    },
+    {
+      "date": "2006-08-30",
+      "source": "segunda_instancia",
+      "error": "[object Object]"
+    },
+    {
+      "date": "2006-08-24",
+      "source": "mexicali",
+      "error": "[object Object]"
+    },
+    {
+      "date": "2006-08-16",
+      "source": "juzgados_mixtos",
+      "error": "[object Object]"
+    }
+  ]
 }

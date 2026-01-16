@@ -575,3 +575,189 @@ export async function checkHistoricalMatches(
     })),
   };
 }
+
+/**
+ * Check historical bulletins for multiple cases in batch
+ * Used for bulk imports to show progress and search all history
+ */
+export async function checkHistoricalMatchesBatch(
+  cases: Array<{
+    userId: string;
+    monitoredCaseId: string;
+    caseNumber: string;
+    juzgado: string;
+  }>,
+  dateRange: 'all' | '90days',
+  supabaseUrl: string,
+  supabaseKey: string,
+  onProgress?: (progress: {
+    phase: 'searching' | 'creating_alerts';
+    caseIndex: number;
+    totalCases: number;
+    caseNumber: string;
+    juzgado: string;
+    matchesFound: number;
+    alertsCreated: number;
+  }) => void
+): Promise<{
+  totalCases: number;
+  totalMatchesFound: number;
+  totalAlertsCreated: number;
+  details: Array<{
+    caseNumber: string;
+    juzgado: string;
+    matchesFound: number;
+    alertsCreated: number;
+  }>;
+}> {
+  const supabase = createClient(supabaseUrl, supabaseKey);
+
+  // Calculate date range based on parameter
+  let startDate: string;
+  if (dateRange === 'all') {
+    startDate = '2005-01-01'; // Start of 20-year archive
+  } else {
+    const ninetyDaysAgo = new Date();
+    ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
+    startDate = ninetyDaysAgo.toISOString().split('T')[0];
+  }
+
+  console.log(`Batch checking ${cases.length} cases since ${startDate}`);
+
+  const results: Array<{
+    caseNumber: string;
+    juzgado: string;
+    matchesFound: number;
+    alertsCreated: number;
+  }> = [];
+
+  let totalMatchesFound = 0;
+  let totalAlertsCreated = 0;
+
+  // Process cases sequentially for accurate progress tracking
+  for (let i = 0; i < cases.length; i++) {
+    const caseData = cases[i];
+
+    try {
+      // Report searching phase
+      if (onProgress) {
+        onProgress({
+          phase: 'searching',
+          caseIndex: i,
+          totalCases: cases.length,
+          caseNumber: caseData.caseNumber,
+          juzgado: caseData.juzgado,
+          matchesFound: 0,
+          alertsCreated: 0,
+        });
+      }
+
+      // Search for matching bulletin entries
+      const { data: bulletinEntries, error: searchError } = await supabase
+        .from('bulletin_entries')
+        .select('id, bulletin_date, raw_text, bulletin_url, source')
+        .eq('case_number', caseData.caseNumber)
+        .eq('juzgado', caseData.juzgado)
+        .gte('bulletin_date', startDate)
+        .order('bulletin_date', { ascending: false });
+
+      if (searchError) {
+        console.error(`Error searching for ${caseData.caseNumber}:`, searchError);
+        results.push({
+          caseNumber: caseData.caseNumber,
+          juzgado: caseData.juzgado,
+          matchesFound: 0,
+          alertsCreated: 0,
+        });
+        continue;
+      }
+
+      const matchesFound = bulletinEntries?.length || 0;
+      totalMatchesFound += matchesFound;
+
+      // Report creating alerts phase
+      if (onProgress) {
+        onProgress({
+          phase: 'creating_alerts',
+          caseIndex: i,
+          totalCases: cases.length,
+          caseNumber: caseData.caseNumber,
+          juzgado: caseData.juzgado,
+          matchesFound,
+          alertsCreated: 0,
+        });
+      }
+
+      // Create alerts if matches found
+      let alertsCreated = 0;
+      if (bulletinEntries && bulletinEntries.length > 0) {
+        const alertsToCreate = bulletinEntries.map((entry) => ({
+          user_id: caseData.userId,
+          monitored_case_id: caseData.monitoredCaseId,
+          bulletin_entry_id: entry.id,
+          matched_on: 'case_number',
+          matched_value: caseData.caseNumber,
+          is_historical: true, // Mark as historical to prevent notifications
+        }));
+
+        const { data: createdAlerts, error: alertsError } = await supabase
+          .from('alerts')
+          .upsert(alertsToCreate, {
+            onConflict: 'user_id,bulletin_entry_id,monitored_case_id',
+            ignoreDuplicates: true,
+          })
+          .select();
+
+        if (alertsError) {
+          console.error(`Error creating alerts for ${caseData.caseNumber}:`, alertsError);
+        } else {
+          alertsCreated = createdAlerts?.length || 0;
+          totalAlertsCreated += alertsCreated;
+        }
+      }
+
+      results.push({
+        caseNumber: caseData.caseNumber,
+        juzgado: caseData.juzgado,
+        matchesFound,
+        alertsCreated,
+      });
+
+      // Final progress update for this case
+      if (onProgress) {
+        onProgress({
+          phase: 'creating_alerts',
+          caseIndex: i,
+          totalCases: cases.length,
+          caseNumber: caseData.caseNumber,
+          juzgado: caseData.juzgado,
+          matchesFound,
+          alertsCreated,
+        });
+      }
+
+      console.log(
+        `Case ${i + 1}/${cases.length}: ${caseData.caseNumber} - ${matchesFound} matches, ${alertsCreated} alerts`
+      );
+    } catch (error) {
+      console.error(`Error processing case ${caseData.caseNumber}:`, error);
+      results.push({
+        caseNumber: caseData.caseNumber,
+        juzgado: caseData.juzgado,
+        matchesFound: 0,
+        alertsCreated: 0,
+      });
+    }
+  }
+
+  console.log(
+    `Batch processing complete: ${totalMatchesFound} total matches, ${totalAlertsCreated} total alerts`
+  );
+
+  return {
+    totalCases: cases.length,
+    totalMatchesFound,
+    totalAlertsCreated,
+    details: results,
+  };
+}
