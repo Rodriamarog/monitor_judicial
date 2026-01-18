@@ -154,15 +154,15 @@ export function RepuveClient({ userId }: RepuveClientProps) {
                                 <div className="flex gap-4">
                                     <div className="flex items-center space-x-2">
                                         <RadioGroupItem value="vin" id="vin" />
-                                        <Label htmlFor="vin" className="font-normal">VIN</Label>
+                                        <Label htmlFor="vin" className="font-normal cursor-pointer">VIN</Label>
                                     </div>
                                     <div className="flex items-center space-x-2">
                                         <RadioGroupItem value="nic" id="nic" />
-                                        <Label htmlFor="nic" className="font-normal">NIC</Label>
+                                        <Label htmlFor="nic" className="font-normal cursor-pointer">NIC</Label>
                                     </div>
                                     <div className="flex items-center space-x-2">
                                         <RadioGroupItem value="placa" id="placa" />
-                                        <Label htmlFor="placa" className="font-normal">Placa</Label>
+                                        <Label htmlFor="placa" className="font-normal cursor-pointer">Placa</Label>
                                     </div>
                                 </div>
                             </RadioGroup>
@@ -412,13 +412,13 @@ export function RepuveClient({ userId }: RepuveClientProps) {
 
             {/* PDF Preview Modal */}
             <Dialog open={showPdfPreview} onOpenChange={setShowPdfPreview}>
-                <DialogContent className="max-w-5xl h-[90vh]">
-                    <DialogHeader>
+                <DialogContent className="max-w-5xl h-[90vh] flex flex-col p-0">
+                    <DialogHeader className="px-6 pt-6 pb-2">
                         <DialogTitle>Preview - Consulta REPUVE</DialogTitle>
                     </DialogHeader>
-                    <div className="flex-1 h-full">
+                    <div className="flex-1 px-6 pb-6">
                         {result && searchParams && (
-                            <PDFViewer width="100%" height="100%">
+                            <PDFViewer width="100%" height="100%" style={{ border: 'none' }}>
                                 <RepuvePDFDocument
                                     searchParams={searchParams}
                                     result={result}

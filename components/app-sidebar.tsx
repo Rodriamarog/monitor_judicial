@@ -102,7 +102,7 @@ export function AppSidebar({ email, tier, hasStripeCustomer }: AppSidebarProps) 
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-6">
+      <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-6 sidebar-scroll">
         {navigation.map((section, sectionIndex) => (
           <div key={sectionIndex}>
             {!isCollapsed && (

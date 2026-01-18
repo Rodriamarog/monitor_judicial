@@ -282,7 +282,6 @@ export function ReportHistoryClient({ userId }: ReportHistoryClientProps) {
                                     <TableHead>Fecha</TableHead>
                                     <TableHead>Parámetro de Búsqueda</TableHead>
                                     <TableHead>Info Adicional</TableHead>
-                                    <TableHead>Resultados</TableHead>
                                     <TableHead className="text-right">Acciones</TableHead>
                                 </TableRow>
                             </TableHeader>
@@ -294,7 +293,7 @@ export function ReportHistoryClient({ userId }: ReportHistoryClientProps) {
                                     return (
                                         <TableRow key={report.id}>
                                             <TableCell>
-                                                <Badge className={getReportTypeBadgeColor(report.report_type)}>
+                                                <Badge className={`${getReportTypeBadgeColor(report.report_type)} pointer-events-none`}>
                                                     <Icon className="h-3 w-3 mr-1" />
                                                     {getReportTypeLabel(report.report_type)}
                                                 </Badge>
@@ -313,13 +312,6 @@ export function ReportHistoryClient({ userId }: ReportHistoryClientProps) {
                                             </TableCell>
                                             <TableCell className="text-sm">
                                                 {additionalInfo || '-'}
-                                            </TableCell>
-                                            <TableCell>
-                                                <span className="inline-flex items-center rounded-full bg-blue-50 px-2 py-1 text-xs font-medium text-blue-700">
-                                                    {report.results_count === 1
-                                                        ? '1 resultado'
-                                                        : `${report.results_count} resultados`}
-                                                </span>
                                             </TableCell>
                                             <TableCell className="text-right">
                                                 <div className="flex justify-end gap-2">

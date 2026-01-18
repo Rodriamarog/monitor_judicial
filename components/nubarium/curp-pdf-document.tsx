@@ -243,7 +243,7 @@ export const CurpPDFDocument: React.FC<CurpPDFDocumentProps> = ({
                     </View>
 
                     {/* Status Box */}
-                    <View style={[styles.statusBox, isSuccess && styles.statusBoxSuccess]}>
+                    <View style={[styles.statusBox, ...(isSuccess ? [styles.statusBoxSuccess] : [])]}>
                         <Text style={styles.statusTitle}>
                             {isSuccess ? '✓ Consulta Exitosa' : '✗ Error en Consulta'}
                         </Text>

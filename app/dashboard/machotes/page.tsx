@@ -2,7 +2,8 @@
 
 import Link from 'next/link'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { FileText, ArrowRight } from 'lucide-react'
+import { FileText, ArrowRight, Mail } from 'lucide-react'
+import { Button } from '@/components/ui/button'
 
 const templates = [
     {
@@ -63,6 +64,31 @@ export default function MachotesPage() {
                         </Card>
                     </Link>
                 ))}
+            </div>
+
+            {/* Custom Machote Request Card - Separate Row */}
+            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+                <Card className="border-dashed border-2 border-primary/50 bg-primary/5 hover:bg-primary/10 transition-colors">
+                    <CardHeader>
+                        <div className="flex items-center justify-between">
+                            <Mail className="h-8 w-8 text-primary mb-2" />
+                        </div>
+                        <CardTitle className="text-primary">¿Necesitas un Machote Personalizado?</CardTitle>
+                        <CardDescription className="space-y-3">
+                            <p>
+                                Solicita una cotización para que nuestro equipo desarrolle un machote personalizado y privado específico para tu cuenta.
+                            </p>
+                            <Button
+                                variant="outline"
+                                className="w-full border-primary text-primary hover:bg-primary hover:text-primary-foreground"
+                                onClick={() => window.location.href = 'mailto:monitorjudicialmx@gmail.com?subject=Solicitud%20de%20Machote%20Personalizado'}
+                            >
+                                <Mail className="mr-2 h-4 w-4" />
+                                Solicitar Cotización
+                            </Button>
+                        </CardDescription>
+                    </CardHeader>
+                </Card>
             </div>
         </div>
     )

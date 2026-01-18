@@ -8,7 +8,7 @@ import { sendCollaboratorInvitation } from '@/lib/email';
  */
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const supabase = await createClient();
 
@@ -18,7 +18,7 @@ export async function POST(
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const invitationId = params.id;
+  const { id: invitationId } = await params;
 
   // Fetch invitation
   const { data: invitation, error: fetchError } = await supabase

@@ -247,3 +247,56 @@
 .animation-delay-400 {
   animation-delay: 0.4s;
 }
+
+/* Custom scrollbar for Chrome/WebKit browsers - Applied globally */
+* {
+  scrollbar-width: thin; /* For Firefox */
+  scrollbar-color: transparent transparent; /* For Firefox - hidden by default */
+}
+
+/* WebKit browsers (Chrome, Safari, Edge) */
+*::-webkit-scrollbar {
+  width: 3px;
+  height: 3px; /* For horizontal scrollbars */
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+*::-webkit-scrollbar-thumb {
+  background: transparent;
+  border-radius: 2px;
+  transition: background-color 0.2s ease;
+}
+
+/* Show scrollbar on hover - light mode (lighter, less contrast) */
+*:hover {
+  scrollbar-color: hsl(var(--border) / 0.4) transparent; /* For Firefox */
+}
+
+*:hover::-webkit-scrollbar-thumb {
+  background: hsl(var(--border) / 0.3);
+}
+
+*:hover::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--border) / 0.5);
+}
+
+/* Show scrollbar on hover - dark mode (darker, less contrast) */
+.dark *:hover {
+  scrollbar-color: hsl(var(--border) / 0.5) transparent; /* For Firefox */
+}
+
+.dark *:hover::-webkit-scrollbar-thumb {
+  background: hsl(var(--foreground) / 0.15);
+}
+
+.dark *:hover::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--foreground) / 0.25);
+}
+
+/* Keep sidebar-scroll class for backwards compatibility */
+.sidebar-scroll {
+  /* Inherits from global styles above */
+}
