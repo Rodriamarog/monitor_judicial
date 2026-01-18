@@ -22,6 +22,7 @@ import {
   UserSearch,
   Search,
   ScanSearch,
+  LayoutDashboard,
 } from "lucide-react"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { SignOutButton } from "@/components/sign-out-button"
@@ -49,6 +50,12 @@ interface AppSidebarProps {
 }
 
 const navigation: NavSection[] = [
+  {
+    title: "",
+    items: [
+      { href: '/dashboard/overview', label: 'Dashboard', icon: LayoutDashboard },
+    ],
+  },
   {
     title: "MONITOREO E INVESTIGACIÓN",
     items: [
@@ -102,11 +109,11 @@ export function AppSidebar({ email, tier, hasStripeCustomer }: AppSidebarProps) 
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-6 sidebar-scroll">
+      <nav className="flex-1 overflow-y-auto px-3 py-4 sidebar-scroll">
         {navigation.map((section, sectionIndex) => (
-          <div key={sectionIndex}>
-            {!isCollapsed && (
-              <div className="px-3 py-2 text-xs font-medium uppercase tracking-wider text-sidebar-muted">
+          <div key={sectionIndex} className={cn(sectionIndex > 0 && "mt-4")}>
+            {!isCollapsed && section.title && (
+              <div className="px-3 py-1 text-xs font-medium uppercase tracking-wider text-sidebar-muted">
                 {section.title}
               </div>
             )}

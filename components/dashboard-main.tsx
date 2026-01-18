@@ -8,13 +8,15 @@ export function DashboardMain({ children }: { children: React.ReactNode }) {
     const isMachotes = pathname?.startsWith('/dashboard/machotes')
     const isAIAssistant = pathname === '/dashboard/ai-assistant'
     const isHelp = pathname === '/dashboard/help'
+    const isInvestigacion = pathname === '/dashboard/investigacion'
+    const isOverview = pathname === '/dashboard/overview'
 
     return (
         <main className="flex-1 overflow-hidden">
             <div className={cn(
                 "h-full",
                 !isAIAssistant && "p-8 pt-16 md:pt-8",
-                (isMachotes || isHelp) ? "overflow-y-auto" : "overflow-hidden"
+                (isMachotes || isHelp || isInvestigacion || isOverview) ? "overflow-y-auto" : "overflow-hidden"
             )}>
                 {children}
             </div>

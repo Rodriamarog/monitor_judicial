@@ -284,7 +284,7 @@ export function CasesTable({ cases, onDelete, onUpdate }: CasesTableProps) {
                 </Button>
               </TableHead>
               <TableHead className="min-w-0">Nombre</TableHead>
-              <TableHead className="w-32">Número de Caso</TableHead>
+              <TableHead className="w-36">Expediente</TableHead>
               <TableHead className="w-32">Teléfono</TableHead>
               <TableHead className="min-w-0">Juzgado</TableHead>
               <TableHead className="w-32">

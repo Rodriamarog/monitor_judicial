@@ -1,177 +1,209 @@
 'use client'
 
 import Link from 'next/link'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { ArrowRight, History, Search, IdCard, Car, Receipt, GraduationCap, MapPin, AlertTriangle, UserCheck, UserPlus, FileText, Building, DollarSign, Briefcase, Users, Banknote, Navigation, Map } from 'lucide-react'
+import { Card, CardHeader, CardTitle } from '@/components/ui/card'
+import { ArrowRight, History, Search, Car, Receipt, GraduationCap, AlertTriangle, UserCheck, UserPlus, FileText, Building, Briefcase, Users, Banknote, Navigation, Map } from 'lucide-react'
 
-const investigacionTools = [
+interface Tool {
+    id: string
+    title: string
+    icon: React.ElementType
+    href: string
+}
+
+interface ToolSection {
+    title: string
+    tools: Tool[]
+}
+
+const investigacionSections: ToolSection[] = [
     {
-        id: 'antecedentes-legales',
         title: 'Antecedentes Legales',
-        description: 'Busca nombres en todos los boletines judiciales del estado.',
-        icon: Search,
-        href: '/dashboard/investigacion/busquedas-estatales',
-    },
-    // Nubarium Services
-    {
-        id: 'curp-validate',
-        title: 'Validar CURP',
-        description: 'Valida CURP contra el registro nacional RENAPO.',
-        icon: UserCheck,
-        href: '/dashboard/investigacion/nubarium/curp/validate',
+        tools: [
+            {
+                id: 'antecedentes-legales',
+                title: 'Búsqueda Estatal',
+                icon: Search,
+                href: '/dashboard/investigacion/busquedas-estatales',
+            },
+        ],
     },
     {
-        id: 'curp-generate',
-        title: 'Generar CURP',
-        description: 'Genera CURP a partir de datos personales.',
-        icon: UserPlus,
-        href: '/dashboard/investigacion/nubarium/curp/generate',
+        title: 'CURP',
+        tools: [
+            {
+                id: 'curp-validate',
+                title: 'Validar CURP',
+                icon: UserCheck,
+                href: '/dashboard/investigacion/nubarium/curp/validate',
+            },
+            {
+                id: 'curp-generate',
+                title: 'Generar CURP',
+                icon: UserPlus,
+                href: '/dashboard/investigacion/nubarium/curp/generate',
+            },
+        ],
     },
     {
-        id: 'repuve',
-        title: 'REPUVE - Vehículos',
-        description: 'Consulta registro vehicular por VIN, NIC o placas.',
-        icon: Car,
-        href: '/dashboard/investigacion/nubarium/repuve',
+        title: 'SAT',
+        tools: [
+            {
+                id: 'sat-rfc',
+                title: 'Validar RFC',
+                icon: Receipt,
+                href: '/dashboard/investigacion/nubarium/sat/rfc',
+            },
+            {
+                id: 'sat-get-name',
+                title: 'Obtener Nombre de RFC',
+                icon: Receipt,
+                href: '/dashboard/investigacion/nubarium/sat/get-name',
+            },
+            {
+                id: 'sat-csf-cif',
+                title: 'Consultar CSF/CIF',
+                icon: FileText,
+                href: '/dashboard/investigacion/nubarium/sat/csf-cif',
+            },
+            {
+                id: 'sat-cfdi',
+                title: 'Validar CFDI',
+                icon: Receipt,
+                href: '/dashboard/investigacion/nubarium/sat/cfdi',
+            },
+            {
+                id: 'sat-validate-info',
+                title: 'Validar RFC vs Datos',
+                icon: Receipt,
+                href: '/dashboard/investigacion/nubarium/sat/validate-info',
+            },
+            {
+                id: 'sat-validate-serial',
+                title: 'Validar Serial FIEL/CSD',
+                icon: FileText,
+                href: '/dashboard/investigacion/nubarium/sat/validate-serial',
+            },
+        ],
     },
     {
-        id: 'sep-cedula',
-        title: 'Cédula Profesional',
-        description: 'Valida cédulas profesionales en el registro SEP.',
-        icon: GraduationCap,
-        href: '/dashboard/investigacion/nubarium/sep',
+        title: 'Listas Negras',
+        tools: [
+            {
+                id: 'sat-69',
+                title: 'Lista SAT 69',
+                icon: AlertTriangle,
+                href: '/dashboard/investigacion/nubarium/sat/69',
+            },
+            {
+                id: 'sat-69b',
+                title: 'Lista SAT 69-B',
+                icon: AlertTriangle,
+                href: '/dashboard/investigacion/nubarium/sat/69b',
+            },
+            {
+                id: 'peps',
+                title: 'PEPs y Listas Internacionales',
+                icon: Users,
+                href: '/dashboard/investigacion/nubarium/lists/peps',
+            },
+        ],
     },
     {
-        id: 'geo-insights',
+        title: 'Vehículos',
+        tools: [
+            {
+                id: 'repuve',
+                title: 'REPUVE',
+                icon: Car,
+                href: '/dashboard/investigacion/nubarium/repuve',
+            },
+        ],
+    },
+    {
+        title: 'Educación',
+        tools: [
+            {
+                id: 'sep-cedula',
+                title: 'Cédula Profesional',
+                icon: GraduationCap,
+                href: '/dashboard/investigacion/nubarium/sep',
+            },
+        ],
+    },
+    {
+        title: 'Seguridad Social',
+        tools: [
+            {
+                id: 'imss-nss',
+                title: 'IMSS - Obtener NSS',
+                icon: Briefcase,
+                href: '/dashboard/investigacion/nubarium/imss/nss',
+            },
+            {
+                id: 'imss-employment',
+                title: 'IMSS - Historial Laboral',
+                icon: Briefcase,
+                href: '/dashboard/investigacion/nubarium/imss/employment',
+            },
+            {
+                id: 'issste-employment',
+                title: 'ISSSTE - Historial Laboral',
+                icon: Building,
+                href: '/dashboard/investigacion/nubarium/issste/employment',
+            },
+        ],
+    },
+    {
         title: 'Inteligencia Geográfica',
-        description: 'Análisis de marginalización y geocodificación de direcciones.',
-        icon: MapPin,
-        href: '/dashboard/investigacion/nubarium/geo/insights',
+        tools: [
+            {
+                id: 'geo-position',
+                title: 'Desde Coordenadas',
+                icon: Navigation,
+                href: '/dashboard/investigacion/nubarium/geo/analyze-position',
+            },
+            {
+                id: 'geo-address',
+                title: 'Desde Dirección',
+                icon: Map,
+                href: '/dashboard/investigacion/nubarium/geo/analyze-address',
+            },
+        ],
     },
     {
-        id: 'sat-rfc',
-        title: 'Validar RFC - SAT',
-        description: 'Valida RFC contra el Servicio de Administración Tributaria.',
-        icon: Receipt,
-        href: '/dashboard/investigacion/nubarium/sat/rfc',
+        title: 'Documentos y Banca',
+        tools: [
+            {
+                id: 'cfe',
+                title: 'Validar CFE',
+                icon: FileText,
+                href: '/dashboard/investigacion/nubarium/documents/cfe',
+            },
+            {
+                id: 'cep',
+                title: 'Validar CEP (SPEI)',
+                icon: Banknote,
+                href: '/dashboard/investigacion/nubarium/banking/cep',
+            },
+        ],
     },
     {
-        id: 'sat-get-name',
-        title: 'SAT - Obtener Nombre de RFC',
-        description: 'Obtiene razón social o nombre a partir de RFC.',
-        icon: Receipt,
-        href: '/dashboard/investigacion/nubarium/sat/get-name',
-    },
-    {
-        id: 'sat-csf-cif',
-        title: 'SAT - Consultar CSF/CIF',
-        description: 'Obtiene datos a partir de CSF o CIF y RFC.',
-        icon: FileText,
-        href: '/dashboard/investigacion/nubarium/sat/csf-cif',
-    },
-    {
-        id: 'sat-cfdi',
-        title: 'SAT - Validar CFDI',
-        description: 'Valida factura electrónica CFDI.',
-        icon: Receipt,
-        href: '/dashboard/investigacion/nubarium/sat/cfdi',
-    },
-    {
-        id: 'sat-validate-info',
-        title: 'SAT - Validar RFC vs Datos',
-        description: 'Valida RFC contra nombre y código postal.',
-        icon: Receipt,
-        href: '/dashboard/investigacion/nubarium/sat/validate-info',
-    },
-    {
-        id: 'sat-validate-serial',
-        title: 'SAT - Validar Serial FIEL/CSD',
-        description: 'Valida número de serie de certificado FIEL o CSD.',
-        icon: FileText,
-        href: '/dashboard/investigacion/nubarium/sat/validate-serial',
-    },
-    {
-        id: 'sat-69',
-        title: 'Lista SAT 69',
-        description: 'Consulta lista SAT artículo 69.',
-        icon: AlertTriangle,
-        href: '/dashboard/investigacion/nubarium/sat/69',
-    },
-    {
-        id: 'sat-69b',
-        title: 'Lista SAT 69-B',
-        description: 'Consulta de contribuyentes presuntos en operaciones inexistentes.',
-        icon: AlertTriangle,
-        href: '/dashboard/investigacion/nubarium/sat/69b',
-    },
-    {
-        id: 'cfe',
-        title: 'Validar CFE',
-        description: 'Valida comprobante de domicilio CFE.',
-        icon: FileText,
-        href: '/dashboard/investigacion/nubarium/documents/cfe',
-    },
-    {
-        id: 'imss-nss',
-        title: 'IMSS - Obtener NSS',
-        description: 'Obtiene Número de Seguro Social (webhook).',
-        icon: Briefcase,
-        href: '/dashboard/investigacion/nubarium/imss/nss',
-    },
-    {
-        id: 'imss-employment',
-        title: 'IMSS - Historial Laboral',
-        description: 'Obtiene historial laboral IMSS (webhook).',
-        icon: Briefcase,
-        href: '/dashboard/investigacion/nubarium/imss/employment',
-    },
-    {
-        id: 'issste-employment',
-        title: 'ISSSTE - Historial Laboral',
-        description: 'Obtiene historial laboral ISSSTE (webhook).',
-        icon: Building,
-        href: '/dashboard/investigacion/nubarium/issste/employment',
-    },
-    {
-        id: 'peps',
-        title: 'PEPs y Listas Internacionales',
-        description: 'Consulta Politically Exposed Persons y listas negras.',
-        icon: Users,
-        href: '/dashboard/investigacion/nubarium/lists/peps',
-    },
-    {
-        id: 'cep',
-        title: 'Validar CEP (SPEI)',
-        description: 'Valida transferencia SPEI.',
-        icon: Banknote,
-        href: '/dashboard/investigacion/nubarium/banking/cep',
-    },
-    {
-        id: 'geo-position',
-        title: 'Geo - Desde Coordenadas',
-        description: 'Análisis geográfico desde coordenadas (lat/lng).',
-        icon: Navigation,
-        href: '/dashboard/investigacion/nubarium/geo/analyze-position',
-    },
-    {
-        id: 'geo-address',
-        title: 'Geo - Desde Dirección',
-        description: 'Análisis geográfico desde dirección.',
-        icon: Map,
-        href: '/dashboard/investigacion/nubarium/geo/analyze-address',
-    },
-    {
-        id: 'historial-reportes',
-        title: 'Historial de Reportes',
-        description: 'Consulta y descarga reportes generados anteriormente.',
-        icon: History,
-        href: '/dashboard/investigacion/historial',
+        title: 'Historial',
+        tools: [
+            {
+                id: 'historial-reportes',
+                title: 'Historial de Reportes',
+                icon: History,
+                href: '/dashboard/investigacion/historial',
+            },
+        ],
     },
 ]
 
 export default function InvestigacionPage() {
     return (
-        <div className="space-y-6">
+        <div className="space-y-6 pb-8">
             <div>
                 <h1 className="text-3xl font-bold tracking-tight">Investigación</h1>
                 <p className="text-muted-foreground">
@@ -179,20 +211,30 @@ export default function InvestigacionPage() {
                 </p>
             </div>
 
-            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-                {investigacionTools.map((tool) => (
-                    <Link key={tool.id} href={tool.href}>
-                        <Card className="hover:bg-muted/50 transition-colors cursor-pointer h-full">
-                            <CardHeader>
-                                <div className="flex items-center justify-between">
-                                    <tool.icon className="h-8 w-8 text-primary mb-2" />
-                                    <ArrowRight className="h-4 w-4 text-muted-foreground" />
-                                </div>
-                                <CardTitle>{tool.title}</CardTitle>
-                                <CardDescription>{tool.description}</CardDescription>
-                            </CardHeader>
-                        </Card>
-                    </Link>
+            <div className="grid gap-4 md:grid-cols-2">
+                {investigacionSections.map((section) => (
+                    <Card key={section.title} className="overflow-hidden">
+                        <div className="bg-muted/50 px-4 py-3 border-b">
+                            <h2 className="text-base font-semibold text-foreground">
+                                {section.title}
+                            </h2>
+                        </div>
+                        <div className="p-4">
+                            <div className="grid gap-2 grid-cols-1 sm:grid-cols-2">
+                                {section.tools.map((tool) => (
+                                    <Link key={tool.id} href={tool.href}>
+                                        <div className="group flex items-center gap-3 p-3 rounded-lg border bg-card hover:bg-accent transition-colors cursor-pointer">
+                                            <tool.icon className="h-5 w-5 text-primary flex-shrink-0" />
+                                            <span className="text-sm font-medium flex-1 min-w-0 truncate">
+                                                {tool.title}
+                                            </span>
+                                            <ArrowRight className="h-4 w-4 text-muted-foreground flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" />
+                                        </div>
+                                    </Link>
+                                ))}
+                            </div>
+                        </div>
+                    </Card>
                 ))}
             </div>
         </div>
