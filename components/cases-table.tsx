@@ -33,7 +33,7 @@ interface Case {
   telefono: string | null
   created_at: string
   alert_count: number
-  is_stale?: boolean
+  assigned_collaborators?: string[]
 }
 
 interface CasesTableProps {
@@ -139,16 +139,7 @@ export function CasesTable({ cases, onDelete, onUpdate }: CasesTableProps) {
     const sorted = [...filteredCases]
     sorted.sort((a, b) => {
       if (sortOrder === 'alerts') {
-        // Sort by "needs attention" (green dots ⚠️ OR warning signs 🟢)
-        const aHasAttention = a.alert_count > 0 || a.is_stale
-        const bHasAttention = b.alert_count > 0 || b.is_stale
-
-        // Cases that need attention first
-        if (aHasAttention !== bHasAttention) {
-          return aHasAttention ? -1 : 1
-        }
-
-        // Among cases with alerts, sort by alert count (more alerts first)
+        // Sort by alert count (more alerts first)
         if (a.alert_count !== b.alert_count) {
           return b.alert_count - a.alert_count
         }
@@ -282,8 +273,8 @@ export function CasesTable({ cases, onDelete, onUpdate }: CasesTableProps) {
                   className="gap-1 hover:bg-transparent p-0 cursor-pointer w-full"
                   title={
                     sortOrder === 'alerts'
-                      ? 'Ordenado por casos que requieren atención (clic para volver a orden normal)'
-                      : 'Clic para ordenar por casos con alertas o sin actualizaciones'
+                      ? 'Ordenado por número de alertas (clic para volver a orden normal)'
+                      : 'Clic para ordenar por número de alertas'
                   }
                 >
                   Alertas
@@ -320,13 +311,14 @@ export function CasesTable({ cases, onDelete, onUpdate }: CasesTableProps) {
                   )}
                 </Button>
               </TableHead>
+              <TableHead className="min-w-0">Notificaciones</TableHead>
               <TableHead className="text-center w-20">Acciones</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {sortedCases.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
                   {searchQuery ? 'No se encontraron casos' : 'No tiene casos registrados'}
                 </TableCell>
               </TableRow>
@@ -340,24 +332,15 @@ export function CasesTable({ cases, onDelete, onUpdate }: CasesTableProps) {
                 >
                   <TableCell className="text-center">
                     <div className="flex justify-center">
-                      {case_.is_stale ? (
-                        <span
-                          className="text-lg"
-                          title="Sin actualizaciones por más de 60 días"
-                        >
-                          ⚠️
-                        </span>
-                      ) : (
-                        <div
-                          className={`w-3 h-3 rounded-full ${case_.alert_count > 0 ? 'bg-green-500' : 'bg-gray-300'
-                            }`}
-                          title={
-                            case_.alert_count > 0
-                              ? `${case_.alert_count} ${case_.alert_count === 1 ? 'alerta' : 'alertas'}`
-                              : 'Sin alertas'
-                          }
-                        />
-                      )}
+                      <div
+                        className={`inline-flex items-center justify-center min-w-[1.5rem] h-6 px-2 rounded-full text-xs font-medium ${
+                          case_.alert_count > 0
+                            ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+                            : 'bg-muted text-muted-foreground'
+                        }`}
+                      >
+                        {case_.alert_count}
+                      </div>
                     </div>
                   </TableCell>
                   <TableCell>
@@ -371,6 +354,25 @@ export function CasesTable({ cases, onDelete, onUpdate }: CasesTableProps) {
                     <div className="truncate" title={case_.juzgado}>{case_.juzgado}</div>
                   </TableCell>
                   <TableCell className="whitespace-nowrap">{formatTijuanaDate(case_.created_at)}</TableCell>
+                  <TableCell>
+                    {case_.assigned_collaborators && case_.assigned_collaborators.length > 0 ? (
+                      <div className="text-xs">
+                        <div className="font-medium">
+                          {case_.assigned_collaborators.length} colaborador{case_.assigned_collaborators.length > 1 ? 'es' : ''}
+                        </div>
+                        {case_.assigned_collaborators.slice(0, 2).map(email => (
+                          <div key={email} className="text-muted-foreground truncate" title={email}>{email}</div>
+                        ))}
+                        {case_.assigned_collaborators.length > 2 && (
+                          <div className="text-muted-foreground">
+                            +{case_.assigned_collaborators.length - 2} más
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <span className="text-xs text-muted-foreground">Solo propietario</span>
+                    )}
+                  </TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-center gap-1" data-action="true">
                       <Button

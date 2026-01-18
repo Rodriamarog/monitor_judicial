@@ -47,6 +47,16 @@ export default async function NombresPage() {
     revalidatePath('/dashboard/nombres');
   };
 
+  const handleUpdate = async (
+    nameId: string,
+    updates: { full_name?: string; search_mode?: string; notes?: string | null }
+  ) => {
+    'use server';
+    const supabase = await createClient();
+    await supabase.from('monitored_names').update(updates).eq('id', nameId);
+    revalidatePath('/dashboard/nombres');
+  };
+
   return (
     <NombresClient
       namesWithAlerts={namesWithAlerts || []}
@@ -54,6 +64,7 @@ export default async function NombresPage() {
       maxNames={maxNames}
       userId={user.id}
       onDelete={handleDelete}
+      onUpdate={handleUpdate}
     />
   );
 }

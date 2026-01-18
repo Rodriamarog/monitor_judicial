@@ -23,6 +23,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Loader2 } from 'lucide-react'
+import { CollaboratorSelector } from '@/components/collaborator-selector'
 
 interface AddCaseDialogProps {
   open: boolean
@@ -41,6 +42,8 @@ export function AddCaseDialog({ open, onOpenChange }: AddCaseDialogProps) {
   const [juzgado, setJuzgado] = useState('')
   const [nombre, setNombre] = useState('')
   const [telefono, setTelefono] = useState('')
+  const [selectedCollaborators, setSelectedCollaborators] = useState<string[]>([])
+  const [userCollaborators, setUserCollaborators] = useState<string[]>([])
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
   const [loading, setLoading] = useState(false)
@@ -70,6 +73,24 @@ export function AddCaseDialog({ open, onOpenChange }: AddCaseDialogProps) {
     fetchJuzgados()
   }, [])
 
+  // Fetch user's collaborators when component mounts
+  useEffect(() => {
+    async function fetchCollaborators() {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
+
+      const { data: profile } = await supabase
+        .from('user_profiles')
+        .select('collaborator_emails')
+        .eq('id', user.id)
+        .single()
+
+      setUserCollaborators(profile?.collaborator_emails || [])
+    }
+
+    fetchCollaborators()
+  }, [])
+
   // Reset form when dialog closes
   const handleOpenChange = (newOpen: boolean) => {
     if (!newOpen && !loading) {
@@ -78,6 +99,7 @@ export function AddCaseDialog({ open, onOpenChange }: AddCaseDialogProps) {
       setJuzgado('')
       setNombre('')
       setTelefono('')
+      setSelectedCollaborators([])
       setError(null)
       setSuccess(false)
     }
@@ -167,6 +189,7 @@ export function AddCaseDialog({ open, onOpenChange }: AddCaseDialogProps) {
           juzgado: juzgado,
           nombre: nombre || null,
           telefono: telefono || null,
+          assigned_collaborators: selectedCollaborators,
         },
       ])
       .select()
@@ -328,6 +351,35 @@ export function AddCaseDialog({ open, onOpenChange }: AddCaseDialogProps) {
             <p className="text-xs text-muted-foreground">
               Número de teléfono del cliente asociado a este caso para su referencia
             </p>
+          </div>
+
+          {/* Collaborator Selection (Optional) */}
+          <div className="space-y-2">
+            <Label>Notificar Colaboradores (Opcional)</Label>
+            {userCollaborators.length > 0 ? (
+              <>
+                <CollaboratorSelector
+                  selectedEmails={selectedCollaborators}
+                  onSelectionChange={setSelectedCollaborators}
+                  availableCollaborators={userCollaborators}
+                  disabled={loading || success}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Si no seleccionas ninguno, solo tú recibirás las alertas para este caso.
+                </p>
+              </>
+            ) : (
+              <>
+                <div className="border rounded-md p-4 bg-muted/30 text-center">
+                  <p className="text-sm text-muted-foreground">
+                    No hay colaboradores configurados
+                  </p>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Agrega colaboradores en la página de <a href="/dashboard/settings" className="underline hover:text-foreground">Configuración</a> para compartir alertas con tu equipo.
+                </p>
+              </>
+            )}
           </div>
 
           <DialogFooter>

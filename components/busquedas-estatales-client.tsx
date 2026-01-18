@@ -1,12 +1,13 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { Search, Loader2, FileText, Printer, Download } from 'lucide-react';
+import { Search, Loader2, FileText, Printer, Download, History } from 'lucide-react';
 import { BusquedasResultsTable } from '@/components/busquedas-results-table';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -86,6 +87,7 @@ export function BusquedasEstatalesClient({ userId }: BusquedasEstatalesClientPro
     const [hasSearched, setHasSearched] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [showResultsDialog, setShowResultsDialog] = useState(false);
+    const [showPDFPreview, setShowPDFPreview] = useState(false);
     const [searchParams, setSearchParams] = useState({
         fullName: '',
         estado: '',
@@ -136,13 +138,48 @@ export function BusquedasEstatalesClient({ userId }: BusquedasEstatalesClientPro
             setHasSearched(true);
 
             // Store search parameters for report
-            setSearchParams({
+            const params = {
                 fullName,
                 estado,
                 periodo,
                 curp: curp || '',
                 rfc: rfc || '',
-            });
+            };
+            setSearchParams(params);
+
+            // Save report to history and auto-generate PDF
+            try {
+                // Generate PDF
+                const pdfDocument = (
+                    <AntecedentesPDFDocument
+                        searchParams={params}
+                        results={data.results || []}
+                        getPeriodoLabel={getPeriodoLabel}
+                    />
+                );
+
+                const blob = await pdf(pdfDocument).toBlob();
+
+                // Convert blob to base64 for upload
+                const arrayBuffer = await blob.arrayBuffer();
+                const base64 = Buffer.from(arrayBuffer).toString('base64');
+
+                // Save report with PDF
+                await fetch('/api/investigacion/busquedas-estatales/save-report', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        searchParams: params,
+                        resultsCount: data.results?.length || 0,
+                        pdfBlob: base64,
+                    }),
+                });
+            } catch (saveError) {
+                console.error('Failed to save report:', saveError);
+                // Don't block the user flow if saving fails
+            }
 
             // Open results dialog
             setShowResultsDialog(true);
@@ -171,6 +208,28 @@ export function BusquedasEstatalesClient({ userId }: BusquedasEstatalesClientPro
 
             const blob = await pdf(pdfDocument).toBlob();
 
+            // Convert blob to base64 for upload
+            const arrayBuffer = await blob.arrayBuffer();
+            const base64 = Buffer.from(arrayBuffer).toString('base64');
+
+            // Update report with PDF (the report record was already created on search)
+            try {
+                await fetch('/api/investigacion/busquedas-estatales/save-report', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        searchParams,
+                        resultsCount: results.length,
+                        pdfBlob: base64,
+                    }),
+                });
+            } catch (saveError) {
+                console.error('Failed to save PDF to report:', saveError);
+                // Continue with download even if save fails
+            }
+
             // Create download link
             const url = URL.createObjectURL(blob);
             const link = document.createElement('a');
@@ -194,9 +253,19 @@ export function BusquedasEstatalesClient({ userId }: BusquedasEstatalesClientPro
     return (
         <div className="flex flex-col h-full gap-6 overflow-hidden">
             {/* Header */}
-            <div className="flex-shrink-0 text-center">
-                <h1 className="text-2xl font-bold mb-2">Antecedentes Legales</h1>
-                <p className="text-sm text-muted-foreground">
+            <div className="flex-shrink-0">
+                <div className="flex items-center justify-between mb-2">
+                    <div className="flex-1 text-center">
+                        <h1 className="text-2xl font-bold">Antecedentes Legales</h1>
+                    </div>
+                    <Link href="/dashboard/investigacion/historial">
+                        <Button variant="outline" size="sm">
+                            <History className="mr-2 h-4 w-4" />
+                            Historial
+                        </Button>
+                    </Link>
+                </div>
+                <p className="text-sm text-muted-foreground text-center">
                     Busca nombres en todos los boletines judiciales del estado
                 </p>
             </div>
@@ -452,7 +521,7 @@ export function BusquedasEstatalesClient({ userId }: BusquedasEstatalesClientPro
 
             {/* Results Dialog */}
             <Dialog open={showResultsDialog} onOpenChange={setShowResultsDialog}>
-                <DialogContent className="max-w-7xl max-h-[90vh] overflow-hidden flex flex-col">
+                <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
                     <DialogHeader className="print:block">
                         <DialogTitle className="text-2xl">Reporte de Antecedentes Legales</DialogTitle>
                         <DialogDescription>
@@ -460,9 +529,7 @@ export function BusquedasEstatalesClient({ userId }: BusquedasEstatalesClientPro
                         </DialogDescription>
                     </DialogHeader>
 
-                    <div className="flex-1 overflow-hidden grid grid-cols-2 gap-4 print:grid-cols-1 print:overflow-visible">
-                        {/* Left Column - Results */}
-                        <div className="overflow-auto print:overflow-visible">
+                    <div className="flex-1 overflow-auto print:overflow-visible">
                         {/* Print Header - Only visible when printing */}
                         <div className="hidden print:block mb-6 pb-4 border-b">
                             <h1 className="text-3xl font-bold mb-2">Reporte de Antecedentes Legales</h1>
@@ -542,18 +609,6 @@ export function BusquedasEstatalesClient({ userId }: BusquedasEstatalesClientPro
                                 directamente con las autoridades judiciales correspondientes.
                             </p>
                         </div>
-                        </div>
-
-                        {/* Right Column - PDF Preview */}
-                        <div className="overflow-hidden print:hidden border border-gray-200 rounded-lg">
-                            <PDFViewer width="100%" height="100%" className="rounded-lg">
-                                <AntecedentesPDFDocument
-                                    searchParams={searchParams}
-                                    results={results}
-                                    getPeriodoLabel={getPeriodoLabel}
-                                />
-                            </PDFViewer>
-                        </div>
                     </div>
 
                     {/* Action Buttons - Hidden when printing */}
@@ -565,11 +620,39 @@ export function BusquedasEstatalesClient({ userId }: BusquedasEstatalesClientPro
                             Cerrar
                         </Button>
                         <Button
+                            variant="outline"
+                            onClick={() => setShowPDFPreview(true)}
+                        >
+                            <FileText className="mr-2 h-4 w-4" />
+                            Ver Preview
+                        </Button>
+                        <Button
                             onClick={handleDownloadPDF}
                         >
                             <Download className="mr-2 h-4 w-4" />
                             Descargar PDF
                         </Button>
+                    </div>
+                </DialogContent>
+            </Dialog>
+
+            {/* PDF Preview Dialog */}
+            <Dialog open={showPDFPreview} onOpenChange={setShowPDFPreview}>
+                <DialogContent className="max-w-5xl h-[90vh] flex flex-col">
+                    <DialogHeader>
+                        <DialogTitle>Vista Previa del PDF</DialogTitle>
+                        <DialogDescription>
+                            Previsualización del reporte que será descargado
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="flex-1 overflow-hidden">
+                        <PDFViewer width="100%" height="100%">
+                            <AntecedentesPDFDocument
+                                searchParams={searchParams}
+                                results={results}
+                                getPeriodoLabel={getPeriodoLabel}
+                            />
+                        </PDFViewer>
                     </div>
                 </DialogContent>
             </Dialog>

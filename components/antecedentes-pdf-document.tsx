@@ -77,7 +77,7 @@ const styles = StyleSheet.create({
         height: 70,
     },
     brandingHeader: {
-        backgroundColor: '#1f2937',
+        backgroundColor: '#6b7280',
         height: 60,
         position: 'relative',
     },
@@ -87,8 +87,8 @@ const styles = StyleSheet.create({
         left: 0,
         right: 0,
         height: 20,
-        backgroundColor: '#fbbf24',
-        opacity: 0.9,
+        backgroundColor: '#9ca3af',
+        opacity: 1,
     },
     brandingTitle: {
         position: 'absolute',
@@ -158,7 +158,7 @@ const styles = StyleSheet.create({
     },
     tableHeader: {
         flexDirection: 'row',
-        backgroundColor: '#374151',
+        backgroundColor: '#6b7280',
         padding: 10,
         fontWeight: 'bold',
         fontSize: 9,
@@ -183,19 +183,15 @@ const styles = StyleSheet.create({
         paddingRight: 8,
     },
     colJuzgado: {
-        width: '25%',
-        paddingRight: 8,
-    },
-    colType: {
-        width: '15%',
+        width: '26%',
         paddingRight: 8,
     },
     colCase: {
-        width: '12%',
+        width: '10%',
         paddingRight: 8,
     },
-    colParties: {
-        width: '28%',
+    colText: {
+        width: '44%',
         paddingRight: 8,
         fontSize: 7,
         lineHeight: 1.3,
@@ -340,17 +336,13 @@ export const AntecedentesPDFDocument: React.FC<AntecedentesPDFDocumentProps> = (
                             <View style={styles.tableHeader}>
                                 <Text style={styles.colDate}>Fecha</Text>
                                 <Text style={styles.colJuzgado}>Juzgado</Text>
-                                <Text style={styles.colType}>Tipo</Text>
                                 <Text style={styles.colCase}>Expediente</Text>
-                                <Text style={styles.colParties}>Actor / Demandado</Text>
+                                <Text style={styles.colText}>Texto</Text>
                                 <Text style={styles.colSource}>Fuente</Text>
                             </View>
 
                             {/* Table Rows */}
                             {results.map((result, index) => {
-                                const parties = extractParties(result.raw_text);
-                                const caseType = extractCaseType(result.raw_text);
-
                                 return (
                                     <View key={result.id} style={index % 2 === 0 ? styles.tableRow : styles.tableRowAlt}>
                                         <Text style={styles.colDate}>
@@ -361,17 +353,8 @@ export const AntecedentesPDFDocument: React.FC<AntecedentesPDFDocumentProps> = (
                                             })}
                                         </Text>
                                         <Text style={styles.colJuzgado}>{result.juzgado}</Text>
-                                        <Text style={styles.colType}>{caseType}</Text>
                                         <Text style={styles.colCase}>{result.case_number || 'N/A'}</Text>
-                                        <Text style={styles.colParties}>
-                                            {parties.actor !== 'N/A' && parties.demandado !== 'N/A'
-                                                ? `${parties.actor} vs ${parties.demandado}`
-                                                : parties.actor !== 'N/A'
-                                                ? parties.actor
-                                                : parties.demandado !== 'N/A'
-                                                ? parties.demandado
-                                                : 'N/A'}
-                                        </Text>
+                                        <Text style={styles.colText}>{result.raw_text}</Text>
                                         <Text style={styles.colSource}>{formatSource(result.source)}</Text>
                                     </View>
                                 );

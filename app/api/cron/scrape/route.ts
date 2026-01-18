@@ -231,10 +231,42 @@ export async function GET(request: NextRequest) {
           }
 
           // Send to collaborators (email only - no WhatsApp to protect infrastructure)
-          const collaboratorEmails = userProfile.collaborator_emails || [];
-          for (const collabEmail of collaboratorEmails) {
+          // Build set of unique collaborator emails who are assigned to at least one alert
+          const assignedCollaboratorsSet = new Set<string>();
+
+          for (const alert of userAlerts) {
+            const monitoredCase = alert.monitored_cases as any;
+            const monitoredName = alert.monitored_names as any;
+
+            // Get assigned_collaborators from the monitored case or name
+            const assignedCollaborators = monitoredCase?.assigned_collaborators ||
+                                         monitoredName?.assigned_collaborators ||
+                                         [];
+
+            // Add each to set (deduplicates automatically)
+            for (const email of assignedCollaborators) {
+              assignedCollaboratorsSet.add(email);
+            }
+          }
+
+          // Get current valid collaborators from profile (for validation)
+          const currentValidCollaborators = userProfile.collaborator_emails || [];
+
+          // Filter to only include collaborators still in profile (handles removed collaborators)
+          const collaboratorsToNotify = Array.from(assignedCollaboratorsSet).filter(
+            email => currentValidCollaborators.includes(email)
+          );
+
+          logger.info(
+            `Sending to ${collaboratorsToNotify.length} assigned collaborators`,
+            userAlerts[0].id,
+            { collaborators: collaboratorsToNotify }
+          );
+
+          // Send emails to assigned collaborators only
+          for (const collabEmail of collaboratorsToNotify) {
             try {
-              logger.info(`Sending email to collaborator ${collabEmail}`, userAlerts[0].id, {
+              logger.info(`Sending email to assigned collaborator ${collabEmail}`, userAlerts[0].id, {
                 alertCount: alerts.length
               });
 

@@ -17,7 +17,7 @@ export async function POST(request: NextRequest) {
 
   // Parse request body
   const body = await request.json();
-  const { full_name, search_mode, notes } = body;
+  const { full_name, search_mode, notes, assigned_collaborators } = body;
 
   // Validate name
   const validation = validateName(full_name);
@@ -28,6 +28,14 @@ export async function POST(request: NextRequest) {
   // Validate search mode
   if (!['exact', 'fuzzy'].includes(search_mode)) {
     return NextResponse.json({ error: 'Invalid search mode' }, { status: 400 });
+  }
+
+  // Validate assigned_collaborators is array
+  if (assigned_collaborators && !Array.isArray(assigned_collaborators)) {
+    return NextResponse.json(
+      { error: 'assigned_collaborators must be an array' },
+      { status: 400 }
+    );
   }
 
   // Check subscription limit
@@ -68,6 +76,7 @@ export async function POST(request: NextRequest) {
       normalized_name: normalizeName(full_name),
       search_mode,
       notes: notes || null,
+      assigned_collaborators: assigned_collaborators || [],
     })
     .select()
     .single();

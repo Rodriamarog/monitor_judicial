@@ -1,10 +1,9 @@
 'use client';
 
 import { useState } from 'react';
-import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Plus, Bell } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import { MonitoredNamesTable } from '@/components/monitored-names-table';
 import { AddNameDialog } from '@/components/add-name-dialog';
 import { useRouter } from 'next/navigation';
@@ -23,6 +22,7 @@ interface NombresClientProps {
   maxNames: number;
   userId: string;
   onDelete: (nameId: string) => void;
+  onUpdate?: (nameId: string, updates: { full_name?: string; search_mode?: string; notes?: string | null }) => Promise<void>;
 }
 
 export function NombresClient({
@@ -31,6 +31,7 @@ export function NombresClient({
   maxNames,
   userId,
   onDelete,
+  onUpdate,
 }: NombresClientProps) {
   const router = useRouter();
 
@@ -58,11 +59,6 @@ export function NombresClient({
             </p>
           </div>
           <div className="flex gap-2">
-            <Link href="/dashboard/alerts">
-              <Button variant="outline" size="icon" className="cursor-pointer" title="Ver Alertas">
-                <Bell className="h-4 w-4" />
-              </Button>
-            </Link>
             <AddNameDialog
               userId={userId}
               currentCount={nameCount}
@@ -101,7 +97,7 @@ export function NombresClient({
             Lista de personas que estás rastreando en los boletines judiciales
           </CardDescription>
         </CardHeader>
-        <CardContent className="flex-1 overflow-auto pb-2">
+        <CardContent className="flex-1 overflow-auto pb-2 pt-2">
           {!namesWithAlerts || namesWithAlerts.length === 0 ? (
             <div className="text-center py-12">
               <p className="text-muted-foreground mb-4">
@@ -115,7 +111,7 @@ export function NombresClient({
               />
             </div>
           ) : (
-            <MonitoredNamesTable names={namesWithAlerts} onDelete={handleDelete} />
+            <MonitoredNamesTable names={namesWithAlerts} onDelete={handleDelete} onUpdate={onUpdate} />
           )}
         </CardContent>
       </Card>

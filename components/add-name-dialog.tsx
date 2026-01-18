@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { createClient } from '@/lib/supabase/client';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -16,6 +17,8 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { validateName } from '@/lib/name-variations';
 import { toast } from 'sonner';
+import { Plus } from 'lucide-react';
+import { CollaboratorSelector } from '@/components/collaborator-selector';
 
 export function AddNameDialog({
   userId,
@@ -33,6 +36,27 @@ export function AddNameDialog({
   const [fullName, setFullName] = useState('');
   const [searchMode, setSearchMode] = useState<'exact' | 'fuzzy'>('exact');
   const [notes, setNotes] = useState('');
+  const [selectedCollaborators, setSelectedCollaborators] = useState<string[]>([]);
+  const [userCollaborators, setUserCollaborators] = useState<string[]>([]);
+  const supabase = createClient();
+
+  // Fetch user's collaborators when component mounts
+  useEffect(() => {
+    async function fetchCollaborators() {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data: profile } = await supabase
+        .from('user_profiles')
+        .select('collaborator_emails')
+        .eq('id', user.id)
+        .single();
+
+      setUserCollaborators(profile?.collaborator_emails || []);
+    }
+
+    fetchCollaborators();
+  }, []);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -60,6 +84,7 @@ export function AddNameDialog({
           full_name: fullName,
           search_mode: searchMode,
           notes,
+          assigned_collaborators: selectedCollaborators,
         }),
       });
 
@@ -76,6 +101,7 @@ export function AddNameDialog({
       setFullName('');
       setSearchMode('exact');
       setNotes('');
+      setSelectedCollaborators([]);
       onSuccess();
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Error desconocido');
@@ -87,7 +113,10 @@ export function AddNameDialog({
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button>Agregar Nombre</Button>
+        <Button className="gap-2">
+          <Plus className="h-4 w-4" />
+          Agregar Nombre
+        </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
@@ -168,6 +197,35 @@ export function AddNameDialog({
                 onChange={(e) => setNotes(e.target.value)}
                 rows={3}
               />
+            </div>
+
+            {/* Collaborator Selection (Optional) */}
+            <div className="grid gap-2">
+              <Label>Notificar Colaboradores (Opcional)</Label>
+              {userCollaborators.length > 0 ? (
+                <>
+                  <CollaboratorSelector
+                    selectedEmails={selectedCollaborators}
+                    onSelectionChange={setSelectedCollaborators}
+                    availableCollaborators={userCollaborators}
+                    disabled={loading}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Si no seleccionas ninguno, solo tú recibirás las alertas para este nombre.
+                  </p>
+                </>
+              ) : (
+                <>
+                  <div className="border rounded-md p-4 bg-muted/30 text-center">
+                    <p className="text-sm text-muted-foreground">
+                      No hay colaboradores configurados
+                    </p>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Agrega colaboradores en la página de <a href="/dashboard/settings" className="underline hover:text-foreground">Configuración</a> para compartir alertas con tu equipo.
+                  </p>
+                </>
+              )}
             </div>
 
             {/* Limit Warning */}

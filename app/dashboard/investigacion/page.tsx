@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Search, ArrowRight } from 'lucide-react'
+import { ArrowRight, History, Search, IdCard, Car, Receipt, GraduationCap, MapPin, AlertTriangle, Building2 } from 'lucide-react'
 
 const investigacionTools = [
     {
@@ -12,7 +12,63 @@ const investigacionTools = [
         icon: Search,
         href: '/dashboard/investigacion/busquedas-estatales',
     },
-    // Future investigation tools can be added here
+    {
+        id: 'historial-reportes',
+        title: 'Historial de Reportes',
+        description: 'Consulta y descarga reportes generados anteriormente.',
+        icon: History,
+        href: '/dashboard/investigacion/historial',
+    },
+    // Nubarium Services
+    {
+        id: 'curp-validation',
+        title: 'Validación CURP',
+        description: 'Valida o genera CURP contra el registro nacional RENAPO.',
+        icon: IdCard,
+        href: '/dashboard/investigacion/nubarium/curp',
+    },
+    {
+        id: 'repuve',
+        title: 'REPUVE - Vehículos',
+        description: 'Consulta registro vehicular por VIN, NIC o placas.',
+        icon: Car,
+        href: '/dashboard/investigacion/nubarium/repuve',
+    },
+    {
+        id: 'sep-cedula',
+        title: 'Cédula Profesional',
+        description: 'Valida cédulas profesionales en el registro SEP.',
+        icon: GraduationCap,
+        href: '/dashboard/investigacion/nubarium/sep',
+    },
+    {
+        id: 'geo-insights',
+        title: 'Inteligencia Geográfica',
+        description: 'Análisis de marginalización y geocodificación de direcciones.',
+        icon: MapPin,
+        href: '/dashboard/investigacion/nubarium/geo',
+    },
+    {
+        id: 'sat-services',
+        title: 'Servicios SAT',
+        description: 'Validación de RFC, CFDI, certificados y opiniones fiscales.',
+        icon: Receipt,
+        href: '/dashboard/investigacion/nubarium/sat',
+    },
+    {
+        id: 'blocklists',
+        title: 'Listas Negras',
+        description: 'Consulta listas SAT 69/69-B, PEPs y sanciones internacionales.',
+        icon: AlertTriangle,
+        href: '/dashboard/investigacion/nubarium/blocklists',
+    },
+    {
+        id: 'imss-issste',
+        title: 'IMSS / ISSSTE',
+        description: 'Consulta NSS e historial laboral (servicios webhook).',
+        icon: Building2,
+        href: '/dashboard/investigacion/nubarium/social-security',
+    },
 ]
 
 export default function InvestigacionPage() {

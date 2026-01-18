@@ -21,6 +21,7 @@ import {
   HelpCircle,
   UserSearch,
   Search,
+  ScanSearch,
 } from "lucide-react"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { SignOutButton } from "@/components/sign-out-button"
