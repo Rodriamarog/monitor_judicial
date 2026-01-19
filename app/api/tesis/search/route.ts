@@ -169,14 +169,17 @@ export async function GET(request: NextRequest) {
       // and sorts on minimal data before fetching full rows
       const searchPattern = `%${searchQuery}%`;
 
+      // When we have text search, searchPattern becomes $1, so we need to offset all filter parameters by 1
+      const offsetFilterClause = filterClause.replace(/\$(\d+)/g, (match, num) => `$${parseInt(num) + 1}`);
+
       countQuery = `
         SELECT COUNT(DISTINCT id_tesis) as total
         FROM (
           SELECT id_tesis FROM tesis_documents
-          WHERE public.immutable_unaccent(texto) ILIKE $1 AND ${filterClause}
+          WHERE public.immutable_unaccent(texto) ILIKE $1 AND ${offsetFilterClause}
           UNION
           SELECT id_tesis FROM tesis_documents
-          WHERE public.immutable_unaccent(rubro) ILIKE $1 AND ${filterClause}
+          WHERE public.immutable_unaccent(rubro) ILIKE $1 AND ${offsetFilterClause}
         ) AS combined
       `;
       countParams = [searchPattern, ...params];
@@ -184,11 +187,11 @@ export async function GET(request: NextRequest) {
       resultsQuery = `
         WITH texto_matches AS (
           SELECT id_tesis, anio FROM tesis_documents
-          WHERE public.immutable_unaccent(texto) ILIKE $1 AND ${filterClause}
+          WHERE public.immutable_unaccent(texto) ILIKE $1 AND ${offsetFilterClause}
         ),
         rubro_matches AS (
           SELECT id_tesis, anio FROM tesis_documents
-          WHERE public.immutable_unaccent(rubro) ILIKE $1 AND ${filterClause}
+          WHERE public.immutable_unaccent(rubro) ILIKE $1 AND ${offsetFilterClause}
         ),
         combined_sorted AS (
           SELECT id_tesis, anio FROM texto_matches
