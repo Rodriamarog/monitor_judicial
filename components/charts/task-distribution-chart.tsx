@@ -30,6 +30,17 @@ export function TaskDistributionChart({ data }: TaskDistributionChartProps) {
     )
   }
 
+  // Sort data in logical workflow order
+  const columnOrder = ['Pendiente', 'En Progreso', 'Terminado']
+  const sortedData = [...data].sort((a, b) => {
+    const indexA = columnOrder.indexOf(a.column)
+    const indexB = columnOrder.indexOf(b.column)
+    // If column not found in order array, put it at the end
+    if (indexA === -1) return 1
+    if (indexB === -1) return -1
+    return indexA - indexB
+  })
+
   return (
     <Card>
       <CardHeader>
@@ -38,7 +49,7 @@ export function TaskDistributionChart({ data }: TaskDistributionChartProps) {
       </CardHeader>
       <CardContent>
         <ChartContainer config={chartConfig} className="h-64 w-full">
-          <BarChart data={data}>
+          <BarChart data={sortedData}>
             <CartesianGrid strokeDasharray="3 3" />
             <XAxis dataKey="column" />
             <YAxis />

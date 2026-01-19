@@ -172,14 +172,13 @@ export function MonitoredNamesTable({
                 <TableHead className="min-w-[200px]">Nombre</TableHead>
                 <TableHead className="min-w-0">Notas</TableHead>
                 <TableHead className="w-32">Precisión</TableHead>
-                <TableHead className="min-w-0">Notificaciones</TableHead>
                 <TableHead className="w-28 text-center">Acciones</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {filteredNames.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                  <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
                     {searchQuery ? 'No se encontraron nombres' : 'No hay nombres monitoreados'}
                   </TableCell>
                 </TableRow>
@@ -223,25 +222,6 @@ export function MonitoredNamesTable({
                       <span className="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 border-transparent bg-primary/10 text-primary hover:bg-primary/20">
                         Variaciones
                       </span>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    {name.assigned_collaborators && name.assigned_collaborators.length > 0 ? (
-                      <div className="text-xs">
-                        <div className="font-medium">
-                          {name.assigned_collaborators.length} colaborador{name.assigned_collaborators.length > 1 ? 'es' : ''}
-                        </div>
-                        {name.assigned_collaborators.slice(0, 2).map(email => (
-                          <div key={email} className="text-muted-foreground truncate" title={email}>{email}</div>
-                        ))}
-                        {name.assigned_collaborators.length > 2 && (
-                          <div className="text-muted-foreground">
-                            +{name.assigned_collaborators.length - 2} más
-                          </div>
-                        )}
-                      </div>
-                    ) : (
-                      <span className="text-xs text-muted-foreground">Solo propietario</span>
                     )}
                   </TableCell>
                   <TableCell className="text-center">

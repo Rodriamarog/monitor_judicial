@@ -4,24 +4,24 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { ChartContainer, ChartConfig } from "@/components/ui/chart"
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts"
 
-interface JuzgadosChartProps {
-  data: Array<{ juzgado: string; count: number }>
+interface TopCasesByAlertsChartProps {
+  data: Array<{ case_number: string; nombre: string | null; alert_count: number }>
 }
 
 const chartConfig = {
-  count: {
-    label: "Casos",
-    color: "#8b5cf6", // Purple
+  alert_count: {
+    label: "Alertas",
+    color: "#3b82f6", // Blue
   },
 } satisfies ChartConfig
 
-export function JuzgadosChart({ data }: JuzgadosChartProps) {
+export function TopCasesByAlertsChart({ data }: TopCasesByAlertsChartProps) {
   if (!data || data.length === 0) {
     return (
       <Card>
         <CardHeader>
-          <CardTitle>Casos por Juzgado</CardTitle>
-          <CardDescription>Top 10 juzgados con más casos</CardDescription>
+          <CardTitle>Casos con Más Alertas</CardTitle>
+          <CardDescription>Top 10 casos por número de alertas</CardDescription>
         </CardHeader>
         <CardContent className="h-64 flex items-center justify-center">
           <p className="text-sm text-muted-foreground">No hay datos disponibles</p>
@@ -30,21 +30,27 @@ export function JuzgadosChart({ data }: JuzgadosChartProps) {
     )
   }
 
+  // Transform data to use nombre if available, otherwise case_number
+  const chartData = data.map(item => ({
+    ...item,
+    display_name: item.nombre || item.case_number
+  }))
+
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Casos por Juzgado</CardTitle>
-        <CardDescription>Top 10 juzgados con más casos</CardDescription>
+        <CardTitle>Casos con Más Alertas</CardTitle>
+        <CardDescription>Top 10 casos por número de alertas</CardDescription>
       </CardHeader>
       <CardContent>
         <ChartContainer config={chartConfig} className="h-96 w-full">
-          <BarChart data={data} layout="vertical" margin={{ left: 150 }}>
+          <BarChart data={chartData} layout="vertical" margin={{ left: 100 }}>
             <CartesianGrid strokeDasharray="3 3" />
             <XAxis type="number" />
             <YAxis
-              dataKey="juzgado"
+              dataKey="display_name"
               type="category"
-              width={150}
+              width={100}
               tick={{ fontSize: 10 }}
               tickFormatter={(value) => {
                 // Truncate long names
@@ -57,11 +63,17 @@ export function JuzgadosChart({ data }: JuzgadosChartProps) {
             <Tooltip
               content={({ active, payload }) => {
                 if (active && payload && payload.length) {
+                  const item = payload[0].payload
                   return (
                     <div className="bg-background border rounded-lg p-2 shadow-lg">
-                      <p className="font-semibold text-sm">{payload[0].payload.juzgado}</p>
+                      {item.nombre && (
+                        <p className="font-semibold text-sm">{item.nombre}</p>
+                      )}
+                      <p className={item.nombre ? "text-xs text-muted-foreground" : "font-semibold text-sm"}>
+                        {item.case_number}
+                      </p>
                       <p className="text-sm text-muted-foreground">
-                        Casos: {payload[0].value}
+                        Alertas: {payload[0].value}
                       </p>
                     </div>
                   )
@@ -69,7 +81,7 @@ export function JuzgadosChart({ data }: JuzgadosChartProps) {
                 return null
               }}
             />
-            <Bar dataKey="count" fill="var(--color-count)" radius={[0, 4, 4, 0]} />
+            <Bar dataKey="alert_count" fill="var(--color-alert_count)" radius={[0, 4, 4, 0]} />
           </BarChart>
         </ChartContainer>
       </CardContent>

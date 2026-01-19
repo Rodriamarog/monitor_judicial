@@ -74,9 +74,14 @@ export default function AlertsPage() {
   const [loading, setLoading] = useState(true)
 
   // Alert type toggle: 'cases' or 'names'
-  const [alertType, setAlertType] = useState<'cases' | 'names'>(
-    (searchParams.get('type') as 'cases' | 'names') || 'cases'
-  )
+  // If there's a 'name' parameter, default to 'names' tab
+  const [alertType, setAlertType] = useState<'cases' | 'names'>(() => {
+    const typeParam = searchParams.get('type') as 'cases' | 'names'
+    const nameParam = searchParams.get('name')
+    if (typeParam) return typeParam
+    if (nameParam && nameParam !== 'all') return 'names'
+    return 'cases'
+  })
 
   // Get today's date in YYYY-MM-DD format (Tijuana timezone)
   const getTodayDate = () => {

@@ -247,6 +247,151 @@ export class NubariumClient {
         publicacionSatPresunto: '2023-01-15',
         numeroFechaOficioPresunto: 'OFICIO123 - 2023-01-10'
       },
+
+      // SAT - Get Name from RFC
+      '/sat/v1/obtener-razonsocial': {
+        estatus: 'OK',
+        mensaje: 'Consulta exitosa',
+        razonSocial: 'COMERCIALIZADORA DE PRODUCTOS SA DE CV',
+        codigoValidacion: 'rfc-name1234567890.123456',
+        claveMensaje: '0'
+      },
+
+      // SAT - CSF/CIF
+      '/sat/v1/consultar_cif': {
+        estatus: 'OK',
+        mensaje: 'Consulta exitosa',
+        data: {
+          rfc: body.rfc || 'XAXX010101000',
+          curp: 'XAXX010101HDFLRN09',
+          nombre: 'ALEJANDRO',
+          apellidoPaterno: 'XALAPA',
+          apellidoMaterno: 'XOCHITL',
+          regimenCapital: 'Régimen de Incorporación Fiscal',
+          fechaInicioOperaciones: '01/01/2020',
+          ultimoCambioSituacion: '15/03/2023'
+        },
+        codigoValidacion: 'cif1234567890.123456',
+        claveMensaje: '0'
+      },
+
+      // SAT - Validate CFDI
+      '/sat/valida_cfdi': {
+        estatus: 'OK',
+        mensaje: 'CFDI válido',
+        estado: 'Vigente',
+        fechaTimbrado: '2024-01-15T10:30:00',
+        rfcEmisor: body.rfcEmisor || 'XAXX010101000',
+        nombreEmisor: 'COMERCIALIZADORA EJEMPLO SA DE CV',
+        rfcReceptor: body.rfcReceptor || 'YAYY020202000',
+        nombreReceptor: 'RECEPTOR EJEMPLO SA DE CV',
+        total: '1160.00',
+        uuid: body.folioCfdi || 'A1B2C3D4-E5F6-G7H8-I9J0-K1L2M3N4O5P6',
+        codigoValidacion: 'cfdi1234567890.123456',
+        claveMensaje: '0'
+      },
+
+      // SAT - Validate RFC vs Info
+      '/sat/v1/valida_sat_info': {
+        estatus: 'OK',
+        mensaje: 'Información validada correctamente',
+        resultado: 'POSITIVO',
+        coincidencia: 'COMPLETA',
+        codigoValidacion: 'info1234567890.123456',
+        claveMensaje: '0'
+      },
+
+      // SAT - Validate Serial FIEL/CSD
+      '/sat/v1/validar-serial': {
+        estatus: 'OK',
+        mensaje: 'Certificado válido',
+        estado: 'VIGENTE',
+        tipoContribuyente: 'Persona Física',
+        fechaInicio: '2023-01-01',
+        fechaFin: '2027-01-01',
+        codigoValidacion: 'serial1234567890.123456',
+        claveMensaje: '0'
+      },
+
+      // SAT Article 69
+      '/sat/consultar_69': {
+        estatus: 'OK',
+        claveMensaje: '0',
+        codigoValidacion: '691234567890.123456',
+        rfc: body.rfc || 'XAXX010101000',
+        nombreContribuyente: 'CONTRIBUYENTE EJEMPLO',
+        situacion: 'NO LOCALIZADO',
+        supuestoPublicacion: 'No aparece en lista'
+      },
+
+      // CFE Validation
+      '/mex/documents/validate-cfe': {
+        status: 'OK',
+        messageCode: 0,
+        message: 'Documento CFE validado correctamente',
+        data: {
+          name: body.name || 'JUAN PEREZ GARCIA',
+          serviceNumber: body.serviceNumber || '123456789',
+          address: 'AV CHAPULTEPEC 480, AMERICANA, GUADALAJARA, JALISCO',
+          validationDate: '2024-01-15',
+          serviceType: 'DOMESTICO'
+        },
+        validationCode: 'cfe1234567890.123456'
+      },
+
+      // IMSS - Obtain NSS
+      '/imss/wh/v1/obtener_nss': {
+        estatus: 'OK',
+        mensaje: 'Solicitud enviada. Resultado se enviará al webhook.',
+        codigoValidacion: 'nss1234567890.123456',
+        requestId: 'req-123456789',
+        estimatedTime: '2-5 minutos',
+        claveMensaje: '0'
+      },
+
+      // IMSS - Employment History
+      '/mex/ss/v1/employment-info-imss': {
+        estatus: 'OK',
+        mensaje: 'Solicitud enviada. Resultado se enviará al webhook.',
+        codigoValidacion: 'imss-emp1234567890.123456',
+        requestId: 'req-987654321',
+        estimatedTime: '5-10 minutos',
+        claveMensaje: '0'
+      },
+
+      // ISSSTE - Employment History
+      '/issste/v2/obtener_historial': {
+        estatus: 'OK',
+        mensaje: 'Solicitud enviada. Resultado se enviará al webhook.',
+        codigoValidacion: 'issste1234567890.123456',
+        requestId: 'req-555444333',
+        estimatedTime: '5-10 minutos',
+        claveMensaje: '0'
+      },
+
+      // PEPs and International Lists
+      '/blacklists/v1/consulta': {
+        estatus: 'OK',
+        mensaje: 'Consulta exitosa',
+        matches: [],
+        searchedLists: ['PEPs México', 'OFAC', 'ONU', 'Interpol'],
+        codigoValidacion: 'peps1234567890.123456',
+        claveMensaje: '0'
+      },
+
+      // CEP/SPEI Validation
+      '/banxico/v2/valida_cep': {
+        estatus: 'OK',
+        mensaje: 'CEP validado correctamente',
+        estado: 'VIGENTE',
+        fechaPago: body.fechaPago || '2024-01-15',
+        monto: '10000.00',
+        claveRastreo: body.claveRastreo || 'CR20240115123456789',
+        institucionEmisora: '40012',
+        institucionReceptora: '40014',
+        codigoValidacion: 'cep1234567890.123456',
+        claveMensaje: '0'
+      },
     };
 
     const response = demoResponses[urlPath];

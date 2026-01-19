@@ -311,14 +311,13 @@ export function CasesTable({ cases, onDelete, onUpdate }: CasesTableProps) {
                   )}
                 </Button>
               </TableHead>
-              <TableHead className="min-w-0">Notificaciones</TableHead>
               <TableHead className="text-center w-20">Acciones</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {sortedCases.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+                <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
                   {searchQuery ? 'No se encontraron casos' : 'No tiene casos registrados'}
                 </TableCell>
               </TableRow>
@@ -354,25 +353,6 @@ export function CasesTable({ cases, onDelete, onUpdate }: CasesTableProps) {
                     <div className="truncate" title={case_.juzgado}>{case_.juzgado}</div>
                   </TableCell>
                   <TableCell className="whitespace-nowrap">{formatTijuanaDate(case_.created_at)}</TableCell>
-                  <TableCell>
-                    {case_.assigned_collaborators && case_.assigned_collaborators.length > 0 ? (
-                      <div className="text-xs">
-                        <div className="font-medium">
-                          {case_.assigned_collaborators.length} colaborador{case_.assigned_collaborators.length > 1 ? 'es' : ''}
-                        </div>
-                        {case_.assigned_collaborators.slice(0, 2).map(email => (
-                          <div key={email} className="text-muted-foreground truncate" title={email}>{email}</div>
-                        ))}
-                        {case_.assigned_collaborators.length > 2 && (
-                          <div className="text-muted-foreground">
-                            +{case_.assigned_collaborators.length - 2} más
-                          </div>
-                        )}
-                      </div>
-                    ) : (
-                      <span className="text-xs text-muted-foreground">Solo propietario</span>
-                    )}
-                  </TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-center gap-1" data-action="true">
                       <Button

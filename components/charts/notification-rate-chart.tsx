@@ -15,32 +15,24 @@ interface NotificationRateChartProps {
 
 const chartConfig = {
   whatsappSuccess: {
-    label: "WhatsApp Exitosos",
+    label: "WhatsApp",
     color: "#10b981", // Green
   },
   emailSuccess: {
-    label: "Email Exitosos",
+    label: "Email",
     color: "#3b82f6", // Blue
-  },
-  whatsappFailed: {
-    label: "WhatsApp Fallidos",
-    color: "#ef4444", // Red
-  },
-  emailFailed: {
-    label: "Email Fallidos",
-    color: "#f97316", // Orange
   },
 } satisfies ChartConfig
 
 export function NotificationRateChart({ data }: NotificationRateChartProps) {
-  const total = data.whatsappSent + data.emailSent + data.whatsappFailed + data.emailFailed
+  const total = data.whatsappSent + data.emailSent
 
   if (total === 0) {
     return (
       <Card>
         <CardHeader>
-          <CardTitle>Tasa de Notificaciones</CardTitle>
-          <CardDescription>Distribución de envíos</CardDescription>
+          <CardTitle>Notificaciones Enviadas</CardTitle>
+          <CardDescription>Distribución de envíos exitosos</CardDescription>
         </CardHeader>
         <CardContent className="h-64 flex items-center justify-center">
           <p className="text-sm text-muted-foreground">No hay datos disponibles</p>
@@ -50,17 +42,15 @@ export function NotificationRateChart({ data }: NotificationRateChartProps) {
   }
 
   const chartData = [
-    { name: "WhatsApp Exitosos", value: data.whatsappSent, fill: "var(--color-whatsappSuccess)" },
-    { name: "Email Exitosos", value: data.emailSent, fill: "var(--color-emailSuccess)" },
-    { name: "WhatsApp Fallidos", value: data.whatsappFailed, fill: "var(--color-whatsappFailed)" },
-    { name: "Email Fallidos", value: data.emailFailed, fill: "var(--color-emailFailed)" },
+    { name: "WhatsApp", value: data.whatsappSent, fill: "var(--color-whatsappSuccess)" },
+    { name: "Email", value: data.emailSent, fill: "var(--color-emailSuccess)" },
   ].filter(item => item.value > 0)
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Tasa de Notificaciones</CardTitle>
-        <CardDescription>Distribución de envíos</CardDescription>
+        <CardTitle>Notificaciones Enviadas</CardTitle>
+        <CardDescription>Distribución de envíos exitosos</CardDescription>
       </CardHeader>
       <CardContent>
         <ChartContainer config={chartConfig} className="h-64 w-full">

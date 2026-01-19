@@ -4,9 +4,9 @@ import { StatCard } from "@/components/charts/stat-card"
 import { AlertActivityChart } from "@/components/charts/alert-activity-chart"
 import { NotificationRateChart } from "@/components/charts/notification-rate-chart"
 import { JuzgadosChart } from "@/components/charts/juzgados-chart"
-import { ReportTypesChart } from "@/components/charts/report-types-chart"
 import { TaskDistributionChart } from "@/components/charts/task-distribution-chart"
-import { Bell, CheckCircle, Send, FileText, Briefcase, Calendar, ListTodo, AlertCircle, TrendingUp } from "lucide-react"
+import { TopCasesByAlertsChart } from "@/components/charts/top-cases-by-alerts-chart"
+import { Bell, CheckCircle, Send, FileText, Briefcase, Calendar, ListTodo, AlertCircle, TrendingUp, Clock, Users, MessageSquare, Search, Database } from "lucide-react"
 
 interface OverviewDashboardClientProps {
   // Alert metrics
@@ -21,22 +21,27 @@ interface OverviewDashboardClientProps {
   }
 
   // Case monitoring
-  monitoredCases: number
-  maxCases: number
-  tier: string
-  recentCases: number
   topJuzgados: Array<{ juzgado: string; count: number }>
-
-  // Investigation reports
-  totalReports: number
-  recentReports: number
-  reportBreakdown: Array<{ type: string; count: number }>
 
   // Workspace activity
   totalTasks: number
   activeTasks: number
   overdueTasks: number
   taskDistribution: Array<{ column: string; count: number }>
+
+  // New metrics
+  alertsThisWeek: number
+  alertWeekTrend: number
+  alertsThisMonth: number
+  alertMonthTrend: number
+  averageResponseTime: number
+  taskCompletionPercentage: number
+  aiConversations: number
+  recentTesisSearches: any[]
+  activeCollaborators: number
+  maxCollaborators: number
+  daysToLimit: number
+  topCasesByAlerts: Array<{ case_number: string; nombre: string | null; alert_count: number }>
 }
 
 export function OverviewDashboardClient({
@@ -44,20 +49,24 @@ export function OverviewDashboardClient({
   unreadAlerts,
   alertActivity,
   notificationStats,
-  monitoredCases,
-  maxCases,
-  tier,
-  recentCases,
   topJuzgados,
-  totalReports,
-  recentReports,
-  reportBreakdown,
   totalTasks,
   activeTasks,
   overdueTasks,
   taskDistribution,
+  alertsThisWeek,
+  alertWeekTrend,
+  alertsThisMonth,
+  alertMonthTrend,
+  averageResponseTime,
+  taskCompletionPercentage,
+  aiConversations,
+  recentTesisSearches,
+  activeCollaborators,
+  maxCollaborators,
+  daysToLimit,
+  topCasesByAlerts,
 }: OverviewDashboardClientProps) {
-  const usagePercentage = maxCases > 0 ? Math.round((monitoredCases / maxCases) * 100) : 0
   const totalNotifications =
     notificationStats.whatsappSent +
     notificationStats.emailSent +
@@ -79,28 +88,22 @@ export function OverviewDashboardClient({
 
       {/* Alert Metrics Section */}
       <section>
-        <h2 className="text-xl font-semibold mb-4">Alertas</h2>
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           <StatCard
-            title="Total de Alertas"
-            value={totalAlerts}
-            description="Todas las alertas generadas"
+            title="Alertas (7 días)"
+            value={alertsThisWeek}
+            description="Últimos 7 días"
             icon={Bell}
             iconColor="#3b82f6"
+            trend={alertWeekTrend !== 0 ? { value: Math.abs(alertWeekTrend), isPositive: alertWeekTrend > 0 } : undefined}
           />
           <StatCard
-            title="Alertas Sin Leer"
-            value={unreadAlerts}
-            description="Pendientes de revisión"
-            icon={AlertCircle}
-            iconColor="#f59e0b"
-          />
-          <StatCard
-            title="Tasa de Notificación"
-            value={`${notificationRate}%`}
-            description="Envíos exitosos"
-            icon={Send}
-            iconColor="#10b981"
+            title="Alertas (30 días)"
+            value={alertsThisMonth}
+            description="Últimos 30 días"
+            icon={Bell}
+            iconColor="#3b82f6"
+            trend={alertMonthTrend !== 0 ? { value: Math.abs(alertMonthTrend), isPositive: alertMonthTrend > 0 } : undefined}
           />
           <StatCard
             title="Notificaciones Enviadas"
@@ -116,81 +119,19 @@ export function OverviewDashboardClient({
         </div>
       </section>
 
-      {/* Case Monitoring Section */}
+      {/* Case Charts Section */}
       <section>
-        <h2 className="text-xl font-semibold mb-4">Monitoreo de Casos</h2>
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          <StatCard
-            title="Casos Monitoreados"
-            value={monitoredCases}
-            description={`de ${maxCases} disponibles`}
-            icon={FileText}
-            iconColor="#8b5cf6"
-          />
-          <StatCard
-            title="Plan Actual"
-            value={tier}
-            description="Suscripción activa"
-            icon={Briefcase}
-            iconColor="#ec4899"
-          />
-          <StatCard
-            title="Uso del Plan"
-            value={`${usagePercentage}%`}
-            description={`${monitoredCases}/${maxCases} casos`}
-            icon={TrendingUp}
-            iconColor="#8b5cf6"
-          />
-          <StatCard
-            title="Casos Recientes"
-            value={recentCases}
-            description="Últimos 7 días"
-            icon={Calendar}
-            iconColor="#8b5cf6"
-          />
-        </div>
-        <div className="mt-4">
+        <div className="grid gap-4 md:grid-cols-2">
           <JuzgadosChart data={topJuzgados} />
-        </div>
-      </section>
-
-      {/* Investigation Reports Section */}
-      <section>
-        <h2 className="text-xl font-semibold mb-4">Reportes de Investigación</h2>
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          <StatCard
-            title="Total de Reportes"
-            value={totalReports}
-            description="Reportes generados"
-            icon={FileText}
-            iconColor="#f59e0b"
-          />
-          <StatCard
-            title="Reportes Recientes"
-            value={recentReports}
-            description="Últimos 30 días"
-            icon={Calendar}
-            iconColor="#f59e0b"
-          />
-          <StatCard
-            title="Tipos de Reportes"
-            value={reportBreakdown.length}
-            description="Categorías distintas"
-            icon={ListTodo}
-            iconColor="#f59e0b"
-          />
-        </div>
-        <div className="mt-4">
-          <ReportTypesChart data={reportBreakdown} />
+          <TopCasesByAlertsChart data={topCasesByAlerts} />
         </div>
       </section>
 
       {/* Workspace Activity Section */}
       <section>
-        <h2 className="text-xl font-semibold mb-4">Workspace</h2>
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
           <StatCard
-            title="Total de Tareas"
+            title="Total de Tareas (Proyectos)"
             value={totalTasks}
             description="Todas las tareas"
             icon={ListTodo}
@@ -209,6 +150,13 @@ export function OverviewDashboardClient({
             description="Requieren atención"
             icon={Calendar}
             iconColor="#ef4444"
+          />
+          <StatCard
+            title="Tasa de Completado"
+            value={`${taskCompletionPercentage}%`}
+            description="Tareas terminadas"
+            icon={CheckCircle}
+            iconColor="#10b981"
           />
           <StatCard
             title="Columnas Activas"
