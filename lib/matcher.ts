@@ -409,13 +409,11 @@ export async function getUnsentAlerts(supabaseUrl: string, supabaseKey: string) 
       monitored_cases (
         case_number,
         juzgado,
-        nombre,
-        assigned_collaborators
+        nombre
       ),
       monitored_names (
         full_name,
-        search_mode,
-        assigned_collaborators
+        search_mode
       ),
       bulletin_entries (
         bulletin_date,

@@ -371,30 +371,49 @@ export async function scrapeAllBulletins(date: string, supabaseUrl: string, supa
         console.warn(`  ⚠ Found ${duplicates.length} duplicates within ${source.label} bulletin`);
       }
 
-      const { error } = await supabase
-        .from('bulletin_entries')
-        .upsert(entriesToInsert, {
-          onConflict: 'bulletin_date,juzgado,case_number',
-          ignoreDuplicates: true,
-        });
+      // Insert in batches to avoid database timeout on large bulletins
+      const BATCH_SIZE = 200;
+      let insertedCount = 0;
+      let lastError: any = null;
 
-      if (error) {
-        console.error(`  ✗ Error inserting entries for ${source.label}:`, error);
+      for (let i = 0; i < entriesToInsert.length; i += BATCH_SIZE) {
+        const batch = entriesToInsert.slice(i, i + BATCH_SIZE);
+        const { error } = await supabase
+          .from('bulletin_entries')
+          .upsert(batch, {
+            onConflict: 'bulletin_date,juzgado,case_number',
+            ignoreDuplicates: true,
+          });
+
+        if (error) {
+          console.error(`  ✗ Error inserting batch ${Math.floor(i / BATCH_SIZE) + 1} for ${source.label}:`, error);
+          lastError = error;
+          // Continue with remaining batches even if one fails
+        } else {
+          insertedCount += batch.length;
+          console.log(`  → Batch ${Math.floor(i / BATCH_SIZE) + 1}: Inserted ${batch.length} entries`);
+        }
+      }
+
+      if (lastError && insertedCount === 0) {
+        // All batches failed
+        console.error(`  ✗ Failed to insert any entries for ${source.label}`);
         results.failed++;
         results.details.push({
           source: source.name,
           found: false,
           entries_count: 0,
-          error: error.message,
+          error: lastError.message,
         });
       } else {
-        console.log(`  ✓ Inserted ${scraped.entries.length} entries for ${source.label}`);
+        // At least some batches succeeded
+        console.log(`  ✓ Inserted ${insertedCount}/${entriesToInsert.length} entries for ${source.label}`);
         results.successful++;
-        results.total_entries += scraped.entries.length;
+        results.total_entries += insertedCount;
         results.details.push({
           source: source.name,
           found: true,
-          entries_count: scraped.entries.length,
+          entries_count: insertedCount,
         });
       }
     } else {
