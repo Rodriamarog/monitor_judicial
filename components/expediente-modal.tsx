@@ -13,10 +13,21 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { Loader2, FileText, DollarSign, Bell, Calendar, Building2, User, Phone, ChevronDown, ChevronUp, ExternalLink, Plus } from 'lucide-react'
+import { Loader2, FileText, DollarSign, Bell, Calendar, Building2, User, Phone, ChevronDown, ChevronUp, ExternalLink, Plus, Pencil, Trash2 } from 'lucide-react'
 import { formatTijuanaDate } from '@/lib/date-utils'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { AddPaymentDialog } from '@/components/add-payment-dialog'
+import { EditPaymentDialog } from '@/components/edit-payment-dialog'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 
 interface Case {
   id: string
@@ -71,6 +82,10 @@ export function ExpedienteModal({ case_, open, onOpenChange }: ExpedienteModalPr
   const [payments, setPayments] = useState<Payment[]>([])
   const [loadingPayments, setLoadingPayments] = useState(false)
   const [showAddPayment, setShowAddPayment] = useState(false)
+  const [showEditPayment, setShowEditPayment] = useState(false)
+  const [editingPayment, setEditingPayment] = useState<Payment | null>(null)
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [deletingPayment, setDeletingPayment] = useState<Payment | null>(null)
   const supabase = createClient()
 
   useEffect(() => {
@@ -152,6 +167,43 @@ export function ExpedienteModal({ case_, open, onOpenChange }: ExpedienteModalPr
     fetchPayments()
     // Optionally trigger a refresh of the parent component to update balance
     window.location.reload()
+  }
+
+  const handlePaymentUpdated = () => {
+    fetchPayments()
+    window.location.reload()
+  }
+
+  const handleEditClick = (payment: Payment, e: React.MouseEvent) => {
+    e.stopPropagation()
+    setEditingPayment(payment)
+    setShowEditPayment(true)
+  }
+
+  const handleDeleteClick = (payment: Payment, e: React.MouseEvent) => {
+    e.stopPropagation()
+    setDeletingPayment(payment)
+    setShowDeleteConfirm(true)
+  }
+
+  const handleDeleteConfirm = async () => {
+    if (!deletingPayment) return
+
+    try {
+      const { error } = await supabase
+        .from('case_payments')
+        .delete()
+        .eq('id', deletingPayment.id)
+
+      if (error) throw error
+
+      setShowDeleteConfirm(false)
+      setDeletingPayment(null)
+      fetchPayments()
+      window.location.reload()
+    } catch (error) {
+      console.error('Error deleting payment:', error)
+    }
   }
 
   if (!case_) return null
@@ -481,6 +533,7 @@ export function ExpedienteModal({ case_, open, onOpenChange }: ExpedienteModalPr
                               <TableHead>Monto</TableHead>
                               <TableHead>Método</TableHead>
                               <TableHead>Notas</TableHead>
+                              <TableHead className="text-right w-24">Acciones</TableHead>
                             </TableRow>
                           </TableHeader>
                           <TableBody>
@@ -497,6 +550,28 @@ export function ExpedienteModal({ case_, open, onOpenChange }: ExpedienteModalPr
                                 </TableCell>
                                 <TableCell className="max-w-xs truncate">
                                   {payment.notes || '-'}
+                                </TableCell>
+                                <TableCell className="text-right">
+                                  <div className="flex justify-end gap-1">
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      className="h-8 w-8 p-0"
+                                      onClick={(e) => handleEditClick(payment, e)}
+                                      title="Editar"
+                                    >
+                                      <Pencil className="h-4 w-4" />
+                                    </Button>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      className="h-8 w-8 p-0 text-destructive hover:text-destructive"
+                                      onClick={(e) => handleDeleteClick(payment, e)}
+                                      title="Eliminar"
+                                    >
+                                      <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                  </div>
                                 </TableCell>
                               </TableRow>
                             ))}
@@ -520,6 +595,36 @@ export function ExpedienteModal({ case_, open, onOpenChange }: ExpedienteModalPr
         currency={case_.currency || 'MXN'}
         onPaymentAdded={handlePaymentAdded}
       />
+
+      {/* Edit Payment Dialog */}
+      <EditPaymentDialog
+        open={showEditPayment}
+        onOpenChange={setShowEditPayment}
+        payment={editingPayment}
+        currency={case_.currency || 'MXN'}
+        onPaymentUpdated={handlePaymentUpdated}
+      />
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Eliminar este pago?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta acción no se puede deshacer. El pago de ${deletingPayment?.amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} {case_.currency || 'MXN'} será eliminado permanentemente y el balance se actualizará.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteConfirm}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Eliminar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Dialog>
   )
 }
