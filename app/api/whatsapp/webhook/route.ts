@@ -200,6 +200,8 @@ export async function POST(request: NextRequest) {
       console.log('Executing function calls:', geminiResult.functionCalls)
       functionResults = await executeFunctionCalls(geminiResult.functionCalls, user.id)
 
+      console.log('Function results:', JSON.stringify(functionResults, null, 2))
+
       // Build function responses for Gemini
       const functionResponses = geminiResult.functionCalls.map((call: any, index: number) => ({
         role: 'function' as const,
@@ -220,6 +222,8 @@ export async function POST(request: NextRequest) {
         conversationHistory: [...geminiResult.updatedHistory, ...functionResponses],
       })
 
+      console.log('Follow-up result:', { text: followUpResult.text, hasText: !!followUpResult.text })
+
       finalResponse = followUpResult.text
       geminiResult.updatedHistory = followUpResult.updatedHistory
     }
@@ -229,6 +233,22 @@ export async function POST(request: NextRequest) {
     if (hasError) {
       const errorMessages = functionResults.filter((r) => !r.success).map((r) => r.error)
       finalResponse = errorMessages.join('\n\n')
+    }
+
+    // Fallback if no response generated
+    if (!finalResponse || finalResponse.trim() === '') {
+      // Use function result messages as fallback
+      if (functionResults.length > 0) {
+        finalResponse = functionResults
+          .map((r) => r.message || r.error || 'Procesado')
+          .filter(Boolean)
+          .join('\n\n')
+      }
+
+      // If still empty, use generic message
+      if (!finalResponse || finalResponse.trim() === '') {
+        finalResponse = '✅ Procesado. Por favor intenta de nuevo con más detalles.'
+      }
     }
 
     // Update conversation state
