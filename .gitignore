@@ -54,3 +54,6 @@ next-env.d.ts
 
 # Google OAuth secrets
 google-calendar-info/
+
+# Documentation with sensitive examples
+WHATSAPP_PAYMENT_AGENT.md
