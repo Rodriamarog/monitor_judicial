@@ -41,8 +41,8 @@ export default function SettingsPage() {
     loadProfile()
 
     // Check for OAuth callback success/error
-    const googleConnected = searchParams.get('google_connected')
-    const googleError = searchParams.get('google_error')
+    const googleConnected = searchParams?.get('google_connected')
+    const googleError = searchParams?.get('google_error')
 
     if (googleConnected === 'true') {
       setCalendarSuccess(true)

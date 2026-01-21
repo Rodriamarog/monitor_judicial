@@ -12,7 +12,7 @@ import { PrescripcionForm } from '@/components/templates/prescripcion-form'
 export default function TemplatePage() {
     const params = useParams()
     const router = useRouter()
-    const templateId = params.templateId as string
+    const templateId = params?.templateId as string
 
     const renderForm = () => {
         switch (templateId) {

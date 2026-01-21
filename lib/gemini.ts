@@ -22,10 +22,10 @@ export const geminiTools = [
         name: 'search_cases_by_client_name',
         description: 'Busca casos monitoreados por nombre del cliente (campo nombre). Usa esto cuando el usuario mencione un nombre de cliente.',
         parameters: {
-          type: 'OBJECT' as const,
+          type: 'object',
           properties: {
             query: {
-              type: 'STRING' as const,
+              type: 'string',
               description: 'Nombre del cliente a buscar (ej: "Juan Perez", "Maria Lopez")',
             },
           },
@@ -36,10 +36,10 @@ export const geminiTools = [
         name: 'get_case_balance',
         description: 'Obtiene el balance actual de un caso específico. Muestra el monto total cobrado y los pagos recibidos.',
         parameters: {
-          type: 'OBJECT' as const,
+          type: 'object',
           properties: {
             case_id: {
-              type: 'STRING' as const,
+              type: 'string',
               description: 'ID del caso',
             },
           },
@@ -50,18 +50,18 @@ export const geminiTools = [
         name: 'add_payment',
         description: 'Registra un pago para un caso. La fecha del pago siempre es hoy. IMPORTANTE: Verifica que la moneda del pago coincida con la moneda del caso antes de llamar esta función.',
         parameters: {
-          type: 'OBJECT' as const,
+          type: 'object',
           properties: {
             case_id: {
-              type: 'STRING' as const,
+              type: 'string',
               description: 'ID del caso al que se agregará el pago',
             },
             amount: {
-              type: 'NUMBER' as const,
+              type: 'number',
               description: 'Monto del pago (número positivo)',
             },
             notes: {
-              type: 'STRING' as const,
+              type: 'string',
               description: 'Notas adicionales sobre el pago (opcional)',
             },
           },
@@ -200,7 +200,7 @@ export async function processChatMessage(
   const client = getGeminiClient()
   const model = client.getGenerativeModel({
     model: 'gemini-2.0-flash-exp',
-    tools: geminiTools,
+    tools: geminiTools as any,
     systemInstruction: SYSTEM_PROMPT,
   })
 
