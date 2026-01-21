@@ -39,12 +39,22 @@ export async function handleSearchCases(
     // Normalize query for fuzzy matching
     const normalized = normalizeName(query)
 
-    // Search with ILIKE for partial matching
-    const { data: cases, error } = await supabase
+    // Split query into individual words for better matching
+    // "hilda jimenez" should match "HILDA CLEMENTE JIMENEZ"
+    const searchTerms = normalized.split(/\s+/).filter(term => term.length > 0)
+
+    // Build query that requires ALL terms to match somewhere in the name
+    let queryBuilder = supabase
       .from('monitored_cases')
       .select('id, case_number, juzgado, nombre, total_amount_charged, currency')
       .eq('user_id', userId)
-      .ilike('nombre', `%${normalized}%`)
+
+    // Add ILIKE condition for each search term
+    searchTerms.forEach(term => {
+      queryBuilder = queryBuilder.ilike('nombre', `%${term}%`)
+    })
+
+    const { data: cases, error } = await queryBuilder
       .order('created_at', { ascending: false })
       .limit(5)
 

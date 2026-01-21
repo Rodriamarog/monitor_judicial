@@ -1,7 +1,9 @@
 import { GoogleGenerativeAI } from '@google/generative-ai'
+import OpenAI from 'openai'
 
 // Lazy-initialized Gemini client
 let geminiClient: GoogleGenerativeAI | null = null
+let openaiClient: OpenAI | null = null
 
 export function getGeminiClient(): GoogleGenerativeAI {
   if (!geminiClient) {
@@ -12,6 +14,17 @@ export function getGeminiClient(): GoogleGenerativeAI {
     geminiClient = new GoogleGenerativeAI(apiKey)
   }
   return geminiClient
+}
+
+export function getOpenAIClient(): OpenAI {
+  if (!openaiClient) {
+    const apiKey = process.env.OPENAI_API_KEY
+    if (!apiKey) {
+      throw new Error('OPENAI_API_KEY is not configured for fallback')
+    }
+    openaiClient = new OpenAI({ apiKey })
+  }
+  return openaiClient
 }
 
 // Function declarations for Gemini function calling
@@ -69,6 +82,69 @@ export const geminiTools = [
         },
       },
     ],
+  },
+]
+
+// OpenAI tools format (for fallback)
+export const openaiTools: OpenAI.Chat.Completions.ChatCompletionTool[] = [
+  {
+    type: 'function',
+    function: {
+      name: 'search_cases_by_client_name',
+      description: 'Busca casos monitoreados por nombre del cliente (campo nombre). Usa esto cuando el usuario mencione un nombre de cliente.',
+      parameters: {
+        type: 'object',
+        properties: {
+          query: {
+            type: 'string',
+            description: 'Nombre del cliente a buscar (ej: "Juan Perez", "Maria Lopez")',
+          },
+        },
+        required: ['query'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'get_case_balance',
+      description: 'Obtiene el balance actual de un caso específico. Muestra el monto total cobrado y los pagos recibidos.',
+      parameters: {
+        type: 'object',
+        properties: {
+          case_id: {
+            type: 'string',
+            description: 'ID del caso',
+          },
+        },
+        required: ['case_id'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'add_payment',
+      description: 'Registra un pago para un caso. La fecha del pago siempre es hoy. IMPORTANTE: Verifica que la moneda del pago coincida con la moneda del caso antes de llamar esta función.',
+      parameters: {
+        type: 'object',
+        properties: {
+          case_id: {
+            type: 'string',
+            description: 'ID del caso al que se agregará el pago',
+          },
+          amount: {
+            type: 'number',
+            description: 'Monto del pago (número positivo)',
+          },
+          notes: {
+            type: 'string',
+            description: 'Notas adicionales sobre el pago (opcional)',
+          },
+        },
+        required: ['case_id', 'amount'],
+      },
+    },
   },
 ]
 
@@ -190,6 +266,63 @@ export function extractPaymentIntent(message: string): PaymentIntent {
   return intent
 }
 
+// Helper: Check if error is rate limit or overload
+function isRateLimitError(error: any): boolean {
+  const errorMsg = error?.message?.toLowerCase() || ''
+  return (
+    error?.status === 429 ||
+    errorMsg.includes('rate limit') ||
+    errorMsg.includes('quota') ||
+    errorMsg.includes('heavy load') ||
+    errorMsg.includes('overloaded')
+  )
+}
+
+// Helper: Convert Gemini history to OpenAI format
+function geminiToOpenAIHistory(geminiHistory: any[]): OpenAI.Chat.Completions.ChatCompletionMessageParam[] {
+  const messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = []
+
+  for (const msg of geminiHistory) {
+    if (msg.role === 'user') {
+      const textPart = msg.parts?.find((p: any) => p.text)
+      if (textPart) {
+        messages.push({ role: 'user', content: textPart.text })
+      }
+    } else if (msg.role === 'model') {
+      const textPart = msg.parts?.find((p: any) => p.text)
+      const functionCall = msg.parts?.find((p: any) => p.functionCall)
+
+      if (functionCall) {
+        messages.push({
+          role: 'assistant',
+          content: null,
+          tool_calls: [{
+            id: `call_${Date.now()}`,
+            type: 'function',
+            function: {
+              name: functionCall.functionCall.name,
+              arguments: JSON.stringify(functionCall.functionCall.args)
+            }
+          }]
+        })
+      } else if (textPart) {
+        messages.push({ role: 'assistant', content: textPart.text })
+      }
+    } else if (msg.role === 'function') {
+      const funcResponse = msg.parts?.[0]?.functionResponse
+      if (funcResponse) {
+        messages.push({
+          role: 'tool',
+          tool_call_id: `call_${Date.now()}`,
+          content: JSON.stringify(funcResponse.response)
+        })
+      }
+    }
+  }
+
+  return messages
+}
+
 // Process chat message with Gemini
 export interface ProcessMessageOptions {
   userId: string
@@ -203,9 +336,40 @@ export interface ProcessMessageResult {
   text: string
   functionCalls?: any[]
   updatedHistory: any[]
+  usedFallback?: boolean
 }
 
 export async function processChatMessage(
+  options: ProcessMessageOptions
+): Promise<ProcessMessageResult> {
+  const { userId, userMessage, conversationHistory, audioUrl, audioType } = options
+
+  // Try Gemini first
+  try {
+    return await processChatMessageWithGemini(options)
+  } catch (error: any) {
+    console.error('Gemini error:', error)
+
+    // Check if it's a rate limit / overload error
+    if (isRateLimitError(error)) {
+      console.log('Gemini rate limited or overloaded, falling back to OpenAI...')
+
+      // Fall back to OpenAI
+      try {
+        return await processChatMessageWithOpenAI(options)
+      } catch (fallbackError) {
+        console.error('OpenAI fallback also failed:', fallbackError)
+        throw new Error('Both Gemini and OpenAI failed. Please try again later.')
+      }
+    }
+
+    // For other errors, throw immediately
+    throw error
+  }
+}
+
+// Process with Gemini (original implementation)
+async function processChatMessageWithGemini(
   options: ProcessMessageOptions
 ): Promise<ProcessMessageResult> {
   const { userId, userMessage, conversationHistory, audioUrl, audioType } = options
@@ -282,5 +446,87 @@ export async function processChatMessage(
     text,
     functionCalls: functionCalls || undefined,
     updatedHistory,
+  }
+}
+
+// Process with OpenAI (fallback)
+async function processChatMessageWithOpenAI(
+  options: ProcessMessageOptions
+): Promise<ProcessMessageResult> {
+  const { userId, userMessage, conversationHistory } = options
+
+  const client = getOpenAIClient()
+
+  // Convert Gemini history to OpenAI format
+  const messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
+    { role: 'system', content: SYSTEM_PROMPT },
+    ...geminiToOpenAIHistory(conversationHistory)
+  ]
+
+  // Add new user message if provided
+  if (userMessage) {
+    messages.push({ role: 'user', content: userMessage })
+  }
+
+  // Call OpenAI
+  const response = await client.chat.completions.create({
+    model: 'gpt-4o-mini',
+    messages,
+    tools: openaiTools,
+    tool_choice: 'auto',
+  })
+
+  const choice = response.choices[0]
+  const text = choice.message.content || ''
+  const toolCalls = choice.message.tool_calls
+
+  // Convert OpenAI function calls to Gemini format
+  let functionCalls: any[] | undefined
+  if (toolCalls && toolCalls.length > 0) {
+    functionCalls = toolCalls
+      .filter(tc => tc.type === 'function')
+      .map(tc => ({
+        name: tc.function.name,
+        args: JSON.parse(tc.function.arguments)
+      }))
+  }
+
+  // Build updated history in Gemini format
+  const updatedHistory = [...conversationHistory]
+
+  // Add user message
+  if (userMessage) {
+    updatedHistory.push({
+      role: 'user',
+      parts: [{ text: userMessage }]
+    })
+  }
+
+  // Add assistant response
+  const assistantParts: any[] = []
+  if (text) {
+    assistantParts.push({ text })
+  }
+  if (functionCalls) {
+    functionCalls.forEach(fc => {
+      assistantParts.push({
+        functionCall: {
+          name: fc.name,
+          args: fc.args
+        }
+      })
+    })
+  }
+
+  updatedHistory.push({
+    role: 'model',
+    parts: assistantParts
+  })
+
+  return {
+    text,
+    functionCalls,
+    updatedHistory,
+    usedFallback: true
   }
 }
