@@ -76,8 +76,8 @@ export default function AlertsPage() {
   // Alert type toggle: 'cases' or 'names'
   // If there's a 'name' parameter, default to 'names' tab
   const [alertType, setAlertType] = useState<'cases' | 'names'>(() => {
-    const typeParam = searchParams.get('type') as 'cases' | 'names'
-    const nameParam = searchParams.get('name')
+    const typeParam = searchParams?.get('type') as 'cases' | 'names'
+    const nameParam = searchParams?.get('name')
     if (typeParam) return typeParam
     if (nameParam && nameParam !== 'all') return 'names'
     return 'cases'
@@ -89,10 +89,10 @@ export default function AlertsPage() {
   }
 
   // Filter states - default to today
-  const [selectedCase, setSelectedCase] = useState<string>(searchParams.get('case') || 'all')
-  const [selectedName, setSelectedName] = useState<string>(searchParams.get('name') || 'all')
-  const [dateFrom, setDateFrom] = useState<string>(searchParams.get('from') || getTodayDate())
-  const [dateTo, setDateTo] = useState<string>(searchParams.get('to') || getTodayDate())
+  const [selectedCase, setSelectedCase] = useState<string>(searchParams?.get('case') || 'all')
+  const [selectedName, setSelectedName] = useState<string>(searchParams?.get('name') || 'all')
+  const [dateFrom, setDateFrom] = useState<string>(searchParams?.get('from') || getTodayDate())
+  const [dateTo, setDateTo] = useState<string>(searchParams?.get('to') || getTodayDate())
   const [caseComboboxOpen, setCaseComboboxOpen] = useState(false)
   const [nameComboboxOpen, setNameComboboxOpen] = useState(false)
 

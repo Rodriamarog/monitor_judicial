@@ -9,7 +9,7 @@ import { CheckCircle2, XCircle, Clock, AlertTriangle, Home, LogIn } from 'lucide
 
 function InvitationResponseContent() {
   const searchParams = useSearchParams()
-  const status = searchParams.get('status')
+  const status = searchParams?.get('status')
 
   const getStatusContent = () => {
     switch (status) {

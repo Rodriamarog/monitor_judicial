@@ -1,4 +1,4 @@
-import { GoogleGenerativeAI, FunctionDeclarationSchemaType } from '@google/generative-ai'
+import { GoogleGenerativeAI } from '@google/generative-ai'
 
 // Lazy-initialized Gemini client
 let geminiClient: GoogleGenerativeAI | null = null
@@ -22,10 +22,10 @@ export const geminiTools = [
         name: 'search_cases_by_client_name',
         description: 'Busca casos monitoreados por nombre del cliente (campo nombre). Usa esto cuando el usuario mencione un nombre de cliente.',
         parameters: {
-          type: FunctionDeclarationSchemaType.OBJECT,
+          type: 'OBJECT' as const,
           properties: {
             query: {
-              type: FunctionDeclarationSchemaType.STRING,
+              type: 'STRING' as const,
               description: 'Nombre del cliente a buscar (ej: "Juan Perez", "Maria Lopez")',
             },
           },
@@ -36,10 +36,10 @@ export const geminiTools = [
         name: 'get_case_balance',
         description: 'Obtiene el balance actual de un caso específico. Muestra el monto total cobrado y los pagos recibidos.',
         parameters: {
-          type: FunctionDeclarationSchemaType.OBJECT,
+          type: 'OBJECT' as const,
           properties: {
             case_id: {
-              type: FunctionDeclarationSchemaType.STRING,
+              type: 'STRING' as const,
               description: 'ID del caso',
             },
           },
@@ -50,18 +50,18 @@ export const geminiTools = [
         name: 'add_payment',
         description: 'Registra un pago para un caso. La fecha del pago siempre es hoy. IMPORTANTE: Verifica que la moneda del pago coincida con la moneda del caso antes de llamar esta función.',
         parameters: {
-          type: FunctionDeclarationSchemaType.OBJECT,
+          type: 'OBJECT' as const,
           properties: {
             case_id: {
-              type: FunctionDeclarationSchemaType.STRING,
+              type: 'STRING' as const,
               description: 'ID del caso al que se agregará el pago',
             },
             amount: {
-              type: FunctionDeclarationSchemaType.NUMBER,
+              type: 'NUMBER' as const,
               description: 'Monto del pago (número positivo)',
             },
             notes: {
-              type: FunctionDeclarationSchemaType.STRING,
+              type: 'STRING' as const,
               description: 'Notas adicionales sobre el pago (opcional)',
             },
           },
