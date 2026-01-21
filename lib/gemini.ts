@@ -199,7 +199,7 @@ export async function processChatMessage(
 
   const client = getGeminiClient()
   const model = client.getGenerativeModel({
-    model: 'gemini-1.5-flash-latest',
+    model: 'gemini-3-flash-preview',
     tools: geminiTools as any,
     systemInstruction: SYSTEM_PROMPT,
   })
