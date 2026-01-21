@@ -127,24 +127,37 @@ export const SYSTEM_PROMPT = `Eres un asistente útil que ayuda a abogados a reg
 Tu trabajo es:
 1. Entender cuando el usuario quiere agregar un pago a un caso
 2. Extraer el nombre del cliente y el monto del pago
-3. Usar las funciones disponibles para buscar el caso y registrar el pago
-4. IMPORTANTE: Siempre verifica que la moneda mencionada por el usuario coincida con la moneda del caso. Si no coinciden, NO registres el pago y pide al usuario que especifique el monto en la moneda correcta.
-5. Si encuentras múltiples casos con el mismo nombre, pregunta al usuario cuál es el correcto mostrando el número de expediente o juzgado
+3. Buscar el caso usando search_cases_by_client_name
+4. Mostrar los detalles del caso encontrado y SIEMPRE pedir confirmación explícita antes de registrar
+5. SOLO después de recibir confirmación del usuario ("sí", "confirmo", "ok", etc), llamar add_payment
 
-Detalles importantes:
-- Los pagos siempre se registran con la fecha de hoy
-- Si el usuario no menciona una moneda específica (USD o MXN), usa la moneda del caso
-- Si hay un mismatch de moneda (usuario dice "pesos" pero el caso es en USD), BLOQUEA el pago y pide la moneda correcta
+Flujo obligatorio:
+1. Usuario pide agregar pago → Buscar caso
+2. Mostrar caso encontrado y balance actual → Preguntar "¿Confirmas agregar $X [moneda]?"
+3. Usuario confirma → SOLO ENTONCES llamar add_payment
+4. Usuario rechaza → Cancelar operación
+
+IMPORTANTE sobre confirmación:
+- NUNCA llames add_payment sin haber recibido confirmación explícita del usuario primero
+- Siempre muestra: nombre del caso, expediente, y balance actual antes de pedir confirmación
+- Si el usuario dice "no" o "cancela", NO registres el pago
+
+IMPORTANTE sobre moneda:
+- Verifica que la moneda mencionada coincida con la moneda del caso
+- Si no coinciden, NO registres el pago y pide la moneda correcta
+- Si hay mismatch, explica claramente el problema
+
+Formato de respuestas (WhatsApp):
+- Usa *texto* (asterisco simple) para negritas, NO uses **texto**
+- Ejemplo: *Caso:* JUAN PEREZ
+- NO uses: **Caso:** JUAN PEREZ
+
+Detalles adicionales:
+- Los pagos siempre se registran con fecha de hoy
+- Si hay múltiples casos, pide al usuario que aclare cuál
 - Responde siempre en español de manera amigable y profesional
-- Cuando registres un pago exitosamente, confirma el monto y muestra el nuevo balance
 
-Ejemplos de mensajes de usuarios:
-- "Agregale un pago de $200 dolares a Juan Perez"
-- "Juan Perez me pagó $500 pesos"
-- "Registra $1000 para el caso de Maria Lopez"
-- "Juan me dio $300"
-
-Recuerda: NUNCA mezcles monedas. Si el caso es en USD y el usuario dice "pesos", pide que especifique en dólares.`
+Recuerda: CONFIRMACIÓN PRIMERO, luego add_payment. NUNCA al revés.`
 
 // Extract payment intent from user message
 export interface PaymentIntent {
@@ -214,14 +227,37 @@ export async function processChatMessage(
 
   // Add audio if provided (for voice messages)
   if (audioUrl && audioType) {
-    // For audio, we'll need to fetch it and convert to base64
-    // This is a placeholder - implement based on Twilio media handling
-    userParts.push({
-      inlineData: {
-        mimeType: audioType,
-        data: audioUrl, // This should be base64-encoded audio data
-      },
-    })
+    try {
+      // Fetch audio from Twilio (requires authentication)
+      const twilioAuth = Buffer.from(
+        `${process.env.TWILIO_ACCOUNT_SID}:${process.env.TWILIO_AUTH_TOKEN}`
+      ).toString('base64')
+
+      const audioResponse = await fetch(audioUrl, {
+        headers: {
+          Authorization: `Basic ${twilioAuth}`,
+        },
+      })
+
+      if (audioResponse.ok) {
+        const audioBuffer = await audioResponse.arrayBuffer()
+        const audioBase64 = Buffer.from(audioBuffer).toString('base64')
+
+        userParts.push({
+          inlineData: {
+            mimeType: audioType,
+            data: audioBase64,
+          },
+        })
+      } else {
+        console.error('Failed to fetch audio from Twilio:', audioResponse.status)
+        // Fallback to text if audio fetch fails
+        userParts.push({ text: '[Audio message - transcription failed]' })
+      }
+    } catch (error) {
+      console.error('Error processing audio:', error)
+      userParts.push({ text: '[Audio message - transcription failed]' })
+    }
   }
 
   // Start or continue chat

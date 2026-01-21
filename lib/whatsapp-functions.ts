@@ -59,24 +59,45 @@ export async function handleSearchCases(
       }
     }
 
-    if (cases.length === 1) {
+    // Calculate balance for each case
+    const casesWithBalance = await Promise.all(
+      cases.map(async (caseItem) => {
+        const { data: payments } = await supabase
+          .from('case_payments')
+          .select('amount')
+          .eq('case_id', caseItem.id)
+
+        const totalPaid = payments?.reduce((sum, p) => sum + p.amount, 0) || 0
+        const totalCharged = caseItem.total_amount_charged || 0
+        const balance = totalCharged - totalPaid
+
+        return {
+          ...caseItem,
+          totalPaid,
+          balance,
+        }
+      })
+    )
+
+    if (casesWithBalance.length === 1) {
+      const c = casesWithBalance[0]
       return {
         success: true,
-        data: { cases },
-        message: `Encontré 1 caso: ${cases[0].nombre} (Expediente: ${cases[0].case_number})`,
+        data: { cases: casesWithBalance },
+        message: `*Caso encontrado:*\n${c.nombre}\nExpediente: ${c.case_number}\nBalance actual: $${c.balance.toFixed(2)} ${c.currency}`,
       }
     }
 
     // Multiple cases found - needs clarification
-    const caseList = cases
-      .map((c, i) => `${i + 1}. ${c.nombre} (Expediente: ${c.case_number}, Juzgado: ${c.juzgado})`)
-      .join('\n')
+    const caseList = casesWithBalance
+      .map((c, i) => `${i + 1}. ${c.nombre}\n   Expediente: ${c.case_number}\n   Balance: $${c.balance.toFixed(2)} ${c.currency}`)
+      .join('\n\n')
 
     return {
       success: true,
-      data: { cases },
+      data: { cases: casesWithBalance },
       needs_clarification: true,
-      message: `Encontré ${cases.length} casos con ese nombre:\n${caseList}\n\n¿A cuál te refieres? Puedes responder con el número o con el número de expediente.`,
+      message: `Encontré ${casesWithBalance.length} casos con ese nombre:\n\n${caseList}\n\n¿A cuál te refieres? Puedes responder con el número o con el número de expediente.`,
     }
   } catch (error) {
     console.error('Error searching cases:', error)
