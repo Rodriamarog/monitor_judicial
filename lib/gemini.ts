@@ -229,8 +229,10 @@ export async function processChatMessage(
     history: conversationHistory,
   })
 
-  // Send message
-  const result = await chat.sendMessage(userParts)
+  // Send message (if userParts is empty, we're continuing after function calls)
+  const result = await chat.sendMessage(
+    userParts.length > 0 ? userParts : ''
+  )
   const response = result.response
 
   // Extract text and function calls
