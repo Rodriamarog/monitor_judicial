@@ -15,13 +15,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // Parse form data
-    const formData = await request.formData()
-    const file = formData.get('file') as File
-    const caseId = formData.get('caseId') as string
+    const { caseId, filePath, filename, fileSize, mimeType } = await request.json()
 
-    if (!file || !caseId) {
-      return NextResponse.json({ error: 'Missing file or caseId' }, { status: 400 })
+    if (!caseId || !filePath || !filename || !fileSize || !mimeType) {
+      return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
     }
 
     // Verify case belongs to user
@@ -36,22 +33,15 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Case not found or unauthorized' }, { status: 404 })
     }
 
-    // Generate file path: user_id/case_id/timestamp_filename
-    const timestamp = Date.now()
-    const sanitizedFileName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_')
-    const filePath = `${user.id}/${caseId}/${timestamp}_${sanitizedFileName}`
-
-    // Upload to storage
-    const { error: uploadError } = await supabase.storage
+    // Verify the file exists in storage
+    const { data: fileExists, error: checkError } = await supabase.storage
       .from('case-files')
-      .upload(filePath, file, {
-        contentType: file.type,
-        upsert: false,
+      .list(filePath.substring(0, filePath.lastIndexOf('/')), {
+        search: filePath.substring(filePath.lastIndexOf('/') + 1),
       })
 
-    if (uploadError) {
-      console.error('Upload error:', uploadError)
-      return NextResponse.json({ error: 'Failed to upload file' }, { status: 500 })
+    if (checkError || !fileExists || fileExists.length === 0) {
+      return NextResponse.json({ error: 'File not found in storage' }, { status: 404 })
     }
 
     // Save file metadata to database
@@ -60,24 +50,22 @@ export async function POST(request: NextRequest) {
       .insert({
         case_id: caseId,
         user_id: user.id,
-        file_name: file.name,
+        file_name: filename,
         file_path: filePath,
-        file_size: file.size,
-        mime_type: file.type,
+        file_size: fileSize,
+        mime_type: mimeType,
       })
       .select()
       .single()
 
     if (dbError) {
-      // Rollback: delete uploaded file
-      await supabase.storage.from('case-files').remove([filePath])
       console.error('Database error:', dbError)
       return NextResponse.json({ error: 'Failed to save file metadata' }, { status: 500 })
     }
 
     return NextResponse.json({ success: true, file: fileRecord })
   } catch (error) {
-    console.error('Upload error:', error)
+    console.error('Complete upload error:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

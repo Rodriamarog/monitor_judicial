@@ -15,9 +15,10 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // Get fileId from query params
+    // Get fileId and download flag from query params
     const { searchParams } = new URL(request.url)
     const fileId = searchParams.get('fileId')
+    const download = searchParams.get('download') === 'true'
 
     if (!fileId) {
       return NextResponse.json({ error: 'Missing fileId' }, { status: 400 })
@@ -36,9 +37,12 @@ export async function GET(request: NextRequest) {
     }
 
     // Generate signed URL (valid for 1 hour)
+    // If download flag is set, force download instead of display
     const { data: signedUrlData, error: urlError } = await supabase.storage
       .from('case-files')
-      .createSignedUrl(fileData.file_path, 3600)
+      .createSignedUrl(fileData.file_path, 3600, {
+        download: download ? fileData.file_name : false
+      })
 
     if (urlError || !signedUrlData) {
       console.error('Signed URL error:', urlError)

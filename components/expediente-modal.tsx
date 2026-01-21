@@ -14,7 +14,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { Loader2, FileText, DollarSign, Bell, Calendar, Building2, User, Phone, ChevronDown, ChevronUp, ExternalLink, Plus, Pencil, Trash2, Upload, Download, X } from 'lucide-react'
+import { Loader2, FileText, DollarSign, Bell, Calendar, Building2, User, Phone, ChevronDown, ChevronUp, ExternalLink, Plus, Pencil, Trash2, Upload, Download, X, Image, FileSpreadsheet, File } from 'lucide-react'
 import { formatTijuanaDate } from '@/lib/date-utils'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { AddPaymentDialog } from '@/components/add-payment-dialog'
@@ -262,31 +262,83 @@ export function ExpedienteModal({ case_, open, onOpenChange }: ExpedienteModalPr
     const file = e.target.files?.[0]
     if (!file || !case_) return
 
+    // Check file size (500MB limit)
+    const maxSize = 500 * 1024 * 1024 // 500MB in bytes
+    if (file.size > maxSize) {
+      setUploadProgress('Error: El archivo excede el límite de 500MB')
+      setTimeout(() => setUploadProgress(null), 3000)
+      if (fileInputRef.current) {
+        fileInputRef.current.value = ''
+      }
+      return
+    }
+
     setUploading(true)
-    setUploadProgress(`Subiendo ${file.name}...`)
+    const fileSizeMB = (file.size / (1024 * 1024)).toFixed(1)
+    setUploadProgress(`Preparando subida de ${file.name} (${fileSizeMB}MB)...`)
 
     try {
-      const formData = new FormData()
-      formData.append('file', file)
-      formData.append('caseId', case_.id)
-
-      const response = await fetch('/api/case-files/upload', {
+      // Step 1: Request a signed upload URL
+      const urlResponse = await fetch('/api/case-files/upload-url', {
         method: 'POST',
-        body: formData,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          caseId: case_.id,
+          filename: file.name,
+          fileSize: file.size,
+          mimeType: file.type,
+        }),
       })
 
-      const data = await response.json()
+      const urlData = await urlResponse.json()
 
-      if (response.ok) {
-        setUploadProgress('Archivo subido exitosamente')
-        fetchFiles()
-        setTimeout(() => setUploadProgress(null), 2000)
-      } else {
-        throw new Error(data.error || 'Error al subir archivo')
+      if (!urlResponse.ok) {
+        throw new Error(urlData.error || 'Error al generar URL de subida')
       }
+
+      // Step 2: Upload directly to Supabase Storage
+      setUploadProgress(`Subiendo ${file.name} (${fileSizeMB}MB)...`)
+
+      const uploadResponse = await fetch(urlData.uploadUrl, {
+        method: 'PUT',
+        body: file,
+        headers: {
+          'Content-Type': file.type,
+          'x-upsert': 'false',
+        },
+      })
+
+      if (!uploadResponse.ok) {
+        throw new Error('Error al subir archivo a almacenamiento')
+      }
+
+      // Step 3: Notify backend that upload is complete
+      setUploadProgress('Finalizando...')
+
+      const completeResponse = await fetch('/api/case-files/complete-upload', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          caseId: case_.id,
+          filePath: urlData.filePath,
+          filename: file.name,
+          fileSize: file.size,
+          mimeType: file.type,
+        }),
+      })
+
+      const completeData = await completeResponse.json()
+
+      if (!completeResponse.ok) {
+        throw new Error(completeData.error || 'Error al registrar archivo')
+      }
+
+      setUploadProgress('Archivo subido exitosamente')
+      fetchFiles()
+      setTimeout(() => setUploadProgress(null), 2000)
     } catch (error) {
       console.error('Error uploading file:', error)
-      setUploadProgress('Error al subir archivo')
+      setUploadProgress(error instanceof Error ? `Error: ${error.message}` : 'Error al subir archivo')
       setTimeout(() => setUploadProgress(null), 3000)
     } finally {
       setUploading(false)
@@ -321,18 +373,12 @@ export function ExpedienteModal({ case_, open, onOpenChange }: ExpedienteModalPr
   const handleFileDownload = async (file: CaseFile, e: React.MouseEvent) => {
     e.stopPropagation()
     try {
-      const response = await fetch(`/api/case-files/download?fileId=${file.id}`)
+      const response = await fetch(`/api/case-files/download?fileId=${file.id}&download=true`)
       const data = await response.json()
 
       if (response.ok) {
-        // Create a temporary anchor element to trigger download
-        const link = document.createElement('a')
-        link.href = data.signedUrl
-        link.download = file.file_name
-        link.target = '_blank'
-        document.body.appendChild(link)
-        link.click()
-        document.body.removeChild(link)
+        // Open the signed URL which will have download headers
+        window.location.href = data.signedUrl
       } else {
         throw new Error(data.error || 'Error al descargar archivo')
       }
@@ -389,6 +435,38 @@ export function ExpedienteModal({ case_, open, onOpenChange }: ExpedienteModalPr
     if (bytes < 1024) return `${bytes} B`
     if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
     return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+  }
+
+  const getFileIcon = (mimeType: string) => {
+    // PDF files - red
+    if (mimeType === 'application/pdf') {
+      return <FileText className="h-4 w-4 text-red-600 dark:text-red-400 flex-shrink-0" />
+    }
+
+    // Image files - green
+    if (mimeType.startsWith('image/')) {
+      return <Image className="h-4 w-4 text-green-600 dark:text-green-400 flex-shrink-0" />
+    }
+
+    // Excel files - emerald
+    if (mimeType === 'application/vnd.ms-excel' ||
+        mimeType === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet') {
+      return <FileSpreadsheet className="h-4 w-4 text-emerald-600 dark:text-emerald-400 flex-shrink-0" />
+    }
+
+    // Word files - blue
+    if (mimeType === 'application/msword' ||
+        mimeType === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
+      return <FileText className="h-4 w-4 text-blue-600 dark:text-blue-400 flex-shrink-0" />
+    }
+
+    // Text files - gray
+    if (mimeType === 'text/plain') {
+      return <File className="h-4 w-4 text-gray-600 dark:text-gray-400 flex-shrink-0" />
+    }
+
+    // Default - muted
+    return <File className="h-4 w-4 text-muted-foreground flex-shrink-0" />
   }
 
   // Calculate balance locally from payments
@@ -643,7 +721,13 @@ export function ExpedienteModal({ case_, open, onOpenChange }: ExpedienteModalPr
                     <div>
                       <CardTitle className="text-lg">Archivos del Expediente</CardTitle>
                       {uploadProgress && (
-                        <p className="text-sm text-muted-foreground mt-1">
+                        <p className={`text-sm mt-1 ${
+                          uploadProgress.includes('Error') || uploadProgress.includes('excede')
+                            ? 'text-destructive'
+                            : uploadProgress.includes('exitosamente')
+                              ? 'text-green-600 dark:text-green-400'
+                              : 'text-muted-foreground'
+                        }`}>
                           {uploadProgress}
                         </p>
                       )}
@@ -708,7 +792,7 @@ export function ExpedienteModal({ case_, open, onOpenChange }: ExpedienteModalPr
                             >
                               <TableCell className="font-medium max-w-xs truncate">
                                 <div className="flex items-center gap-2">
-                                  <FileText className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                                  {getFileIcon(file.mime_type)}
                                   <span>{file.file_name}</span>
                                 </div>
                               </TableCell>
@@ -983,15 +1067,17 @@ export function ExpedienteModal({ case_, open, onOpenChange }: ExpedienteModalPr
                       Este tipo de archivo no se puede previsualizar en el navegador.
                     </p>
                     <Button
-                      onClick={() => {
-                        if (previewUrl && previewFile) {
-                          const link = document.createElement('a')
-                          link.href = previewUrl
-                          link.download = previewFile.file_name
-                          link.target = '_blank'
-                          document.body.appendChild(link)
-                          link.click()
-                          document.body.removeChild(link)
+                      onClick={async () => {
+                        if (previewFile) {
+                          try {
+                            const response = await fetch(`/api/case-files/download?fileId=${previewFile.id}&download=true`)
+                            const data = await response.json()
+                            if (response.ok) {
+                              window.location.href = data.signedUrl
+                            }
+                          } catch (error) {
+                            console.error('Error downloading file:', error)
+                          }
                         }
                       }}
                     >
