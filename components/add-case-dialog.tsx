@@ -42,6 +42,8 @@ export function AddCaseDialog({ open, onOpenChange }: AddCaseDialogProps) {
   const [juzgado, setJuzgado] = useState('')
   const [nombre, setNombre] = useState('')
   const [telefono, setTelefono] = useState('')
+  const [totalAmountCharged, setTotalAmountCharged] = useState('')
+  const [currency, setCurrency] = useState('MXN')
   const [selectedCollaborators, setSelectedCollaborators] = useState<string[]>([])
   const [userCollaborators, setUserCollaborators] = useState<string[]>([])
   const [error, setError] = useState<string | null>(null)
@@ -99,6 +101,8 @@ export function AddCaseDialog({ open, onOpenChange }: AddCaseDialogProps) {
       setJuzgado('')
       setNombre('')
       setTelefono('')
+      setTotalAmountCharged('')
+      setCurrency('MXN')
       setSelectedCollaborators([])
       setError(null)
       setSuccess(false)
@@ -180,6 +184,8 @@ export function AddCaseDialog({ open, onOpenChange }: AddCaseDialogProps) {
     }
 
     // Insert new case
+    const totalAmount = totalAmountCharged ? parseFloat(totalAmountCharged) : 0
+
     const { data: insertedCase, error: insertError } = await supabase
       .from('monitored_cases')
       .insert([
@@ -189,6 +195,8 @@ export function AddCaseDialog({ open, onOpenChange }: AddCaseDialogProps) {
           juzgado: juzgado,
           nombre: nombre || null,
           telefono: telefono || null,
+          total_amount_charged: totalAmount,
+          currency: currency,
           assigned_collaborators: selectedCollaborators,
         },
       ])
@@ -351,6 +359,38 @@ export function AddCaseDialog({ open, onOpenChange }: AddCaseDialogProps) {
             <p className="text-xs text-muted-foreground">
               Número de teléfono del cliente asociado a este caso para su referencia
             </p>
+          </div>
+
+          {/* Balance Fields */}
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="totalAmountCharged">Monto a Cobrar (Opcional)</Label>
+              <Input
+                id="totalAmountCharged"
+                type="number"
+                step="0.01"
+                min="0"
+                placeholder="0.00"
+                value={totalAmountCharged}
+                onChange={(e) => setTotalAmountCharged(e.target.value)}
+                disabled={loading || success}
+              />
+              <p className="text-xs text-muted-foreground">
+                Total a cobrar al cliente por este caso
+              </p>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="currency">Moneda</Label>
+              <Select value={currency} onValueChange={setCurrency} disabled={loading || success}>
+                <SelectTrigger id="currency">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="MXN">MXN (Pesos)</SelectItem>
+                  <SelectItem value="USD">USD (Dólares)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
 
           {/* Collaborator Selection (Optional) */}

@@ -40,13 +40,30 @@ export default async function DashboardPage() {
     alertCounts.set(caseId, (alertCounts.get(caseId) || 0) + 1)
   })
 
-  // Add alert count to each case
+  // Get payment sums for each case
+  const { data: payments } = await supabase
+    .from('case_payments')
+    .select('case_id, amount')
+    .eq('user_id', user.id)
+
+  // Create a map of case_id -> total_paid
+  const paymentTotals = new Map<string, number>()
+  payments?.forEach((payment) => {
+    const caseId = payment.case_id
+    paymentTotals.set(caseId, (paymentTotals.get(caseId) || 0) + payment.amount)
+  })
+
+  // Add alert count and payment info to each case
   const casesWithAlerts = cases?.map((case_) => {
     const alertCount = alertCounts.get(case_.id) || 0
+    const totalPaid = paymentTotals.get(case_.id) || 0
+    const balance = (case_.total_amount_charged || 0) - totalPaid
 
     return {
       ...case_,
       alert_count: alertCount,
+      total_paid: totalPaid,
+      balance: balance,
     }
   })
 
@@ -64,7 +81,7 @@ export default async function DashboardPage() {
 
   const handleUpdate = async (
     caseId: string,
-    updates: { case_number?: string; juzgado?: string; nombre?: string | null; telefono?: string | null }
+    updates: { case_number?: string; juzgado?: string; nombre?: string | null; telefono?: string | null; total_amount_charged?: number; currency?: string }
   ) => {
     'use server'
     const supabase = await createClient()

@@ -24,6 +24,7 @@ import {
 } from '@/components/ui/dialog'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { ExpedienteModal } from '@/components/expediente-modal'
 
 interface Case {
   id: string
@@ -34,12 +35,16 @@ interface Case {
   created_at: string
   alert_count: number
   assigned_collaborators?: string[]
+  total_amount_charged?: number
+  currency?: string
+  total_paid?: number
+  balance?: number
 }
 
 interface CasesTableProps {
   cases: Case[]
   onDelete: (caseId: string) => void
-  onUpdate?: (caseId: string, updates: { case_number?: string; juzgado?: string; nombre?: string | null; telefono?: string | null }) => Promise<void>
+  onUpdate?: (caseId: string, updates: { case_number?: string; juzgado?: string; nombre?: string | null; telefono?: string | null; total_amount_charged?: number; currency?: string }) => Promise<void>
 }
 
 interface Juzgado {
@@ -62,12 +67,18 @@ export function CasesTable({ cases, onDelete, onUpdate }: CasesTableProps) {
   const [editJuzgado, setEditJuzgado] = useState('')
   const [editNombre, setEditNombre] = useState('')
   const [editTelefono, setEditTelefono] = useState('')
+  const [editTotalAmountCharged, setEditTotalAmountCharged] = useState('')
+  const [editCurrency, setEditCurrency] = useState('MXN')
   const [editLoading, setEditLoading] = useState(false)
   const [editError, setEditError] = useState<string | null>(null)
 
   // Juzgados state
   const [juzgadosByCity, setJuzgadosByCity] = useState<Record<string, Juzgado[]>>({})
   const [loadingJuzgados, setLoadingJuzgados] = useState(false)
+
+  // Expediente modal state
+  const [selectedCaseForModal, setSelectedCaseForModal] = useState<Case | null>(null)
+  const [modalOpen, setModalOpen] = useState(false)
 
   // Fetch juzgados from the database when component mounts
   useEffect(() => {
@@ -174,13 +185,14 @@ export function CasesTable({ cases, onDelete, onUpdate }: CasesTableProps) {
     })
   }
 
-  const handleRowClick = (caseId: string, event: React.MouseEvent) => {
-    // Don't navigate if clicking on buttons or action elements
+  const handleRowClick = (case_: Case, event: React.MouseEvent) => {
+    // Don't open modal if clicking on buttons or action elements
     const target = event.target as HTMLElement
     if (target.closest('button') || target.closest('[data-action]')) {
       return
     }
-    router.push(`/dashboard/alerts?case=${caseId}`)
+    setSelectedCaseForModal(case_)
+    setModalOpen(true)
   }
 
   const handleSearch = (value: string) => {
@@ -199,6 +211,8 @@ export function CasesTable({ cases, onDelete, onUpdate }: CasesTableProps) {
     setEditJuzgado(case_.juzgado)
     setEditNombre(case_.nombre || '')
     setEditTelefono(case_.telefono || '')
+    setEditTotalAmountCharged(case_.total_amount_charged ? case_.total_amount_charged.toString() : '')
+    setEditCurrency(case_.currency || 'MXN')
     setEditError(null)
   }
 
@@ -227,11 +241,15 @@ export function CasesTable({ cases, onDelete, onUpdate }: CasesTableProps) {
       const [, caseNum, year] = match
       const normalizedCaseNumber = caseNum.padStart(5, '0') + '/' + year
 
+      const totalAmount = editTotalAmountCharged ? parseFloat(editTotalAmountCharged) : 0
+
       await onUpdate(editingCase.id, {
         case_number: normalizedCaseNumber,
         juzgado: editJuzgado,
         nombre: editNombre || null,
         telefono: editTelefono || null,
+        total_amount_charged: totalAmount,
+        currency: editCurrency,
       })
 
       setEditingCase(null)
@@ -287,6 +305,7 @@ export function CasesTable({ cases, onDelete, onUpdate }: CasesTableProps) {
               <TableHead className="w-36">Expediente</TableHead>
               <TableHead className="w-32">Teléfono</TableHead>
               <TableHead className="min-w-0">Juzgado</TableHead>
+              <TableHead className="w-28 text-right">Balance</TableHead>
               <TableHead className="w-32">
                 <Button
                   variant="ghost"
@@ -317,7 +336,7 @@ export function CasesTable({ cases, onDelete, onUpdate }: CasesTableProps) {
           <TableBody>
             {sortedCases.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
                   {searchQuery ? 'No se encontraron casos' : 'No tiene casos registrados'}
                 </TableCell>
               </TableRow>
@@ -325,9 +344,9 @@ export function CasesTable({ cases, onDelete, onUpdate }: CasesTableProps) {
               sortedCases.map((case_) => (
                 <TableRow
                   key={case_.id}
-                  onClick={(e) => handleRowClick(case_.id, e)}
+                  onClick={(e) => handleRowClick(case_, e)}
                   className="cursor-pointer hover:bg-muted/50 transition-colors"
-                  title="Clic para ver historial de alertas"
+                  title="Clic para ver detalles del expediente"
                 >
                   <TableCell className="text-center">
                     <div className="flex justify-center">
@@ -351,6 +370,28 @@ export function CasesTable({ cases, onDelete, onUpdate }: CasesTableProps) {
                   <TableCell className="truncate whitespace-nowrap">{case_.telefono || '-'}</TableCell>
                   <TableCell>
                     <div className="truncate" title={case_.juzgado}>{case_.juzgado}</div>
+                  </TableCell>
+                  <TableCell className="text-right">
+                    {case_.total_amount_charged && case_.total_amount_charged > 0 ? (
+                      <div className="flex flex-col items-end">
+                        <span
+                          className={`text-sm font-medium ${
+                            (case_.balance || 0) === 0
+                              ? 'text-green-600 dark:text-green-400'
+                              : (case_.balance || 0) > 0
+                                ? (case_.total_paid || 0) > 0
+                                  ? 'text-yellow-600 dark:text-yellow-400'
+                                  : 'text-red-600 dark:text-red-400'
+                                : 'text-muted-foreground'
+                          }`}
+                        >
+                          ${case_.balance?.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </span>
+                        <span className="text-xs text-muted-foreground">{case_.currency || 'MXN'}</span>
+                      </div>
+                    ) : (
+                      <span className="text-xs text-muted-foreground">-</span>
+                    )}
                   </TableCell>
                   <TableCell className="whitespace-nowrap">{formatTijuanaDate(case_.created_at)}</TableCell>
                   <TableCell className="text-right">
@@ -473,6 +514,34 @@ export function CasesTable({ cases, onDelete, onUpdate }: CasesTableProps) {
                 maxLength={20}
               />
             </div>
+
+            {/* Balance Fields */}
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="edit-total-amount">Monto a Cobrar (Opcional)</Label>
+                <Input
+                  id="edit-total-amount"
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  placeholder="0.00"
+                  value={editTotalAmountCharged}
+                  onChange={(e) => setEditTotalAmountCharged(e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-currency">Moneda</Label>
+                <Select value={editCurrency} onValueChange={setEditCurrency}>
+                  <SelectTrigger id="edit-currency">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="MXN">MXN (Pesos)</SelectItem>
+                    <SelectItem value="USD">USD (Dólares)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
           </div>
 
           <DialogFooter>
@@ -500,6 +569,13 @@ export function CasesTable({ cases, onDelete, onUpdate }: CasesTableProps) {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Expediente Details Modal */}
+      <ExpedienteModal
+        case_={selectedCaseForModal}
+        open={modalOpen}
+        onOpenChange={setModalOpen}
+      />
     </div>
   )
 }
