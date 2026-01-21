@@ -14,14 +14,12 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Loader2 } from 'lucide-react'
 
 interface Payment {
   id: string
   amount: number
   payment_date: string
-  payment_method: string
   notes: string | null
 }
 
@@ -36,7 +34,6 @@ interface EditPaymentDialogProps {
 export function EditPaymentDialog({ open, onOpenChange, payment, currency, onPaymentUpdated }: EditPaymentDialogProps) {
   const [amount, setAmount] = useState('')
   const [paymentDate, setPaymentDate] = useState('')
-  const [paymentMethod, setPaymentMethod] = useState('efectivo')
   const [notes, setNotes] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -46,7 +43,6 @@ export function EditPaymentDialog({ open, onOpenChange, payment, currency, onPay
     if (payment) {
       setAmount(payment.amount.toString())
       setPaymentDate(payment.payment_date)
-      setPaymentMethod(payment.payment_method)
       setNotes(payment.notes || '')
     }
   }, [payment])
@@ -70,7 +66,6 @@ export function EditPaymentDialog({ open, onOpenChange, payment, currency, onPay
         .update({
           amount: amountNum,
           payment_date: paymentDate,
-          payment_method: paymentMethod,
           notes: notes || null,
         })
         .eq('id', payment.id)
@@ -127,22 +122,6 @@ export function EditPaymentDialog({ open, onOpenChange, payment, currency, onPay
                 onChange={(e) => setPaymentDate(e.target.value)}
                 required
               />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="edit-payment-method">Método de Pago</Label>
-              <Select value={paymentMethod} onValueChange={setPaymentMethod}>
-                <SelectTrigger id="edit-payment-method">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="efectivo">Efectivo</SelectItem>
-                  <SelectItem value="transferencia">Transferencia</SelectItem>
-                  <SelectItem value="cheque">Cheque</SelectItem>
-                  <SelectItem value="tarjeta">Tarjeta</SelectItem>
-                  <SelectItem value="otro">Otro</SelectItem>
-                </SelectContent>
-              </Select>
             </div>
 
             <div className="space-y-2">

@@ -64,7 +64,6 @@ interface Payment {
   id: string
   amount: number
   payment_date: string
-  payment_method: string
   notes: string | null
   created_at: string
 }
@@ -912,7 +911,6 @@ export function ExpedienteModal({ case_, open, onOpenChange }: ExpedienteModalPr
                             <TableRow>
                               <TableHead>Fecha</TableHead>
                               <TableHead>Monto</TableHead>
-                              <TableHead>Método</TableHead>
                               <TableHead>Notas</TableHead>
                               <TableHead className="text-right w-24">Acciones</TableHead>
                             </TableRow>
@@ -925,9 +923,6 @@ export function ExpedienteModal({ case_, open, onOpenChange }: ExpedienteModalPr
                                 </TableCell>
                                 <TableCell className="font-semibold text-green-600 dark:text-green-400">
                                   ${payment.amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                </TableCell>
-                                <TableCell className="capitalize">
-                                  {payment.payment_method}
                                 </TableCell>
                                 <TableCell className="max-w-xs truncate">
                                   {payment.notes || '-'}
