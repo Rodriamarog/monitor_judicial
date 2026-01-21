@@ -1,7 +1,8 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { useRouter } from 'next/navigation'
 import {
   Dialog,
   DialogContent,
@@ -13,7 +14,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { Loader2, FileText, DollarSign, Bell, Calendar, Building2, User, Phone, ChevronDown, ChevronUp, ExternalLink, Plus, Pencil, Trash2 } from 'lucide-react'
+import { Loader2, FileText, DollarSign, Bell, Calendar, Building2, User, Phone, ChevronDown, ChevronUp, ExternalLink, Plus, Pencil, Trash2, Upload, Download, X } from 'lucide-react'
 import { formatTijuanaDate } from '@/lib/date-utils'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { AddPaymentDialog } from '@/components/add-payment-dialog'
@@ -68,6 +69,15 @@ interface Payment {
   created_at: string
 }
 
+interface CaseFile {
+  id: string
+  file_name: string
+  file_path: string
+  file_size: number
+  mime_type: string
+  uploaded_at: string
+}
+
 interface ExpedienteModalProps {
   case_: Case | null
   open: boolean
@@ -75,6 +85,7 @@ interface ExpedienteModalProps {
 }
 
 export function ExpedienteModal({ case_, open, onOpenChange }: ExpedienteModalProps) {
+  const router = useRouter()
   const [alerts, setAlerts] = useState<Alert[]>([])
   const [loadingAlerts, setLoadingAlerts] = useState(false)
   const [expandedAlertId, setExpandedAlertId] = useState<string | null>(null)
@@ -86,16 +97,38 @@ export function ExpedienteModal({ case_, open, onOpenChange }: ExpedienteModalPr
   const [editingPayment, setEditingPayment] = useState<Payment | null>(null)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [deletingPayment, setDeletingPayment] = useState<Payment | null>(null)
+  const paymentsModified = useRef(false)
+  const [files, setFiles] = useState<CaseFile[]>([])
+  const [loadingFiles, setLoadingFiles] = useState(false)
+  const [uploading, setUploading] = useState(false)
+  const [uploadProgress, setUploadProgress] = useState<string | null>(null)
+  const [showDeleteFileConfirm, setShowDeleteFileConfirm] = useState(false)
+  const [deletingFile, setDeletingFile] = useState<CaseFile | null>(null)
+  const [showFilePreview, setShowFilePreview] = useState(false)
+  const [previewFile, setPreviewFile] = useState<CaseFile | null>(null)
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null)
+  const [loadingPreview, setLoadingPreview] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
   const supabase = createClient()
 
   useEffect(() => {
     if (open && case_) {
       fetchAlerts()
       fetchPayments()
+      fetchFiles()
       setExpandedAlertId(null)
       setPreviousExpandedId(null)
+      paymentsModified.current = false
     }
   }, [open, case_])
+
+  // Refresh parent data when modal closes and payments were modified
+  useEffect(() => {
+    if (!open && paymentsModified.current) {
+      router.refresh()
+      paymentsModified.current = false
+    }
+  }, [open, router])
 
   const fetchAlerts = async () => {
     if (!case_) return
@@ -152,6 +185,26 @@ export function ExpedienteModal({ case_, open, onOpenChange }: ExpedienteModalPr
     }
   }
 
+  const fetchFiles = async () => {
+    if (!case_) return
+
+    setLoadingFiles(true)
+    try {
+      const response = await fetch(`/api/case-files/list?caseId=${case_.id}`)
+      const data = await response.json()
+
+      if (response.ok) {
+        setFiles(data.files || [])
+      } else {
+        console.error('Error fetching files:', data.error)
+      }
+    } catch (error) {
+      console.error('Error fetching files:', error)
+    } finally {
+      setLoadingFiles(false)
+    }
+  }
+
   const toggleAlertExpand = (id: string) => {
     if (expandedAlertId && expandedAlertId !== id) {
       setPreviousExpandedId(expandedAlertId)
@@ -164,14 +217,13 @@ export function ExpedienteModal({ case_, open, onOpenChange }: ExpedienteModalPr
   }
 
   const handlePaymentAdded = () => {
+    paymentsModified.current = true
     fetchPayments()
-    // Optionally trigger a refresh of the parent component to update balance
-    window.location.reload()
   }
 
   const handlePaymentUpdated = () => {
+    paymentsModified.current = true
     fetchPayments()
-    window.location.reload()
   }
 
   const handleEditClick = (payment: Payment, e: React.MouseEvent) => {
@@ -197,14 +249,151 @@ export function ExpedienteModal({ case_, open, onOpenChange }: ExpedienteModalPr
 
       if (error) throw error
 
+      paymentsModified.current = true
       setShowDeleteConfirm(false)
       setDeletingPayment(null)
       fetchPayments()
-      window.location.reload()
     } catch (error) {
       console.error('Error deleting payment:', error)
     }
   }
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file || !case_) return
+
+    setUploading(true)
+    setUploadProgress(`Subiendo ${file.name}...`)
+
+    try {
+      const formData = new FormData()
+      formData.append('file', file)
+      formData.append('caseId', case_.id)
+
+      const response = await fetch('/api/case-files/upload', {
+        method: 'POST',
+        body: formData,
+      })
+
+      const data = await response.json()
+
+      if (response.ok) {
+        setUploadProgress('Archivo subido exitosamente')
+        fetchFiles()
+        setTimeout(() => setUploadProgress(null), 2000)
+      } else {
+        throw new Error(data.error || 'Error al subir archivo')
+      }
+    } catch (error) {
+      console.error('Error uploading file:', error)
+      setUploadProgress('Error al subir archivo')
+      setTimeout(() => setUploadProgress(null), 3000)
+    } finally {
+      setUploading(false)
+      if (fileInputRef.current) {
+        fileInputRef.current.value = ''
+      }
+    }
+  }
+
+  const handleFilePreview = async (file: CaseFile) => {
+    setPreviewFile(file)
+    setShowFilePreview(true)
+    setLoadingPreview(true)
+    setPreviewUrl(null)
+
+    try {
+      const response = await fetch(`/api/case-files/download?fileId=${file.id}`)
+      const data = await response.json()
+
+      if (response.ok) {
+        setPreviewUrl(data.signedUrl)
+      } else {
+        throw new Error(data.error || 'Error al cargar archivo')
+      }
+    } catch (error) {
+      console.error('Error loading file preview:', error)
+    } finally {
+      setLoadingPreview(false)
+    }
+  }
+
+  const handleFileDownload = async (file: CaseFile, e: React.MouseEvent) => {
+    e.stopPropagation()
+    try {
+      const response = await fetch(`/api/case-files/download?fileId=${file.id}`)
+      const data = await response.json()
+
+      if (response.ok) {
+        // Create a temporary anchor element to trigger download
+        const link = document.createElement('a')
+        link.href = data.signedUrl
+        link.download = file.file_name
+        link.target = '_blank'
+        document.body.appendChild(link)
+        link.click()
+        document.body.removeChild(link)
+      } else {
+        throw new Error(data.error || 'Error al descargar archivo')
+      }
+    } catch (error) {
+      console.error('Error downloading file:', error)
+    }
+  }
+
+  const isImageFile = (mimeType: string) => {
+    return mimeType.startsWith('image/')
+  }
+
+  const isPdfFile = (mimeType: string) => {
+    return mimeType === 'application/pdf'
+  }
+
+  const canPreview = (mimeType: string) => {
+    return isImageFile(mimeType) || isPdfFile(mimeType)
+  }
+
+  const handleFileDeleteClick = (file: CaseFile, e: React.MouseEvent) => {
+    e.stopPropagation()
+    setDeletingFile(file)
+    setShowDeleteFileConfirm(true)
+  }
+
+  const handleFileDeleteConfirm = async () => {
+    if (!deletingFile) return
+
+    try {
+      const response = await fetch('/api/case-files/delete', {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ fileId: deletingFile.id }),
+      })
+
+      const data = await response.json()
+
+      if (response.ok) {
+        setShowDeleteFileConfirm(false)
+        setDeletingFile(null)
+        fetchFiles()
+      } else {
+        throw new Error(data.error || 'Error al eliminar archivo')
+      }
+    } catch (error) {
+      console.error('Error deleting file:', error)
+    }
+  }
+
+  const formatFileSize = (bytes: number): string => {
+    if (bytes < 1024) return `${bytes} B`
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+  }
+
+  // Calculate balance locally from payments
+  const totalPaid = payments.reduce((sum, payment) => sum + payment.amount, 0)
+  const currentBalance = (case_?.total_amount_charged || 0) - totalPaid
 
   if (!case_) return null
 
@@ -443,15 +632,123 @@ export function ExpedienteModal({ case_, open, onOpenChange }: ExpedienteModalPr
 
           {/* Files Tab */}
           <TabsContent value="files" className="flex-1 overflow-hidden mt-4">
-            <Card className="h-full flex items-center justify-center">
-              <CardContent className="text-center">
-                <FileText className="h-16 w-16 text-muted-foreground mx-auto mb-6" />
-                <p className="text-xl font-medium mb-3">Archivos del Expediente</p>
-                <p className="text-muted-foreground text-lg">
-                  La funcionalidad de carga de archivos estará disponible próximamente.
-                </p>
-              </CardContent>
-            </Card>
+            {loadingFiles ? (
+              <div className="flex items-center justify-center h-full">
+                <Loader2 className="h-8 w-8 animate-spin" />
+              </div>
+            ) : (
+              <Card className="h-full overflow-hidden flex flex-col">
+                <CardHeader className="pb-3 flex-shrink-0">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <CardTitle className="text-lg">Archivos del Expediente</CardTitle>
+                      {uploadProgress && (
+                        <p className="text-sm text-muted-foreground mt-1">
+                          {uploadProgress}
+                        </p>
+                      )}
+                    </div>
+                    <div>
+                      <input
+                        ref={fileInputRef}
+                        type="file"
+                        onChange={handleFileUpload}
+                        disabled={uploading}
+                        className="hidden"
+                        accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.gif,.txt"
+                      />
+                      <Button size="sm" onClick={() => fileInputRef.current?.click()} disabled={uploading}>
+                        {uploading ? (
+                          <>
+                            <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                            Subiendo...
+                          </>
+                        ) : (
+                          <>
+                            <Upload className="h-4 w-4 mr-2" />
+                            Subir Archivo
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent className="flex-1 overflow-hidden p-0">
+                  {files.length === 0 ? (
+                    <div className="flex items-center justify-center h-full">
+                      <div className="text-center py-12">
+                        <FileText className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                        <p className="text-lg font-medium mb-2">No hay archivos</p>
+                        <p className="text-muted-foreground mb-4">
+                          Sube tu primer archivo para este expediente.
+                        </p>
+                        <Button onClick={() => fileInputRef.current?.click()} disabled={uploading}>
+                          <Upload className="h-4 w-4 mr-2" />
+                          Subir Primer Archivo
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <ScrollArea className="h-full">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Nombre del Archivo</TableHead>
+                            <TableHead>Tamaño</TableHead>
+                            <TableHead>Fecha de Subida</TableHead>
+                            <TableHead className="text-right w-28">Acciones</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {files.map((file) => (
+                            <TableRow
+                              key={file.id}
+                              className="cursor-pointer hover:bg-muted/50 transition-colors"
+                              onClick={() => handleFilePreview(file)}
+                            >
+                              <TableCell className="font-medium max-w-xs truncate">
+                                <div className="flex items-center gap-2">
+                                  <FileText className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                                  <span>{file.file_name}</span>
+                                </div>
+                              </TableCell>
+                              <TableCell className="text-sm text-muted-foreground">
+                                {formatFileSize(file.file_size)}
+                              </TableCell>
+                              <TableCell className="text-sm">
+                                {formatTijuanaDate(file.uploaded_at)}
+                              </TableCell>
+                              <TableCell className="text-right">
+                                <div className="flex justify-end gap-1">
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-8 w-8 p-0"
+                                    onClick={(e) => handleFileDownload(file, e)}
+                                    title="Descargar"
+                                  >
+                                    <Download className="h-4 w-4" />
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-8 w-8 p-0 text-destructive hover:text-destructive"
+                                    onClick={(e) => handleFileDeleteClick(file, e)}
+                                    title="Eliminar"
+                                  >
+                                    <X className="h-4 w-4" />
+                                  </Button>
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </ScrollArea>
+                  )}
+                </CardContent>
+              </Card>
+            )}
           </TabsContent>
 
           {/* Balance Tab */}
@@ -478,20 +775,20 @@ export function ExpedienteModal({ case_, open, onOpenChange }: ExpedienteModalPr
                     <div className="space-y-1">
                       <p className="text-sm text-muted-foreground">Total Pagado</p>
                       <p className="text-3xl font-bold text-green-600 dark:text-green-400">
-                        ${(case_.total_paid || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        ${totalPaid.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                       </p>
                       <p className="text-xs text-muted-foreground">{case_.currency || 'MXN'}</p>
                     </div>
                     <div className="space-y-1 pt-4 border-t">
                       <p className="text-sm text-muted-foreground">Balance Pendiente</p>
                       <p className={`text-3xl font-bold ${
-                        (case_.balance || 0) === 0
+                        currentBalance === 0
                           ? 'text-green-600 dark:text-green-400'
-                          : (case_.balance || 0) > 0
+                          : currentBalance > 0
                             ? 'text-red-600 dark:text-red-400'
                             : 'text-muted-foreground'
                       }`}>
-                        ${(case_.balance || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        ${currentBalance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                       </p>
                       <p className="text-xs text-muted-foreground">{case_.currency || 'MXN'}</p>
                     </div>
@@ -605,7 +902,7 @@ export function ExpedienteModal({ case_, open, onOpenChange }: ExpedienteModalPr
         onPaymentUpdated={handlePaymentUpdated}
       />
 
-      {/* Delete Confirmation Dialog */}
+      {/* Delete Payment Confirmation Dialog */}
       <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -625,6 +922,97 @@ export function ExpedienteModal({ case_, open, onOpenChange }: ExpedienteModalPr
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Delete File Confirmation Dialog */}
+      <AlertDialog open={showDeleteFileConfirm} onOpenChange={setShowDeleteFileConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Eliminar este archivo?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta acción no se puede deshacer. El archivo "{deletingFile?.file_name}" será eliminado permanentemente del expediente.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleFileDeleteConfirm}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Eliminar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* File Preview Dialog */}
+      <Dialog open={showFilePreview} onOpenChange={setShowFilePreview}>
+        <DialogContent className="max-w-5xl h-[85vh] overflow-hidden flex flex-col">
+          <DialogHeader>
+            <DialogTitle className="truncate">{previewFile?.file_name}</DialogTitle>
+          </DialogHeader>
+
+          <div className="flex-1 overflow-hidden flex items-center justify-center bg-muted/30 rounded-lg">
+            {loadingPreview ? (
+              <div className="flex flex-col items-center gap-4">
+                <Loader2 className="h-8 w-8 animate-spin" />
+                <p className="text-sm text-muted-foreground">Cargando vista previa...</p>
+              </div>
+            ) : previewUrl && previewFile ? (
+              <>
+                {isImageFile(previewFile.mime_type) && (
+                  <div className="w-full h-full flex items-center justify-center p-4">
+                    <img
+                      src={previewUrl}
+                      alt={previewFile.file_name}
+                      className="max-w-full max-h-full object-contain"
+                    />
+                  </div>
+                )}
+                {isPdfFile(previewFile.mime_type) && (
+                  <iframe
+                    src={previewUrl}
+                    className="w-full h-full border-0"
+                    title={previewFile.file_name}
+                  />
+                )}
+                {!canPreview(previewFile.mime_type) && (
+                  <div className="text-center py-12">
+                    <FileText className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+                    <p className="text-lg font-medium mb-2">Vista previa no disponible</p>
+                    <p className="text-muted-foreground mb-4">
+                      Este tipo de archivo no se puede previsualizar en el navegador.
+                    </p>
+                    <Button
+                      onClick={() => {
+                        if (previewUrl && previewFile) {
+                          const link = document.createElement('a')
+                          link.href = previewUrl
+                          link.download = previewFile.file_name
+                          link.target = '_blank'
+                          document.body.appendChild(link)
+                          link.click()
+                          document.body.removeChild(link)
+                        }
+                      }}
+                    >
+                      <Download className="h-4 w-4 mr-2" />
+                      Descargar Archivo
+                    </Button>
+                  </div>
+                )}
+              </>
+            ) : (
+              <div className="text-center py-12">
+                <FileText className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+                <p className="text-lg font-medium mb-2">Error al cargar el archivo</p>
+                <p className="text-muted-foreground">
+                  No se pudo cargar la vista previa del archivo.
+                </p>
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </Dialog>
   )
 }
