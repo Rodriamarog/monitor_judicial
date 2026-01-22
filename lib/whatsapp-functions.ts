@@ -39,11 +39,8 @@ export async function handleSearchCases(
     // Normalize query for fuzzy matching
     const normalized = normalizeName(query)
 
-    // Split query into individual words for better matching
-    // "hilda jimenez" should match "HILDA CLEMENTE JIMENEZ"
+    // Strategy 1: Try exact word matching first (fast)
     const searchTerms = normalized.split(/\s+/).filter(term => term.length > 0)
-
-    // Build query that requires ALL terms to match somewhere in the name
     let queryBuilder = supabase
       .from('monitored_cases')
       .select('id, case_number, juzgado, nombre, total_amount_charged, currency')
@@ -54,12 +51,33 @@ export async function handleSearchCases(
       queryBuilder = queryBuilder.ilike('nombre', `%${term}%`)
     })
 
-    const { data: cases, error } = await queryBuilder
+    let { data: cases, error } = await queryBuilder
       .order('created_at', { ascending: false })
       .limit(5)
 
     if (error) {
       throw error
+    }
+
+    // Strategy 2: If no results, use fuzzy matching (handles typos)
+    if (!cases || cases.length === 0) {
+      console.log('No exact matches, trying fuzzy search...')
+
+      const { data: fuzzyCases, error: fuzzyError } = await supabase.rpc(
+        'search_cases_fuzzy',
+        {
+          p_user_id: userId,
+          p_query: normalized,
+          p_limit: 5
+        }
+      )
+
+      if (fuzzyError) {
+        console.error('Fuzzy search error:', fuzzyError)
+        // Fall back to original empty result
+      } else {
+        cases = fuzzyCases
+      }
     }
 
     if (!cases || cases.length === 0) {
