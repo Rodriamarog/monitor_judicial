@@ -607,6 +607,193 @@ export async function handleGetUpcomingReminders(
   }
 }
 
+// Handler: Delete (cancel) a calendar meeting
+export async function handleDeleteMeeting(
+  args: { event_id: string },
+  userId: string
+): Promise<FunctionResult> {
+  try {
+    const { event_id } = args
+    const supabase = getServiceClient()
+
+    // Get the event to verify ownership and get details
+    const { data: event, error: fetchError } = await supabase
+      .from('calendar_events')
+      .select('id, title, start_time')
+      .eq('id', event_id)
+      .eq('user_id', userId)
+      .is('deleted_at', null)
+      .single()
+
+    if (fetchError || !event) {
+      return {
+        success: false,
+        error: 'No se encontró la reunión o ya fue cancelada.',
+      }
+    }
+
+    // Soft delete the event
+    const { error: deleteError } = await supabase
+      .from('calendar_events')
+      .update({ deleted_at: new Date().toISOString() })
+      .eq('id', event_id)
+      .eq('user_id', userId)
+
+    if (deleteError) {
+      throw deleteError
+    }
+
+    // Cancel associated reminder if exists
+    const { error: reminderError } = await supabase
+      .from('meeting_reminders')
+      .update({ status: 'cancelled' })
+      .eq('calendar_event_id', event_id)
+      .eq('user_id', userId)
+      .eq('status', 'pending')
+
+    // Don't fail if reminder doesn't exist
+    if (reminderError) {
+      console.warn('No reminder found to cancel:', reminderError)
+    }
+
+    const startDate = new Date(event.start_time)
+
+    return {
+      success: true,
+      message: `✅ Reunión cancelada: *${event.title}*\nFecha: ${startDate.toLocaleDateString('es-MX', {
+        weekday: 'long',
+        month: 'long',
+        day: 'numeric',
+      })} a las ${startDate.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' })}`,
+      data: { deleted_event_id: event_id }
+    }
+  } catch (error) {
+    console.error('Error deleting meeting:', error)
+    return {
+      success: false,
+      error: 'Error al cancelar la reunión.',
+    }
+  }
+}
+
+// Handler: Reschedule a calendar meeting
+export async function handleRescheduleMeeting(
+  args: { event_id: string; new_start_time: string; new_duration_minutes?: number },
+  userId: string
+): Promise<FunctionResult> {
+  try {
+    const { event_id, new_start_time, new_duration_minutes } = args
+    const supabase = getServiceClient()
+
+    // Get user timezone
+    const { data: userProfile, error: userError } = await supabase
+      .from('user_profiles')
+      .select('timezone')
+      .eq('id', userId)
+      .single()
+
+    if (userError || !userProfile) {
+      return {
+        success: false,
+        error: 'No se pudo obtener tu información de perfil.',
+      }
+    }
+
+    // Convert new time using user's timezone
+    const { zonedTimeToUtc } = await import('date-fns-tz')
+    const userTimezone = userProfile.timezone || 'America/Tijuana'
+    const newStartTime = zonedTimeToUtc(new_start_time, userTimezone)
+
+    if (isNaN(newStartTime.getTime())) {
+      return {
+        success: false,
+        error: 'Fecha/hora inválida. Usa formato: 2024-02-10T17:00:00',
+      }
+    }
+
+    // Get existing event
+    const { data: event, error: fetchError } = await supabase
+      .from('calendar_events')
+      .select('id, title, start_time, end_time')
+      .eq('id', event_id)
+      .eq('user_id', userId)
+      .is('deleted_at', null)
+      .single()
+
+    if (fetchError || !event) {
+      return {
+        success: false,
+        error: 'No se encontró la reunión o ya fue cancelada.',
+      }
+    }
+
+    // Calculate new end time
+    const oldStartTime = new Date(event.start_time)
+    const oldEndTime = new Date(event.end_time)
+    const oldDurationMs = oldEndTime.getTime() - oldStartTime.getTime()
+
+    // Use new duration if provided, otherwise keep old duration
+    const durationMs = new_duration_minutes
+      ? new_duration_minutes * 60 * 1000
+      : oldDurationMs
+
+    const newEndTime = new Date(newStartTime.getTime() + durationMs)
+
+    // Update the event
+    const { error: updateError } = await supabase
+      .from('calendar_events')
+      .update({
+        start_time: newStartTime.toISOString(),
+        end_time: newEndTime.toISOString(),
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', event_id)
+      .eq('user_id', userId)
+
+    if (updateError) {
+      throw updateError
+    }
+
+    // Update associated reminder if exists
+    const reminderTime = new Date(newStartTime.getTime() - 24 * 60 * 60 * 1000) // 24h before
+
+    const { error: reminderError } = await supabase
+      .from('meeting_reminders')
+      .update({
+        meeting_time: newStartTime.toISOString(),
+        scheduled_for: reminderTime.toISOString(),
+      })
+      .eq('calendar_event_id', event_id)
+      .eq('user_id', userId)
+      .eq('status', 'pending')
+
+    // Don't fail if reminder doesn't exist
+    if (reminderError) {
+      console.warn('No reminder found to update:', reminderError)
+    }
+
+    return {
+      success: true,
+      message: `✅ Reunión reprogramada: *${event.title}*\n\n*Nueva fecha:* ${newStartTime.toLocaleDateString('es-MX', {
+        weekday: 'long',
+        month: 'long',
+        day: 'numeric',
+      })}\n*Nueva hora:* ${newStartTime.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' })} - ${newEndTime.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' })}`,
+      data: {
+        event_id,
+        new_start_time: newStartTime.toISOString(),
+        new_end_time: newEndTime.toISOString()
+      }
+    }
+  } catch (error) {
+    console.error('Error rescheduling meeting:', error)
+    return {
+      success: false,
+      error: 'Error al reprogramar la reunión.',
+    }
+  }
+}
+
 // Main function call dispatcher
 export async function executeFunctionCall(
   functionName: string,
@@ -634,6 +821,12 @@ export async function executeFunctionCall(
 
     case 'get_upcoming_reminders':
       return handleGetUpcomingReminders(args, userId)
+
+    case 'delete_meeting':
+      return handleDeleteMeeting(args, userId)
+
+    case 'reschedule_meeting':
+      return handleRescheduleMeeting(args, userId)
 
     default:
       return {

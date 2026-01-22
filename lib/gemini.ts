@@ -157,6 +157,42 @@ export const geminiTools = [
           required: [],
         },
       },
+      {
+        name: 'delete_meeting',
+        description: 'Cancela una reunión del calendario. Primero usa get_calendar_events para obtener el ID de la reunión.',
+        parameters: {
+          type: 'object',
+          properties: {
+            event_id: {
+              type: 'string',
+              description: 'ID de la reunión a cancelar (obtenido de get_calendar_events)',
+            },
+          },
+          required: ['event_id'],
+        },
+      },
+      {
+        name: 'reschedule_meeting',
+        description: 'Reprograma una reunión a una nueva fecha/hora. Primero usa get_calendar_events para obtener el ID de la reunión.',
+        parameters: {
+          type: 'object',
+          properties: {
+            event_id: {
+              type: 'string',
+              description: 'ID de la reunión a reprogramar (obtenido de get_calendar_events)',
+            },
+            new_start_time: {
+              type: 'string',
+              description: 'Nueva fecha y hora en formato ISO 8601 simple (ej: "2026-02-15T14:00:00"). NO agregues zona horaria.',
+            },
+            new_duration_minutes: {
+              type: 'number',
+              description: 'Nueva duración en minutos (opcional, si no se especifica mantiene la duración original)',
+            },
+          },
+          required: ['event_id', 'new_start_time'],
+        },
+      },
     ],
   },
 ]
@@ -310,6 +346,48 @@ export const openaiTools: OpenAI.Chat.Completions.ChatCompletionTool[] = [
       },
     },
   },
+  {
+    type: 'function',
+    function: {
+      name: 'delete_meeting',
+      description: 'Cancela una reunión del calendario. Primero usa get_calendar_events para obtener el ID de la reunión.',
+      parameters: {
+        type: 'object',
+        properties: {
+          event_id: {
+            type: 'string',
+            description: 'ID de la reunión a cancelar (obtenido de get_calendar_events)',
+          },
+        },
+        required: ['event_id'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'reschedule_meeting',
+      description: 'Reprograma una reunión a una nueva fecha/hora. Primero usa get_calendar_events para obtener el ID de la reunión.',
+      parameters: {
+        type: 'object',
+        properties: {
+          event_id: {
+            type: 'string',
+            description: 'ID de la reunión a reprogramar (obtenido de get_calendar_events)',
+          },
+          new_start_time: {
+            type: 'string',
+            description: 'Nueva fecha y hora en formato ISO 8601 simple (ej: "2026-02-15T14:00:00"). NO agregues zona horaria.',
+          },
+          new_duration_minutes: {
+            type: 'number',
+            description: 'Nueva duración en minutos (opcional, si no se especifica mantiene la duración original)',
+          },
+        },
+        required: ['event_id', 'new_start_time'],
+      },
+    },
+  },
 ]
 
 // Currency detection from user message
@@ -446,9 +524,7 @@ Formato datetime para create_meeting:
 - Ejemplos: "2026-01-25T18:00:00" (6pm del 25 de enero)
 - NO agregues sufijos de zona horaria, el sistema maneja eso automáticamente
 
-### 3. CONSULTA DE CALENDARIO
-
-Cuando el usuario pregunte sobre su agenda, reuniones o recordatorios:
+### 3. CONSULTA Y GESTIÓN DE CALENDARIO
 
 **Para ver reuniones:**
 - "¿Qué reuniones tengo?" → Usa get_calendar_events con fechas del mes actual
@@ -460,6 +536,29 @@ Cuando el usuario pregunte sobre su agenda, reuniones o recordatorios:
 - "¿Tengo recordatorios programados?" → Usa get_upcoming_reminders
 - "¿Qué recordatorios tengo esta semana?" → Usa get_upcoming_reminders con days_ahead: 7
 - Por defecto usa days_ahead: 7 si no se especifica
+
+**Para cancelar una reunión:**
+1. Usuario: "Cancela la reunión con Juan Perez" o "Borra la junta del viernes"
+2. Usa get_calendar_events para buscar la reunión (por fecha/título)
+3. Muestra las reuniones encontradas y pide confirmación: "¿Cuál de estas reuniones quieres cancelar?"
+4. Usuario selecciona (ej: "la primera", "la del sábado")
+5. Usa delete_meeting con el event_id
+6. Confirma la cancelación
+
+**Para reprogramar una reunión:**
+1. Usuario: "Mueve la reunión con Maria a mañana a las 3pm" o "Cambia la junta del lunes para el martes"
+2. Usa get_calendar_events para buscar la reunión
+3. Muestra la reunión encontrada y pide confirmación de nueva fecha/hora
+4. Usuario confirma
+5. Usa reschedule_meeting con event_id y new_start_time
+6. Confirma el cambio
+
+IMPORTANTE - Flujo para cancelar/reprogramar:
+- ❌ NO busques por ID directamente - el usuario no conoce los IDs
+- ✅ SIEMPRE usa get_calendar_events primero para obtener el event_id
+- ✅ Muestra al usuario las reuniones encontradas antes de modificar
+- ✅ Pide confirmación antes de cancelar o reprogramar
+- ✅ Los resultados de get_calendar_events incluyen el campo "id" que debes usar como event_id
 
 Presenta los resultados de forma clara y organizada, usando el formato de respuesta de WhatsApp
 
