@@ -290,6 +290,200 @@ El pago se registró con fecha de hoy.`,
   }
 }
 
+// Handler: Create calendar meeting with optional reminder
+export async function handleCreateMeeting(
+  args: {
+    title: string
+    client_case_id?: string
+    start_time: string // ISO 8601 datetime
+    duration_minutes: number
+    create_reminder: boolean
+  },
+  userId: string
+): Promise<FunctionResult> {
+  try {
+    const { title, client_case_id, start_time, duration_minutes, create_reminder } = args
+    const supabase = getServiceClient()
+
+    // Parse and validate times
+    const startTime = new Date(start_time)
+    if (isNaN(startTime.getTime())) {
+      return {
+        success: false,
+        error: 'Fecha/hora inválida. Usa formato: 2024-02-10T17:00:00',
+      }
+    }
+
+    const endTime = new Date(startTime.getTime() + duration_minutes * 60 * 1000)
+
+    // Get user info for lawyer name and phone
+    const { data: userProfile, error: userError } = await supabase
+      .from('user_profiles')
+      .select('full_name, phone')
+      .eq('id', userId)
+      .single()
+
+    if (userError || !userProfile) {
+      return {
+        success: false,
+        error: 'No se pudo obtener tu información de perfil.',
+      }
+    }
+
+    // Get client info if case_id provided
+    let clientName: string | null = null
+    let clientPhone: string | null = null
+    let caseNumber: string | null = null
+
+    if (client_case_id) {
+      const { data: caseData, error: caseError } = await supabase
+        .from('monitored_cases')
+        .select('nombre, telefono, case_number')
+        .eq('id', client_case_id)
+        .eq('user_id', userId)
+        .single()
+
+      if (caseError || !caseData) {
+        return {
+          success: false,
+          error: 'No se encontró el caso especificado.',
+        }
+      }
+
+      clientName = caseData.nombre
+      clientPhone = caseData.telefono
+      caseNumber = caseData.case_number
+    }
+
+    // Create calendar event
+    const { data: event, error: eventError } = await supabase
+      .from('calendar_events')
+      .insert({
+        user_id: userId,
+        title,
+        description: clientName ? `Reunión con cliente: ${clientName}` : null,
+        start_time: startTime.toISOString(),
+        end_time: endTime.toISOString(),
+      })
+      .select()
+      .single()
+
+    if (eventError) {
+      throw eventError
+    }
+
+    let reminderCreated = false
+    let reminderMessage = ''
+
+    // Create reminder if requested
+    if (create_reminder) {
+      if (!userProfile.phone) {
+        return {
+          success: true,
+          message: `✅ Reunión agendada para ${startTime.toLocaleDateString('es-MX', {
+            weekday: 'long',
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric',
+          })} a las ${startTime.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' })}\n\n⚠️ No se pudo crear el recordatorio: no tienes un número de teléfono registrado en tu perfil.`,
+          data: { event }
+        }
+      }
+
+      // Calculate reminder time (24 hours before)
+      const reminderTime = new Date(startTime.getTime() - 24 * 60 * 60 * 1000)
+      const lawyerName = userProfile.full_name || 'tu abogado'
+
+      const { error: reminderError } = await supabase
+        .from('meeting_reminders')
+        .insert({
+          calendar_event_id: event.id,
+          case_id: client_case_id || null,
+          user_id: userId,
+          lawyer_name: lawyerName,
+          lawyer_phone: userProfile.phone,
+          client_name: clientName,
+          client_phone: clientPhone,
+          meeting_time: startTime.toISOString(),
+          scheduled_for: reminderTime.toISOString(),
+          reminder_message: `Recordatorio de reunión mañana a las ${startTime.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' })}${clientPhone ? ` con ${clientName || 'tu cliente'}` : ''}`,
+        })
+
+      if (reminderError) {
+        console.error('Error creating reminder:', reminderError)
+      } else {
+        reminderCreated = true
+        reminderMessage = clientPhone
+          ? `\n\n📱 Recordatorios programados para ti y ${clientName} (${clientPhone}) un día antes.`
+          : `\n\n📱 Recordatorio programado para ti un día antes.${clientName && !clientPhone ? `\n\n⚠️ ${clientName} no tiene teléfono registrado, no recibirá recordatorio.` : ''}`
+      }
+    }
+
+    return {
+      success: true,
+      message: `✅ Reunión agendada exitosamente
+
+*${title}*${clientName ? `\nCliente: ${clientName}` : ''}${caseNumber ? `\nExpediente: ${caseNumber}` : ''}
+Fecha: ${startTime.toLocaleDateString('es-MX', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+Hora: ${startTime.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' })} - ${endTime.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' })}${reminderMessage}`,
+      data: { event, reminderCreated },
+    }
+  } catch (error) {
+    console.error('Error creating meeting:', error)
+    return {
+      success: false,
+      error: 'Error al crear la reunión. Por favor intenta de nuevo.',
+    }
+  }
+}
+
+// Handler: Check if client has phone number
+export async function handleCheckClientPhone(
+  args: { case_id: string },
+  userId: string
+): Promise<FunctionResult> {
+  try {
+    const { case_id } = args
+    const supabase = getServiceClient()
+
+    const { data: caseData, error } = await supabase
+      .from('monitored_cases')
+      .select('nombre, telefono, case_number')
+      .eq('id', case_id)
+      .eq('user_id', userId)
+      .single()
+
+    if (error || !caseData) {
+      return {
+        success: false,
+        error: 'No se encontró el caso especificado.',
+      }
+    }
+
+    const hasPhone = !!caseData.telefono
+
+    return {
+      success: true,
+      data: {
+        case_id,
+        client_name: caseData.nombre,
+        case_number: caseData.case_number,
+        has_phone: hasPhone,
+        phone: caseData.telefono,
+      },
+      message: hasPhone
+        ? `${caseData.nombre} tiene teléfono registrado: ${caseData.telefono}`
+        : `⚠️ ${caseData.nombre} NO tiene teléfono registrado. Para enviar recordatorios, agrega el teléfono en la plataforma.`,
+    }
+  } catch (error) {
+    console.error('Error checking client phone:', error)
+    return {
+      success: false,
+      error: 'Error al verificar el teléfono del cliente.',
+    }
+  }
+}
+
 // Main function call dispatcher
 export async function executeFunctionCall(
   functionName: string,
@@ -305,6 +499,12 @@ export async function executeFunctionCall(
 
     case 'add_payment':
       return handleAddPayment(args, userId)
+
+    case 'create_meeting':
+      return handleCreateMeeting(args, userId)
+
+    case 'check_client_phone':
+      return handleCheckClientPhone(args, userId)
 
     default:
       return {

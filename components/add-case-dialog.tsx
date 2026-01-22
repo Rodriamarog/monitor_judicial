@@ -41,6 +41,7 @@ export function AddCaseDialog({ open, onOpenChange }: AddCaseDialogProps) {
   const [caseNumber, setCaseNumber] = useState('')
   const [juzgado, setJuzgado] = useState('')
   const [nombre, setNombre] = useState('')
+  const [countryCode, setCountryCode] = useState('+52')
   const [telefono, setTelefono] = useState('')
   const [totalAmountCharged, setTotalAmountCharged] = useState('')
   const [currency, setCurrency] = useState('MXN')
@@ -100,6 +101,7 @@ export function AddCaseDialog({ open, onOpenChange }: AddCaseDialogProps) {
       setCaseNumber('')
       setJuzgado('')
       setNombre('')
+      setCountryCode('+52')
       setTelefono('')
       setTotalAmountCharged('')
       setCurrency('MXN')
@@ -186,6 +188,11 @@ export function AddCaseDialog({ open, onOpenChange }: AddCaseDialogProps) {
     // Insert new case
     const totalAmount = totalAmountCharged ? parseFloat(totalAmountCharged) : 0
 
+    // Format phone number: combine country code + phone number (remove spaces/dashes)
+    const formattedPhone = telefono
+      ? `${countryCode}${telefono.replace(/[\s\-()]/g, '')}`
+      : null
+
     const { data: insertedCase, error: insertError } = await supabase
       .from('monitored_cases')
       .insert([
@@ -194,7 +201,7 @@ export function AddCaseDialog({ open, onOpenChange }: AddCaseDialogProps) {
           case_number: normalizedCaseNumber,
           juzgado: juzgado,
           nombre: nombre || null,
-          telefono: telefono || null,
+          telefono: formattedPhone,
           total_amount_charged: totalAmount,
           currency: currency,
           assigned_collaborators: selectedCollaborators,
@@ -347,17 +354,33 @@ export function AddCaseDialog({ open, onOpenChange }: AddCaseDialogProps) {
           {/* Teléfono (Optional) */}
           <div className="space-y-2">
             <Label htmlFor="telefono">Teléfono del Cliente (Opcional)</Label>
-            <Input
-              id="telefono"
-              type="tel"
-              placeholder="Ej: +52 664 123 4567"
-              value={telefono}
-              onChange={(e) => setTelefono(e.target.value)}
-              maxLength={20}
-              disabled={loading || success}
-            />
+            <div className="flex gap-2">
+              <Select
+                value={countryCode}
+                onValueChange={setCountryCode}
+                disabled={loading || success}
+              >
+                <SelectTrigger className="w-[100px]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="+52">🇲🇽 +52</SelectItem>
+                  <SelectItem value="+1">🇺🇸 +1</SelectItem>
+                </SelectContent>
+              </Select>
+              <Input
+                id="telefono"
+                type="tel"
+                placeholder="664 123 4567"
+                value={telefono}
+                onChange={(e) => setTelefono(e.target.value)}
+                maxLength={15}
+                disabled={loading || success}
+                className="flex-1"
+              />
+            </div>
             <p className="text-xs text-muted-foreground">
-              Número de teléfono del cliente asociado a este caso para su referencia
+              Número de teléfono del cliente (sin código de país, solo dígitos)
             </p>
           </div>
 

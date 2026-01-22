@@ -1,10 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
-import { createClient as createSupabaseClient } from '@supabase/supabase-js';
-import {
-  updateCalendarEvent,
-  deleteCalendarEvent,
-} from '@/lib/google-calendar';
 
 /**
  * PATCH - Update calendar event
@@ -81,62 +76,6 @@ export async function PATCH(
       );
     }
 
-    // Sync to Google Calendar if event was previously synced
-    if (existingEvent.google_event_id && existingEvent.google_calendar_id) {
-      try {
-        const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-        const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-        const serviceSupabase = createSupabaseClient(supabaseUrl, supabaseKey);
-
-        // Get user's Google tokens
-        const { data: tokens } = await serviceSupabase
-          .from('user_google_tokens')
-          .select('*')
-          .eq('user_id', user.id)
-          .single();
-
-        if (tokens) {
-          const result = await updateCalendarEvent(
-            existingEvent.google_event_id,
-            {
-              title: updatedEvent.title,
-              description: updatedEvent.description,
-              start_time: updatedEvent.start_time,
-              end_time: updatedEvent.end_time,
-              location: updatedEvent.location,
-            },
-            tokens,
-            existingEvent.google_calendar_id,
-            supabaseUrl,
-            supabaseKey,
-            user.id
-          );
-
-          if (result.success) {
-            await serviceSupabase
-              .from('calendar_events')
-              .update({
-                google_etag: result.etag,
-                sync_status: 'synced',
-                last_synced_at: new Date().toISOString(),
-                sync_error: null,
-              })
-              .eq('id', id);
-          } else {
-            await serviceSupabase
-              .from('calendar_events')
-              .update({
-                sync_status: 'error',
-                sync_error: result.error,
-              })
-              .eq('id', id);
-          }
-        }
-      } catch (syncError) {
-        console.error('Error syncing update to Google Calendar:', syncError);
-      }
-    }
-
     return NextResponse.json({ event: updatedEvent });
   } catch (error) {
     console.error('Error in PATCH /api/calendar/events/[id]:', error);
@@ -195,36 +134,6 @@ export async function DELETE(
         { error: 'Failed to delete event', message: deleteError.message },
         { status: 500 }
       );
-    }
-
-    // Delete from Google Calendar if event was synced
-    if (existingEvent.google_event_id && existingEvent.google_calendar_id) {
-      try {
-        const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-        const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-        const serviceSupabase = createSupabaseClient(supabaseUrl, supabaseKey);
-
-        // Get user's Google tokens
-        const { data: tokens } = await serviceSupabase
-          .from('user_google_tokens')
-          .select('*')
-          .eq('user_id', user.id)
-          .single();
-
-        if (tokens) {
-          await deleteCalendarEvent(
-            existingEvent.google_event_id,
-            tokens,
-            existingEvent.google_calendar_id,
-            supabaseUrl,
-            supabaseKey,
-            user.id
-          );
-        }
-      } catch (syncError) {
-        console.error('Error deleting from Google Calendar:', syncError);
-        // Don't fail the request if Google Calendar deletion fails
-      }
     }
 
     return NextResponse.json({ success: true });

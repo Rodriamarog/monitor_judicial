@@ -66,6 +66,7 @@ export function CasesTable({ cases, onDelete, onUpdate }: CasesTableProps) {
   const [editCaseNumber, setEditCaseNumber] = useState('')
   const [editJuzgado, setEditJuzgado] = useState('')
   const [editNombre, setEditNombre] = useState('')
+  const [editCountryCode, setEditCountryCode] = useState('+52')
   const [editTelefono, setEditTelefono] = useState('')
   const [editTotalAmountCharged, setEditTotalAmountCharged] = useState('')
   const [editCurrency, setEditCurrency] = useState('MXN')
@@ -210,7 +211,25 @@ export function CasesTable({ cases, onDelete, onUpdate }: CasesTableProps) {
     setEditCaseNumber(case_.case_number)
     setEditJuzgado(case_.juzgado)
     setEditNombre(case_.nombre || '')
-    setEditTelefono(case_.telefono || '')
+
+    // Parse phone number to extract country code
+    if (case_.telefono) {
+      if (case_.telefono.startsWith('+1')) {
+        setEditCountryCode('+1')
+        setEditTelefono(case_.telefono.substring(2))
+      } else if (case_.telefono.startsWith('+52')) {
+        setEditCountryCode('+52')
+        setEditTelefono(case_.telefono.substring(3))
+      } else {
+        // Default fallback if no recognized country code
+        setEditCountryCode('+52')
+        setEditTelefono(case_.telefono)
+      }
+    } else {
+      setEditCountryCode('+52')
+      setEditTelefono('')
+    }
+
     setEditTotalAmountCharged(case_.total_amount_charged ? case_.total_amount_charged.toString() : '')
     setEditCurrency(case_.currency || 'MXN')
     setEditError(null)
@@ -243,11 +262,16 @@ export function CasesTable({ cases, onDelete, onUpdate }: CasesTableProps) {
 
       const totalAmount = editTotalAmountCharged ? parseFloat(editTotalAmountCharged) : 0
 
+      // Format phone number: combine country code + phone number (remove spaces/dashes)
+      const formattedPhone = editTelefono
+        ? `${editCountryCode}${editTelefono.replace(/[\s\-()]/g, '')}`
+        : null
+
       await onUpdate(editingCase.id, {
         case_number: normalizedCaseNumber,
         juzgado: editJuzgado,
         nombre: editNombre || null,
-        telefono: editTelefono || null,
+        telefono: formattedPhone,
         total_amount_charged: totalAmount,
         currency: editCurrency,
       })
@@ -505,14 +529,29 @@ export function CasesTable({ cases, onDelete, onUpdate }: CasesTableProps) {
 
             <div className="space-y-2">
               <Label htmlFor="edit-telefono">Teléfono del Cliente (opcional)</Label>
-              <Input
-                id="edit-telefono"
-                type="tel"
-                value={editTelefono}
-                onChange={(e) => setEditTelefono(e.target.value)}
-                placeholder="+52 664 123 4567"
-                maxLength={20}
-              />
+              <div className="flex gap-2">
+                <Select
+                  value={editCountryCode}
+                  onValueChange={setEditCountryCode}
+                >
+                  <SelectTrigger className="w-[100px]">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="+52">🇲🇽 +52</SelectItem>
+                    <SelectItem value="+1">🇺🇸 +1</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Input
+                  id="edit-telefono"
+                  type="tel"
+                  value={editTelefono}
+                  onChange={(e) => setEditTelefono(e.target.value)}
+                  placeholder="664 123 4567"
+                  maxLength={15}
+                  className="flex-1"
+                />
+              </div>
             </div>
 
             {/* Balance Fields */}

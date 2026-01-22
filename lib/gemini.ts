@@ -81,6 +81,50 @@ export const geminiTools = [
           required: ['case_id', 'amount'],
         },
       },
+      {
+        name: 'create_meeting',
+        description: 'Crea una reunión en el calendario con recordatorio opcional por SMS 24h antes. Si es reunión con cliente, incluye client_case_id.',
+        parameters: {
+          type: 'object',
+          properties: {
+            title: {
+              type: 'string',
+              description: 'Título de la reunión (ej: "Reunión con Laura Gomez")',
+            },
+            client_case_id: {
+              type: 'string',
+              description: 'ID del caso del cliente (opcional, si es reunión con un cliente)',
+            },
+            start_time: {
+              type: 'string',
+              description: 'Fecha y hora de inicio en formato ISO 8601 (ej: "2026-02-10T17:00:00")',
+            },
+            duration_minutes: {
+              type: 'number',
+              description: 'Duración de la reunión en minutos (por defecto 60)',
+            },
+            create_reminder: {
+              type: 'boolean',
+              description: 'Si se debe crear recordatorio por SMS 24h antes',
+            },
+          },
+          required: ['title', 'start_time', 'duration_minutes', 'create_reminder'],
+        },
+      },
+      {
+        name: 'check_client_phone',
+        description: 'Verifica si un cliente tiene teléfono registrado para poder enviar recordatorios por SMS.',
+        parameters: {
+          type: 'object',
+          properties: {
+            case_id: {
+              type: 'string',
+              description: 'ID del caso para verificar teléfono del cliente',
+            },
+          },
+          required: ['case_id'],
+        },
+      },
     ],
   },
 ]
@@ -146,6 +190,56 @@ export const openaiTools: OpenAI.Chat.Completions.ChatCompletionTool[] = [
       },
     },
   },
+  {
+    type: 'function',
+    function: {
+      name: 'create_meeting',
+      description: 'Crea una reunión en el calendario con recordatorio opcional por SMS 24h antes. Si es reunión con cliente, incluye client_case_id.',
+      parameters: {
+        type: 'object',
+        properties: {
+          title: {
+            type: 'string',
+            description: 'Título de la reunión (ej: "Reunión con Laura Gomez")',
+          },
+          client_case_id: {
+            type: 'string',
+            description: 'ID del caso del cliente (opcional, si es reunión con un cliente)',
+          },
+          start_time: {
+            type: 'string',
+            description: 'Fecha y hora de inicio en formato ISO 8601 (ej: "2026-02-10T17:00:00")',
+          },
+          duration_minutes: {
+            type: 'number',
+            description: 'Duración de la reunión en minutos (por defecto 60)',
+          },
+          create_reminder: {
+            type: 'boolean',
+            description: 'Si se debe crear recordatorio por SMS 24h antes',
+          },
+        },
+        required: ['title', 'start_time', 'duration_minutes', 'create_reminder'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'check_client_phone',
+      description: 'Verifica si un cliente tiene teléfono registrado para poder enviar recordatorios por SMS.',
+      parameters: {
+        type: 'object',
+        properties: {
+          case_id: {
+            type: 'string',
+            description: 'ID del caso para verificar teléfono del cliente',
+          },
+        },
+        required: ['case_id'],
+      },
+    },
+  },
 ]
 
 // Currency detection from user message
@@ -198,8 +292,11 @@ export function validateCurrencyMatch(
 }
 
 // System prompt for Gemini
-export const SYSTEM_PROMPT = `Eres un asistente útil que ayuda a abogados a registrar pagos de clientes a través de WhatsApp.
+export const SYSTEM_PROMPT = `Eres un asistente útil que ayuda a abogados a gestionar sus casos, pagos y reuniones a través de WhatsApp.
 
+## CAPACIDADES
+
+### 1. GESTIÓN DE PAGOS
 Tu trabajo es:
 1. Entender cuando el usuario quiere agregar un pago a un caso
 2. Extraer el nombre del cliente y el monto del pago
@@ -207,23 +304,56 @@ Tu trabajo es:
 4. Mostrar los detalles del caso encontrado y SIEMPRE pedir confirmación explícita antes de registrar
 5. SOLO después de recibir confirmación del usuario ("sí", "confirmo", "ok", etc), llamar add_payment
 
-Flujo obligatorio:
+Flujo obligatorio para pagos:
 1. Usuario pide agregar pago → Buscar caso
 2. Mostrar caso encontrado y balance actual → Preguntar "¿Confirmas agregar $X [moneda]?"
 3. Usuario confirma → SOLO ENTONCES llamar add_payment
 4. Usuario rechaza → Cancelar operación
 
-IMPORTANTE sobre confirmación:
+IMPORTANTE sobre confirmación de pagos:
 - NUNCA llames add_payment sin haber recibido confirmación explícita del usuario primero
 - Siempre muestra: nombre del caso, expediente, y balance actual antes de pedir confirmación
 - Si el usuario dice "no" o "cancela", NO registres el pago
 
-IMPORTANTE sobre moneda:
-- Verifica que la moneda mencionada coincida con la moneda del caso
-- Si no coinciden, NO registres el pago y pide la moneda correcta
-- Si hay mismatch, explica claramente el problema
+Detección de moneda:
+- Si el usuario menciona "dólares", "USD", "$100 USD", "100 dollars" → moneda es USD
+- Si el usuario menciona "pesos", "MXN", "$100 MXN", o solo "$100" sin especificar → moneda es MXN
+- SIEMPRE extrae la moneda correctamente del mensaje
 
-Formato de respuestas (WhatsApp):
+### 2. GESTIÓN DE REUNIONES
+Tu trabajo es:
+1. Entender cuando el usuario quiere agendar una reunión
+2. Extraer: fecha, hora, nombre del cliente (si aplica), duración
+3. Si menciona un cliente, buscar el caso con search_cases_by_client_name
+4. Preguntar si quiere crear recordatorio 24h antes
+5. Si quiere recordatorio Y menciona cliente, verificar teléfono con check_client_phone
+6. Crear reunión con create_meeting
+
+Flujo para reuniones:
+1. Usuario pide agendar reunión → Extraer detalles (fecha, hora, cliente)
+2. Si menciona cliente → Buscar caso
+3. Preguntar: "¿Quieres que te enviemos un recordatorio 24 horas antes?"
+4. Si dice sí Y tiene cliente → Verificar si tiene teléfono registrado
+5. Crear reunión con create_meeting
+
+Interpretación de fechas naturales (hoy es 2026-01-21):
+- "10 de febrero" → 2026-02-10 (si no especifica año, usa 2026)
+- "mañana a las 5pm" → 2026-01-22T17:00:00
+- "la próxima semana" → preguntar qué día específicamente
+- "a las 5pm" o "5 de la tarde" → 17:00:00
+- "17:00" → 17:00:00
+
+Formato datetime para create_meeting:
+- Usa ISO 8601: "2026-02-10T17:00:00"
+- Zona horaria: Pacific Time (Baja California)
+
+IMPORTANTE sobre recordatorios:
+- Si el cliente NO tiene teléfono registrado, informa al usuario
+- Sugiere agregar el teléfono en la plataforma
+- El recordatorio se enviará al abogado de todos modos (si tiene teléfono)
+- Si el abogado NO tiene teléfono, no se puede crear recordatorio
+
+## FORMATO DE RESPUESTAS (WhatsApp)
 - Usa *texto* (asterisco simple) para negritas, NO uses **texto**
 - Ejemplo: *Caso:* JUAN PEREZ
 - NO uses: **Caso:** JUAN PEREZ
@@ -232,8 +362,9 @@ Detalles adicionales:
 - Los pagos siempre se registran con fecha de hoy
 - Si hay múltiples casos, pide al usuario que aclare cuál
 - Responde siempre en español de manera amigable y profesional
+- Para reuniones, duración por defecto es 60 minutos si no se especifica
 
-Recuerda: CONFIRMACIÓN PRIMERO, luego add_payment. NUNCA al revés.`
+Recuerda: CONFIRMACIÓN PRIMERO para pagos, luego add_payment. NUNCA al revés.`
 
 // Extract payment intent from user message
 export interface PaymentIntent {
