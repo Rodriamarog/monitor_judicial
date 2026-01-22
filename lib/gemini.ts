@@ -97,7 +97,7 @@ export const geminiTools = [
             },
             start_time: {
               type: 'string',
-              description: 'Fecha y hora de inicio en formato ISO 8601 (ej: "2026-02-10T17:00:00")',
+              description: 'Fecha y hora de inicio en formato ISO 8601 simple (ej: "2026-02-10T17:00:00"). NO agregues zona horaria, el sistema la maneja automáticamente.',
             },
             duration_minutes: {
               type: 'number',
@@ -123,6 +123,38 @@ export const geminiTools = [
             },
           },
           required: ['case_id'],
+        },
+      },
+      {
+        name: 'get_calendar_events',
+        description: 'Obtiene las reuniones del calendario para un rango de fechas. Usa esto cuando el usuario pregunte sobre su agenda o reuniones.',
+        parameters: {
+          type: 'object',
+          properties: {
+            start_date: {
+              type: 'string',
+              description: 'Fecha de inicio en formato ISO 8601 (ej: "2026-01-21T00:00:00-08:00")',
+            },
+            end_date: {
+              type: 'string',
+              description: 'Fecha de fin en formato ISO 8601 (ej: "2026-01-31T23:59:59-08:00")',
+            },
+          },
+          required: ['start_date', 'end_date'],
+        },
+      },
+      {
+        name: 'get_upcoming_reminders',
+        description: 'Obtiene los recordatorios pendientes. Usa esto cuando el usuario pregunte sobre recordatorios programados.',
+        parameters: {
+          type: 'object',
+          properties: {
+            days_ahead: {
+              type: 'number',
+              description: 'Cuántos días adelante buscar (por defecto 7)',
+            },
+          },
+          required: [],
         },
       },
     ],
@@ -208,7 +240,7 @@ export const openaiTools: OpenAI.Chat.Completions.ChatCompletionTool[] = [
           },
           start_time: {
             type: 'string',
-            description: 'Fecha y hora de inicio en formato ISO 8601 (ej: "2026-02-10T17:00:00")',
+            description: 'Fecha y hora de inicio en formato ISO 8601 simple (ej: "2026-02-10T17:00:00"). NO agregues zona horaria, el sistema la maneja automáticamente.',
           },
           duration_minutes: {
             type: 'number',
@@ -237,6 +269,44 @@ export const openaiTools: OpenAI.Chat.Completions.ChatCompletionTool[] = [
           },
         },
         required: ['case_id'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'get_calendar_events',
+      description: 'Obtiene las reuniones del calendario para un rango de fechas. Usa esto cuando el usuario pregunte sobre su agenda o reuniones.',
+      parameters: {
+        type: 'object',
+        properties: {
+          start_date: {
+            type: 'string',
+            description: 'Fecha de inicio en formato ISO 8601 (ej: "2026-01-21T00:00:00")',
+          },
+          end_date: {
+            type: 'string',
+            description: 'Fecha de fin en formato ISO 8601 (ej: "2026-01-31T23:59:59")',
+          },
+        },
+        required: ['start_date', 'end_date'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'get_upcoming_reminders',
+      description: 'Obtiene los recordatorios pendientes. Usa esto cuando el usuario pregunte sobre recordatorios programados.',
+      parameters: {
+        type: 'object',
+        properties: {
+          days_ahead: {
+            type: 'number',
+            description: 'Cuántos días adelante buscar (por defecto 7)',
+          },
+        },
+        required: [],
       },
     },
   },
@@ -366,14 +436,32 @@ IMPORTANTE - Errores comunes a EVITAR:
 - ✅ SOLO llama check_client_phone si usuario quiere recordatorio Y tiene cliente
 
 Interpretación de fechas naturales (hoy es 2026-01-21):
-- "25 de enero" → 2026-01-25T00:00:00 (luego pide hora si falta)
-- "enero 25" → 2026-01-25T00:00:00
-- "mañana" → 2026-01-22T00:00:00
-- "6:00 pm" / "6 de la tarde" / "18:00" → hora 18:00:00
+- "25 de enero" → 2026-01-25 (luego pide hora si falta)
+- "enero 25" → 2026-01-25
+- "mañana" → 2026-01-22
+- "6:00 pm" / "6 de la tarde" / "18:00" → hora 18:00
 
 Formato datetime para create_meeting:
-- SIEMPRE ISO 8601: "2026-01-25T18:00:00"
-- Zona horaria: Pacific Time (Baja California)
+- Formato ISO 8601 simple: "YYYY-MM-DDTHH:mm:ss"
+- Ejemplos: "2026-01-25T18:00:00" (6pm del 25 de enero)
+- NO agregues sufijos de zona horaria, el sistema maneja eso automáticamente
+
+### 3. CONSULTA DE CALENDARIO
+
+Cuando el usuario pregunte sobre su agenda, reuniones o recordatorios:
+
+**Para ver reuniones:**
+- "¿Qué reuniones tengo?" → Usa get_calendar_events con fechas del mes actual
+- "¿Tengo algo agendado mañana?" → Usa get_calendar_events para mañana
+- "Muestra mi agenda de esta semana" → Usa get_calendar_events para la semana
+- Formato de fechas: start_date y end_date en ISO 8601 ("2026-01-21T00:00:00" a "2026-01-31T23:59:59")
+
+**Para ver recordatorios:**
+- "¿Tengo recordatorios programados?" → Usa get_upcoming_reminders
+- "¿Qué recordatorios tengo esta semana?" → Usa get_upcoming_reminders con days_ahead: 7
+- Por defecto usa days_ahead: 7 si no se especifica
+
+Presenta los resultados de forma clara y organizada, usando el formato de respuesta de WhatsApp
 
 ## FORMATO DE RESPUESTAS (WhatsApp)
 - Usa *texto* (asterisco simple) para negritas, NO uses **texto**

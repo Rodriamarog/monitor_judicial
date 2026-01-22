@@ -13,6 +13,7 @@ import { Badge } from '@/components/ui/badge'
 import { Switch } from '@/components/ui/switch'
 import { SubscriptionButton } from '@/components/subscription-button'
 import { CollaboratorsSection } from '@/components/collaborators-section'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 
 export default function SettingsPage() {
   const [loading, setLoading] = useState(true)
@@ -20,6 +21,7 @@ export default function SettingsPage() {
   const [phone, setPhone] = useState('')
   const [whatsappEnabled, setWhatsappEnabled] = useState(false)
   const [emailEnabled, setEmailEnabled] = useState(true)
+  const [timezone, setTimezone] = useState('America/Tijuana')
   const [googleConnected, setGoogleConnected] = useState(false)
   const [scopeValid, setScopeValid] = useState(true)
   const [connecting, setConnecting] = useState(false)
@@ -68,7 +70,7 @@ export default function SettingsPage() {
 
       const { data: profile, error: profileError } = await supabase
         .from('user_profiles')
-        .select('email, phone, whatsapp_enabled, email_notifications_enabled, subscription_tier, stripe_customer_id, collaborator_emails')
+        .select('email, phone, whatsapp_enabled, email_notifications_enabled, timezone, subscription_tier, stripe_customer_id, collaborator_emails')
         .eq('id', user.id)
         .single()
 
@@ -78,6 +80,7 @@ export default function SettingsPage() {
       setPhone(profile.phone || '')
       setWhatsappEnabled(profile.whatsapp_enabled || false)
       setEmailEnabled(profile.email_notifications_enabled !== false)
+      setTimezone(profile.timezone || 'America/Tijuana')
       setTier(profile.subscription_tier || 'free')
       setHasStripeCustomer(!!profile.stripe_customer_id)
 
@@ -122,6 +125,7 @@ export default function SettingsPage() {
           phone: phone || null,
           whatsapp_enabled: whatsappEnabled,
           email_notifications_enabled: emailEnabled,
+          timezone: timezone,
         })
         .eq('id', user.id)
 
@@ -342,6 +346,40 @@ export default function SettingsPage() {
                   </div>
                 </div>
               )}
+            </div>
+
+            {/* Timezone Section */}
+            <div className="space-y-4 pt-4 border-t">
+              <div className="space-y-2">
+                <Label htmlFor="timezone" className="text-base">
+                  Zona Horaria
+                </Label>
+                <p className="text-sm text-muted-foreground">
+                  Selecciona tu zona horaria para agendar reuniones correctamente
+                </p>
+                <Select value={timezone} onValueChange={setTimezone}>
+                  <SelectTrigger id="timezone">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="America/Tijuana">🇲🇽 Baja California (Tijuana)</SelectItem>
+                    <SelectItem value="America/Mexico_City">🇲🇽 México Central (CDMX)</SelectItem>
+                    <SelectItem value="America/Cancun">🇲🇽 Quintana Roo (Cancún)</SelectItem>
+                    <SelectItem value="America/Hermosillo">🇲🇽 Sonora (Hermosillo)</SelectItem>
+                    <SelectItem value="America/Chihuahua">🇲🇽 Chihuahua</SelectItem>
+                    <SelectItem value="America/Mazatlan">🇲🇽 Sinaloa/Nayarit (Mazatlán)</SelectItem>
+                    <SelectItem value="America/Monterrey">🇲🇽 Nuevo León (Monterrey)</SelectItem>
+                    <SelectItem value="America/Los_Angeles">🇺🇸 Pacific (Los Angeles)</SelectItem>
+                    <SelectItem value="America/Phoenix">🇺🇸 Arizona (Phoenix)</SelectItem>
+                    <SelectItem value="America/Denver">🇺🇸 Mountain (Denver)</SelectItem>
+                    <SelectItem value="America/Chicago">🇺🇸 Central (Chicago)</SelectItem>
+                    <SelectItem value="America/New_York">🇺🇸 Eastern (New York)</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  Esta zona horaria se usará para interpretar las fechas y horas de tus reuniones
+                </p>
+              </div>
             </div>
 
             {/* Google Drive Integration */}

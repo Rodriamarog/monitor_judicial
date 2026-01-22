@@ -305,21 +305,10 @@ export async function handleCreateMeeting(
     const { title, client_case_id, start_time, duration_minutes, create_reminder } = args
     const supabase = getServiceClient()
 
-    // Parse and validate times
-    const startTime = new Date(start_time)
-    if (isNaN(startTime.getTime())) {
-      return {
-        success: false,
-        error: 'Fecha/hora inválida. Usa formato: 2024-02-10T17:00:00',
-      }
-    }
-
-    const endTime = new Date(startTime.getTime() + duration_minutes * 60 * 1000)
-
-    // Get user info for lawyer name and phone
+    // Get user info for lawyer name, phone, and timezone
     const { data: userProfile, error: userError } = await supabase
       .from('user_profiles')
-      .select('full_name, phone')
+      .select('full_name, phone, timezone')
       .eq('id', userId)
       .single()
 
@@ -329,6 +318,22 @@ export async function handleCreateMeeting(
         error: 'No se pudo obtener tu información de perfil.',
       }
     }
+
+    // Parse and validate times using user's timezone
+    // AI sends: "2026-01-25T18:00:00" (no timezone)
+    // We interpret this as "6pm in user's timezone"
+    const { zonedTimeToUtc } = await import('date-fns-tz')
+    const userTimezone = userProfile.timezone || 'America/Tijuana'
+
+    const startTime = zonedTimeToUtc(start_time, userTimezone)
+    if (isNaN(startTime.getTime())) {
+      return {
+        success: false,
+        error: 'Fecha/hora inválida. Usa formato: 2024-02-10T17:00:00',
+      }
+    }
+
+    const endTime = new Date(startTime.getTime() + duration_minutes * 60 * 1000)
 
     // Get client info if case_id provided
     let clientName: string | null = null
@@ -484,6 +489,124 @@ export async function handleCheckClientPhone(
   }
 }
 
+// Handler: Get calendar events for a date range
+export async function handleGetCalendarEvents(
+  args: { start_date: string; end_date: string },
+  userId: string
+): Promise<FunctionResult> {
+  try {
+    const { start_date, end_date } = args
+    const supabase = getServiceClient()
+
+    const { data: events, error } = await supabase
+      .from('calendar_events')
+      .select('id, title, description, start_time, end_time, location')
+      .eq('user_id', userId)
+      .is('deleted_at', null)
+      .gte('start_time', start_date)
+      .lte('start_time', end_date)
+      .order('start_time', { ascending: true })
+      .limit(20)
+
+    if (error) {
+      throw error
+    }
+
+    if (!events || events.length === 0) {
+      return {
+        success: true,
+        data: { events: [] },
+        message: 'No tienes reuniones agendadas en ese período.',
+      }
+    }
+
+    const eventList = events
+      .map((e, i) => {
+        const startDate = new Date(e.start_time)
+        return `${i + 1}. *${e.title}*\n   Fecha: ${startDate.toLocaleDateString('es-MX', {
+          weekday: 'long',
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric',
+        })}\n   Hora: ${startDate.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' })}`
+      })
+      .join('\n\n')
+
+    return {
+      success: true,
+      data: { events },
+      message: `Tienes ${events.length} reunión(es) agendada(s):\n\n${eventList}`,
+    }
+  } catch (error) {
+    console.error('Error getting calendar events:', error)
+    return {
+      success: false,
+      error: 'Error al obtener las reuniones del calendario.',
+    }
+  }
+}
+
+// Handler: Get upcoming reminders
+export async function handleGetUpcomingReminders(
+  args: { days_ahead?: number },
+  userId: string
+): Promise<FunctionResult> {
+  try {
+    const daysAhead = args.days_ahead || 7 // Default 7 days
+    const supabase = getServiceClient()
+
+    const endDate = new Date()
+    endDate.setDate(endDate.getDate() + daysAhead)
+
+    const { data: reminders, error } = await supabase
+      .from('meeting_reminders')
+      .select('id, client_name, meeting_time, scheduled_for, status')
+      .eq('user_id', userId)
+      .eq('status', 'pending')
+      .lte('scheduled_for', endDate.toISOString())
+      .order('scheduled_for', { ascending: true })
+      .limit(20)
+
+    if (error) {
+      throw error
+    }
+
+    if (!reminders || reminders.length === 0) {
+      return {
+        success: true,
+        data: { reminders: [] },
+        message: `No tienes recordatorios programados para los próximos ${daysAhead} días.`,
+      }
+    }
+
+    const reminderList = reminders
+      .map((r, i) => {
+        const meetingDate = new Date(r.meeting_time)
+        const reminderDate = new Date(r.scheduled_for)
+        return `${i + 1}. Reunión con *${r.client_name || 'sin cliente'}*\n   Fecha reunión: ${meetingDate.toLocaleDateString('es-MX', {
+          month: 'long',
+          day: 'numeric',
+        })} a las ${meetingDate.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' })}\n   Recordatorio: ${reminderDate.toLocaleDateString('es-MX', {
+          month: 'long',
+          day: 'numeric',
+        })} a las ${reminderDate.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' })}`
+      })
+      .join('\n\n')
+
+    return {
+      success: true,
+      data: { reminders },
+      message: `Tienes ${reminders.length} recordatorio(s) programado(s):\n\n${reminderList}`,
+    }
+  } catch (error) {
+    console.error('Error getting reminders:', error)
+    return {
+      success: false,
+      error: 'Error al obtener los recordatorios.',
+    }
+  }
+}
+
 // Main function call dispatcher
 export async function executeFunctionCall(
   functionName: string,
@@ -505,6 +628,12 @@ export async function executeFunctionCall(
 
     case 'check_client_phone':
       return handleCheckClientPhone(args, userId)
+
+    case 'get_calendar_events':
+      return handleGetCalendarEvents(args, userId)
+
+    case 'get_upcoming_reminders':
+      return handleGetUpcomingReminders(args, userId)
 
     default:
       return {
