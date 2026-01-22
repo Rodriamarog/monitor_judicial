@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js'
 import { normalizeName } from './name-variations'
+import { fromZonedTime } from 'date-fns-tz'
 
 // Use service role client for webhook operations (bypasses RLS)
 function getServiceClient() {
@@ -322,10 +323,9 @@ export async function handleCreateMeeting(
     // Parse and validate times using user's timezone
     // AI sends: "2026-01-25T18:00:00" (no timezone)
     // We interpret this as "6pm in user's timezone"
-    const { zonedTimeToUtc } = await import('date-fns-tz')
     const userTimezone = userProfile.timezone || 'America/Tijuana'
 
-    const startTime = zonedTimeToUtc(start_time, userTimezone)
+    const startTime = fromZonedTime(start_time, userTimezone)
     if (isNaN(startTime.getTime())) {
       return {
         success: false,
@@ -700,9 +700,8 @@ export async function handleRescheduleMeeting(
     }
 
     // Convert new time using user's timezone
-    const { zonedTimeToUtc } = await import('date-fns-tz')
     const userTimezone = userProfile.timezone || 'America/Tijuana'
-    const newStartTime = zonedTimeToUtc(new_start_time, userTimezone)
+    const newStartTime = fromZonedTime(new_start_time, userTimezone)
 
     if (isNaN(newStartTime.getTime())) {
       return {
