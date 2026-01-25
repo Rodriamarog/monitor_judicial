@@ -459,7 +459,7 @@ export function CasesTable({ cases, onDelete, onUpdate }: CasesTableProps) {
 
       {/* Edit Dialog */}
       <Dialog open={!!editingCase} onOpenChange={(open) => !open && setEditingCase(null)}>
-        <DialogContent>
+        <DialogContent className="overflow-x-hidden">
           <DialogHeader>
             <DialogTitle>Editar Caso</DialogTitle>
             <DialogDescription>
