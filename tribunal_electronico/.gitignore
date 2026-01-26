@@ -1,0 +1,10 @@
+credentials/
+/credentials
+credentials
+.env
+node_modules/
+dist/
+screenshots/
+data/
+*.log
+*.pdf

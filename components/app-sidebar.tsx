@@ -20,7 +20,7 @@ import {
   Menu,
   HelpCircle,
   UserSearch,
-  Search,
+  // Search,
   ScanSearch,
   LayoutDashboard,
 } from "lucide-react"
@@ -62,7 +62,7 @@ const navigation: NavSection[] = [
       { href: '/dashboard', label: 'Monitoreo por Expediente', icon: FileText },
       { href: '/dashboard/nombres', label: 'Monitoreo Por Nombre', icon: UserSearch },
       { href: '/dashboard/alerts', label: 'Alertas', icon: Bell },
-      { href: '/dashboard/investigacion', label: 'Investigación', icon: Search },
+      // { href: '/dashboard/investigacion', label: 'Investigación', icon: Search },
     ],
   },
   {
