@@ -1,0 +1,16 @@
+{
+  "name": "monitor-judicial-hetzner",
+  "version": "1.0.0",
+  "description": "Hetzner-only scripts for Tribunal Electrónico automation",
+  "private": true,
+  "scripts": {
+    "sync": "node tribunal-sync.js"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.39.0",
+    "dotenv": "^16.3.1",
+    "puppeteer": "^21.6.1",
+    "puppeteer-extra": "^3.3.6",
+    "puppeteer-extra-plugin-stealth": "^2.11.2"
+  }
+}

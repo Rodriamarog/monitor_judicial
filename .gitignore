@@ -57,3 +57,9 @@ google-calendar-info/
 
 # Documentation with sensitive examples
 WHATSAPP_PAYMENT_AGENT.md
+
+# Tribunal Electrónico artifacts
+tribunal_electronico/node_modules
+tribunal_electronico/dist
+tribunal_electronico/package-lock.json
+tribunal_electronico/.env
