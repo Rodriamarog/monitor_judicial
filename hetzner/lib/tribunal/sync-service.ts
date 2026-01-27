@@ -21,7 +21,7 @@ export interface SyncUserParams {
   vaultKeyFileId: string;
   vaultCerFileId: string;
   email: string;
-  lastDocumentoNumero: number;
+  lastDocumentDate: string | null;
   supabase: SupabaseClient;
   logger: NotificationLogger;
 }
@@ -46,7 +46,7 @@ export async function syncTribunalForUser(
     vaultKeyFileId,
     vaultCerFileId,
     email,
-    lastDocumentoNumero,
+    lastDocumentDate,
     supabase,
     logger
   } = params;
@@ -62,7 +62,7 @@ export async function syncTribunalForUser(
       .insert({
         user_id: userId,
         status: 'running',
-        previous_watermark: lastDocumentoNumero
+        previous_watermark: lastDocumentDate ? new Date(lastDocumentDate).getTime() : 0
       })
       .select()
       .single();
@@ -73,7 +73,7 @@ export async function syncTribunalForUser(
 
     syncLogId = syncLog.id;
 
-    // Retrieve credentials from Vault using RPC
+    // Retrieve credentials from Vault using RPC wrapper
     logger.info('Retrieving credentials from Vault', syncLogId);
 
     const { data: password, error: passwordError } = await supabase
@@ -121,23 +121,47 @@ export async function syncTribunalForUser(
     const allDocuments = scraperResult.documents;
     logger.info(`Scraper found ${allDocuments.length} total documents`, syncLogId);
 
-    // Filter new documents (numero > lastDocumentoNumero)
-    const newDocuments = allDocuments.filter(doc => doc.numero > lastDocumentoNumero);
-    logger.info(`Found ${newDocuments.length} new documents (watermark: ${lastDocumentoNumero})`, syncLogId);
+    // Helper function to parse DD/MM/YYYY to Date
+    const parseDocumentDate = (fechaPublicacion: string | undefined): Date | null => {
+      if (!fechaPublicacion) return null;
+      const parts = fechaPublicacion.split('/');
+      if (parts.length !== 3) return null;
+      const [day, month, year] = parts;
+      const date = new Date(`${year}-${month}-${day}`);
+      return isNaN(date.getTime()) ? null : date;
+    };
 
-    // Calculate new watermark
-    const newWatermark = allDocuments.length > 0
-      ? Math.max(...allDocuments.map(d => d.numero))
-      : lastDocumentoNumero;
+    // Filter new documents (fecha > lastDocumentDate)
+    const newDocuments = allDocuments.filter(doc => {
+      if (!lastDocumentDate) return true; // If no baseline, all are new
+      const docDate = parseDocumentDate(doc.fechaPublicacion);
+      if (!docDate) return false;
+      const lastDate = new Date(lastDocumentDate);
+      return docDate > lastDate;
+    });
+    logger.info(`Found ${newDocuments.length} new documents (last date: ${lastDocumentDate || 'none'})`, syncLogId);
 
-    // If this is the first sync (watermark = 0), just set watermark and don't process
-    if (lastDocumentoNumero === 0) {
+    // Calculate new watermark (most recent date)
+    let newWatermark = lastDocumentDate;
+    if (allDocuments.length > 0) {
+      const dates = allDocuments
+        .map(doc => parseDocumentDate(doc.fechaPublicacion))
+        .filter((d): d is Date => d !== null);
+
+      if (dates.length > 0) {
+        const maxDate = new Date(Math.max(...dates.map(d => d.getTime())));
+        newWatermark = maxDate.toISOString().split('T')[0]; // YYYY-MM-DD
+      }
+    }
+
+    // If this is the first sync (no lastDocumentDate), just set watermark and don't process
+    if (!lastDocumentDate) {
       logger.info(`First sync - setting watermark to ${newWatermark}, not processing documents`, syncLogId);
 
       await supabase
         .from('tribunal_credentials')
         .update({
-          last_document_numero: newWatermark,
+          last_document_date: newWatermark,
           last_sync_at: new Date().toISOString(),
           status: 'active',
           validation_error: null,
@@ -153,7 +177,7 @@ export async function syncTribunalForUser(
           new_documents_found: newDocuments.length,
           documents_processed: 0,
           documents_failed: 0,
-          new_watermark: newWatermark
+          new_watermark: newWatermark ? new Date(newWatermark).getTime() : 0
         })
         .eq('id', syncLogId);
 
@@ -288,7 +312,7 @@ export async function syncTribunalForUser(
     await supabase
       .from('tribunal_credentials')
       .update({
-        last_document_numero: newWatermark,
+        last_document_date: newWatermark,
         last_sync_at: new Date().toISOString(),
         status: 'active',
         validation_error: null,
@@ -305,7 +329,7 @@ export async function syncTribunalForUser(
         new_documents_found: newDocuments.length,
         documents_processed: documentsProcessed,
         documents_failed: documentsFailed,
-        new_watermark: newWatermark
+        new_watermark: newWatermark ? new Date(newWatermark).getTime() : 0
       })
       .eq('id', syncLogId);
 

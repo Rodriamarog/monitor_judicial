@@ -19,7 +19,7 @@ export async function GET(request: NextRequest) {
     // Get credentials status (RLS enforces user_id)
     const { data: creds, error: credsError } = await supabase
       .from('tribunal_credentials')
-      .select('email, status, last_validation_at, last_sync_at, validation_error')
+      .select('email, status, last_validation_at, last_sync_at, validation_error, key_file_name, cer_file_name')
       .eq('user_id', user.id)
       .single();
 
@@ -50,7 +50,9 @@ export async function GET(request: NextRequest) {
       email: creds.email,
       lastValidationAt: creds.last_validation_at,
       lastSyncAt: creds.last_sync_at,
-      validationError: creds.validation_error
+      validationError: creds.validation_error,
+      keyFileName: creds.key_file_name,
+      cerFileName: creds.cer_file_name
     });
 
   } catch (error) {

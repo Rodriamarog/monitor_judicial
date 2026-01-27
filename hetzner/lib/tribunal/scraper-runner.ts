@@ -13,7 +13,7 @@ import * as os from 'os';
 puppeteer.use(StealthPlugin());
 
 // Import scraper logic (reusing existing code)
-import { Document, scrapeDocumentos } from '../../tribunal_electronico/src/scraper';
+import { Document, scrapeDocumentos } from '../../../tribunal_electronico/src/scraper';
 
 export interface ScraperParams {
   email: string;
