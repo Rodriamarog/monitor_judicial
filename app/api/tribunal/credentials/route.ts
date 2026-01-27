@@ -26,7 +26,7 @@ export async function POST(request: NextRequest) {
 
     // Parse request body
     const body = await request.json();
-    const { email, password, keyFileBase64, cerFileBase64, keyFileName, cerFileName, lastDocumentDate, skipValidation } = body;
+    const { email, password, keyFileBase64, cerFileBase64, keyFileName, cerFileName, skipValidation } = body;
 
     if (!email || !password || !keyFileBase64 || !cerFileBase64) {
       return NextResponse.json(
@@ -51,7 +51,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    let validationResult: { lastDocumentDate?: string } = { lastDocumentDate };
+    let validationResult: { documentCount?: number } = {};
 
     // Skip validation if already validated on frontend
     if (!skipValidation) {
@@ -145,7 +145,7 @@ export async function POST(request: NextRequest) {
     // Check if user already has credentials
     const { data: existingCreds } = await supabase
       .from('tribunal_credentials')
-      .select('vault_password_id, vault_key_file_id, vault_cer_file_id, last_document_date')
+      .select('vault_password_id, vault_key_file_id, vault_cer_file_id')
       .eq('user_id', user.id)
       .single();
 
@@ -238,7 +238,6 @@ export async function POST(request: NextRequest) {
         key_file_name: keyFileName || 'archivo.key',
         cer_file_name: cerFileName || 'archivo.cer',
         status: 'active',
-        last_document_date: validationResult.lastDocumentDate || existingCreds?.last_document_date || null,
         last_validation_at: new Date().toISOString()
       }, {
         onConflict: 'user_id'

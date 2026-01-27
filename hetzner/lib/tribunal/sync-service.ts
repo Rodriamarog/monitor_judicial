@@ -21,7 +21,6 @@ export interface SyncUserParams {
   vaultKeyFileId: string;
   vaultCerFileId: string;
   email: string;
-  lastDocumentDate: string | null;
   supabase: SupabaseClient;
   logger: NotificationLogger;
 }
@@ -46,7 +45,6 @@ export async function syncTribunalForUser(
     vaultKeyFileId,
     vaultCerFileId,
     email,
-    lastDocumentDate,
     supabase,
     logger
   } = params;
@@ -62,7 +60,7 @@ export async function syncTribunalForUser(
       .insert({
         user_id: userId,
         status: 'running',
-        previous_watermark: lastDocumentDate ? new Date(lastDocumentDate).getTime() : 0
+        previous_watermark: 0
       })
       .select()
       .single();
@@ -121,75 +119,9 @@ export async function syncTribunalForUser(
     const allDocuments = scraperResult.documents;
     logger.info(`Scraper found ${allDocuments.length} total documents`, syncLogId);
 
-    // Helper function to parse DD/MM/YYYY to Date
-    const parseDocumentDate = (fechaPublicacion: string | undefined): Date | null => {
-      if (!fechaPublicacion) return null;
-      const parts = fechaPublicacion.split('/');
-      if (parts.length !== 3) return null;
-      const [day, month, year] = parts;
-      const date = new Date(`${year}-${month}-${day}`);
-      return isNaN(date.getTime()) ? null : date;
-    };
-
-    // Filter new documents (fecha > lastDocumentDate)
-    const newDocuments = allDocuments.filter(doc => {
-      if (!lastDocumentDate) return true; // If no baseline, all are new
-      const docDate = parseDocumentDate(doc.fechaPublicacion);
-      if (!docDate) return false;
-      const lastDate = new Date(lastDocumentDate);
-      return docDate > lastDate;
-    });
-    logger.info(`Found ${newDocuments.length} new documents (last date: ${lastDocumentDate || 'none'})`, syncLogId);
-
-    // Calculate new watermark (most recent date)
-    let newWatermark = lastDocumentDate;
-    if (allDocuments.length > 0) {
-      const dates = allDocuments
-        .map(doc => parseDocumentDate(doc.fechaPublicacion))
-        .filter((d): d is Date => d !== null);
-
-      if (dates.length > 0) {
-        const maxDate = new Date(Math.max(...dates.map(d => d.getTime())));
-        newWatermark = maxDate.toISOString().split('T')[0]; // YYYY-MM-DD
-      }
-    }
-
-    // If this is the first sync (no lastDocumentDate), just set watermark and don't process
-    if (!lastDocumentDate) {
-      logger.info(`First sync - setting watermark to ${newWatermark}, not processing documents`, syncLogId);
-
-      await supabase
-        .from('tribunal_credentials')
-        .update({
-          last_document_date: newWatermark,
-          last_sync_at: new Date().toISOString(),
-          status: 'active',
-          validation_error: null,
-          last_validation_at: new Date().toISOString()
-        })
-        .eq('user_id', userId);
-
-      await supabase
-        .from('tribunal_sync_log')
-        .update({
-          status: 'completed',
-          completed_at: new Date().toISOString(),
-          new_documents_found: newDocuments.length,
-          documents_processed: 0,
-          documents_failed: 0,
-          new_watermark: newWatermark ? new Date(newWatermark).getTime() : 0
-        })
-        .eq('id', syncLogId);
-
-      logger.info('First sync completed', syncLogId);
-
-      return {
-        success: true,
-        newDocuments: newDocuments.length,
-        documentsProcessed: 0,
-        documentsFailed: 0
-      };
-    }
+    // No filtering - we'll try to insert ALL documents
+    // Database will reject duplicates via unique constraint on (user_id, expediente)
+    logger.info(`Attempting to insert ${allDocuments.length} documents (duplicates will be skipped)`, syncLogId);
 
     // Launch browser for PDF downloads (reuse same session)
     logger.info('Launching browser for PDF downloads...', syncLogId);
@@ -218,10 +150,11 @@ export async function syncTribunalForUser(
 
     let documentsProcessed = 0;
     let documentsFailed = 0;
+    let newDocumentsFound = 0;
 
-    // Process each new document
-    for (const doc of newDocuments) {
-      logger.info(`Processing document ${doc.numero}: ${doc.expediente}`, syncLogId);
+    // Process ALL documents - try to insert each one
+    for (const doc of allDocuments) {
+      logger.info(`Processing document: ${doc.expediente}`, syncLogId);
 
       try {
         // Parse fecha from fechaPublicacion (format: DD/MM/YYYY)
@@ -233,7 +166,7 @@ export async function syncTribunalForUser(
           }
         }
 
-        // Insert document record first (without PDF/summary)
+        // Try to insert document
         const { data: insertedDoc, error: insertError } = await supabase
           .from('tribunal_documents')
           .insert({
@@ -248,13 +181,16 @@ export async function syncTribunalForUser(
           .single();
 
         if (insertError) {
-          // Check if duplicate (unique constraint)
+          // Check if duplicate (unique constraint on user_id + expediente)
           if (insertError.code === '23505') {
-            logger.warn(`Document ${doc.numero} already exists, skipping`, syncLogId);
-            continue;
+            logger.info(`Document ${doc.expediente} already exists, skipping`, syncLogId);
+            continue; // Not a new document, skip processing
           }
           throw insertError;
         }
+
+        // If we got here, it's a NEW document!
+        newDocumentsFound++;
 
         const documentId = insertedDoc.id;
         logger.info(`Inserted document record ${documentId}`, syncLogId);
@@ -297,22 +233,21 @@ export async function syncTribunalForUser(
         }
 
         documentsProcessed++;
-        logger.info(`✓ Document ${doc.numero} processed successfully`, syncLogId);
+        logger.info(`✓ Document ${doc.expediente} processed successfully`, syncLogId);
 
       } catch (error) {
         documentsFailed++;
         const errorMsg = error instanceof Error ? error.message : 'Unknown error';
-        logger.error(`Failed to process document ${doc.numero}: ${errorMsg}`, syncLogId);
+        logger.error(`Failed to process document ${doc.expediente}: ${errorMsg}`, syncLogId);
         // Continue with next document
       }
     }
 
-    // Update watermark
-    logger.info(`Updating watermark to ${newWatermark}`, syncLogId);
+    // Update credentials status
+    logger.info(`Sync completed: ${newDocumentsFound} new, ${documentsProcessed} processed, ${documentsFailed} failed`, syncLogId);
     await supabase
       .from('tribunal_credentials')
       .update({
-        last_document_date: newWatermark,
         last_sync_at: new Date().toISOString(),
         status: 'active',
         validation_error: null,
@@ -326,18 +261,18 @@ export async function syncTribunalForUser(
       .update({
         status: 'completed',
         completed_at: new Date().toISOString(),
-        new_documents_found: newDocuments.length,
+        new_documents_found: newDocumentsFound,
         documents_processed: documentsProcessed,
         documents_failed: documentsFailed,
-        new_watermark: newWatermark ? new Date(newWatermark).getTime() : 0
+        new_watermark: 0
       })
       .eq('id', syncLogId);
 
-    logger.info(`Sync completed: ${documentsProcessed} processed, ${documentsFailed} failed`, syncLogId);
+    logger.info(`Sync completed successfully`, syncLogId);
 
     return {
       success: true,
-      newDocuments: newDocuments.length,
+      newDocuments: newDocumentsFound,
       documentsProcessed,
       documentsFailed
     };

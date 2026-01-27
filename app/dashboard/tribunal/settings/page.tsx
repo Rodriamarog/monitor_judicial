@@ -108,8 +108,7 @@ export default function TribunalSettingsPage() {
         'Verificando conexión...': 65,
         'Cargando información...': 70,
         'Procesando datos...': 75,
-        'Analizando documentos actuales...': 85,
-        'Estableciendo fecha base': 95,
+        'Verificando acceso...': 90,
         '✓ Validación exitosa': 100
       }
 
@@ -175,7 +174,6 @@ export default function TribunalSettingsPage() {
           cerFileBase64,
           keyFileName: keyFile.name,
           cerFileName: cerFile.name,
-          lastDocumentDate: finalResult.lastDocumentDate,
           skipValidation: true // Flag to skip re-validation
         }),
       })

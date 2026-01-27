@@ -43,7 +43,7 @@ async function main() {
     // Query all users with active credentials
     const { data: users, error: usersError } = await supabase
       .from('tribunal_credentials')
-      .select('user_id, email, vault_password_id, vault_key_file_id, vault_cer_file_id, last_document_date')
+      .select('user_id, email, vault_password_id, vault_key_file_id, vault_cer_file_id')
       .eq('status', 'active');
 
     if (usersError) {
@@ -80,7 +80,6 @@ async function main() {
           vaultKeyFileId: user.vault_key_file_id,
           vaultCerFileId: user.vault_cer_file_id,
           email: user.email,
-          lastDocumentDate: user.last_document_date,
           supabase,
           logger
         });

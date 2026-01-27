@@ -77,53 +77,15 @@ async function validateCredentialsWithProgress(params) {
       };
     }
 
-    onProgress('Analizando documentos actuales...');
+    onProgress('Verificando acceso...');
 
-    // Find the most recent document date
     const documents = scraperResult.documents;
-    let latestDate = null;
-
-    if (documents.length > 0) {
-      // Parse dates and find the latest
-      const dates = documents
-        .map(doc => {
-          if (!doc.fechaPublicacion) return null;
-
-          // Parse DD/MM/YYYY format
-          const parts = doc.fechaPublicacion.split('/');
-          if (parts.length === 3) {
-            // Create date: YYYY-MM-DD
-            const year = parts[2];
-            const month = parts[1];
-            const day = parts[0];
-            return new Date(`${year}-${month}-${day}`);
-          }
-          return null;
-        })
-        .filter(d => d !== null && !isNaN(d.getTime()));
-
-      if (dates.length > 0) {
-        latestDate = new Date(Math.max(...dates));
-      }
-    }
-
-    // Format as YYYY-MM-DD for PostgreSQL DATE type
-    const latestDateStr = latestDate
-      ? latestDate.toISOString().split('T')[0]
-      : null;
-
-    if (latestDateStr) {
-      onProgress(`Estableciendo fecha base: ${latestDateStr}`);
-    } else {
-      onProgress('Sin documentos encontrados');
-    }
 
     onProgress(`✓ Validación exitosa (${documents.length} documentos encontrados)`);
 
     return {
       success: true,
-      documentCount: documents.length,
-      lastDocumentDate: latestDateStr
+      documentCount: documents.length
     };
 
   } catch (error) {
