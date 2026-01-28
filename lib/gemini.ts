@@ -439,8 +439,34 @@ export function validateCurrencyMatch(
   }
 }
 
-// System prompt for Gemini
-export const SYSTEM_PROMPT = `Eres un asistente útil que ayuda a abogados a gestionar sus casos, pagos y reuniones a través de WhatsApp.
+// Generate system prompt with current date
+export function generateSystemPrompt(timezone: string = 'America/Tijuana'): string {
+  // Get current date in user's timezone
+  const now = new Date();
+  const dateStr = now.toLocaleDateString('es-MX', {
+    timeZone: timezone,
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+    weekday: 'long',
+  });
+
+  // Format for ISO date calculations
+  const currentDate = new Date(now.toLocaleString('en-US', { timeZone: timezone }));
+  const year = currentDate.getFullYear();
+  const month = String(currentDate.getMonth() + 1).padStart(2, '0');
+  const day = String(currentDate.getDate()).padStart(2, '0');
+  const tomorrow = new Date(currentDate);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  const tomorrowDay = String(tomorrow.getDate()).padStart(2, '0');
+  const tomorrowMonth = String(tomorrow.getMonth() + 1).padStart(2, '0');
+
+  return `Eres un asistente útil que ayuda a abogados a gestionar sus casos, pagos y reuniones a través de WhatsApp.
+
+## FECHA Y HORA ACTUAL
+HOY ES: ${dateStr}
+Fecha ISO: ${year}-${month}-${day}
+Mañana será: ${year}-${tomorrowMonth}-${tomorrowDay}
 
 ## CAPACIDADES
 
@@ -513,10 +539,11 @@ IMPORTANTE - Errores comunes a EVITAR:
 - ✅ SIEMPRE llama create_meeting cuando usuario da confirmación final
 - ✅ SOLO llama check_client_phone si usuario quiere recordatorio Y tiene cliente
 
-Interpretación de fechas naturales (hoy es 2026-01-21):
-- "25 de enero" → 2026-01-25 (luego pide hora si falta)
-- "enero 25" → 2026-01-25
-- "mañana" → 2026-01-22
+Interpretación de fechas naturales:
+- SIEMPRE usa la fecha actual proporcionada arriba para calcular fechas relativas
+- "mañana" → usa la fecha de mañana proporcionada arriba
+- "25 de enero" → usa el año actual (del campo "HOY ES")
+- "enero 25" → usa el año actual
 - "6:00 pm" / "6 de la tarde" / "18:00" → hora 18:00
 
 Formato datetime para create_meeting:
@@ -573,7 +600,11 @@ Detalles adicionales:
 - Responde siempre en español de manera amigable y profesional
 - Para reuniones, duración por defecto es 60 minutos si no se especifica
 
-Recuerda: CONFIRMACIÓN PRIMERO para pagos, luego add_payment. NUNCA al revés.`
+Recuerda: CONFIRMACIÓN PRIMERO para pagos, luego add_payment. NUNCA al revés.`;
+}
+
+// Export a default system prompt (for backwards compatibility)
+export const SYSTEM_PROMPT = generateSystemPrompt()
 
 // Extract payment intent from user message
 export interface PaymentIntent {
@@ -670,6 +701,7 @@ export interface ProcessMessageOptions {
   conversationHistory: any[] // Gemini message format
   audioUrl?: string
   audioType?: string
+  userTimezone?: string // User's timezone for date calculations
 }
 
 export interface ProcessMessageResult {
@@ -712,13 +744,16 @@ export async function processChatMessage(
 async function processChatMessageWithGemini(
   options: ProcessMessageOptions
 ): Promise<ProcessMessageResult> {
-  const { userId, userMessage, conversationHistory, audioUrl, audioType } = options
+  const { userId, userMessage, conversationHistory, audioUrl, audioType, userTimezone } = options
+
+  // Generate system prompt with current date/time for user's timezone
+  const systemPrompt = generateSystemPrompt(userTimezone || 'America/Tijuana')
 
   const client = getGeminiClient()
   const model = client.getGenerativeModel({
     model: 'gemini-3-flash-preview',
     tools: geminiTools as any,
-    systemInstruction: SYSTEM_PROMPT,
+    systemInstruction: systemPrompt,
   })
 
   // Build user message parts
@@ -793,13 +828,16 @@ async function processChatMessageWithGemini(
 async function processChatMessageWithOpenAI(
   options: ProcessMessageOptions
 ): Promise<ProcessMessageResult> {
-  const { userId, userMessage, conversationHistory } = options
+  const { userId, userMessage, conversationHistory, userTimezone } = options
 
   const client = getOpenAIClient()
 
+  // Generate system prompt with current date/time for user's timezone
+  const systemPrompt = generateSystemPrompt(userTimezone || 'America/Tijuana')
+
   // Convert Gemini history to OpenAI format
   const messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
-    { role: 'system', content: SYSTEM_PROMPT },
+    { role: 'system', content: systemPrompt },
     ...geminiToOpenAIHistory(conversationHistory)
   ]
 

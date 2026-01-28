@@ -185,6 +185,7 @@ export async function POST(request: NextRequest) {
       conversationHistory: conversation.messages || [],
       audioUrl: mediaUrl || undefined,
       audioType: mediaType || undefined,
+      userTimezone: user.timezone || 'America/Tijuana',
     })
 
     console.log('Gemini result:', {
