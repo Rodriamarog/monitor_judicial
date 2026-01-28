@@ -364,6 +364,26 @@ export async function syncTribunalForUser(
 
         logger.info(`✓ Case file created: ${caseFile.id}`, syncLogId);
 
+        // Create alert for Tribunal Electrónico document
+        logger.info(`Creating alert for Tribunal Electrónico document`, syncLogId);
+
+        const { error: alertError } = await supabase
+          .from('alerts')
+          .insert({
+            user_id: userId,
+            monitored_case_id: caseId,
+            case_file_id: caseFile.id,
+            matched_on: 'case_number',
+            matched_value: normalizedExpediente
+          });
+
+        if (alertError) {
+          logger.error(`Failed to create alert: ${alertError.message}`, syncLogId);
+          // Don't fail the whole process if alert creation fails
+        } else {
+          logger.info(`✓ Alert created for Tribunal document`, syncLogId);
+        }
+
         // Send WhatsApp notification
         logger.info(`Sending WhatsApp alert...`, syncLogId);
         const notifyResult = await sendTribunalWhatsAppAlert({

@@ -31,6 +31,14 @@ interface Alert {
     juzgado: string
     case_number: string
   } | null
+  case_files: {
+    file_name: string
+    ai_summary: string | null
+    tribunal_descripcion: string
+    tribunal_fecha: string | null
+    uploaded_at: string
+    source: string
+  } | null
 }
 
 interface AlertsTableProps {
@@ -104,6 +112,15 @@ export function AlertsTable({ alerts }: AlertsTableProps) {
                             {alert.monitored_cases.nombre}
                           </div>
                         )}
+                        {alert.case_files ? (
+                          <Badge variant="secondary" className="text-xs mt-1 bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300">
+                            🏛️ Tribunal Electrónico
+                          </Badge>
+                        ) : (
+                          <Badge variant="outline" className="text-xs mt-1">
+                            📰 Boletín Judicial
+                          </Badge>
+                        )}
                       </div>
                     )}
                   </TableCell>
@@ -114,9 +131,14 @@ export function AlertsTable({ alerts }: AlertsTableProps) {
                     }
                   </TableCell>
                   <TableCell className="hidden sm:table-cell text-sm">
-                    {alert.bulletin_entries?.bulletin_date
-                      ? formatTijuanaDate(alert.bulletin_entries.bulletin_date)
-                      : '-'}
+                    {alert.case_files
+                      ? (alert.case_files.tribunal_fecha
+                          ? formatTijuanaDate(alert.case_files.tribunal_fecha)
+                          : formatTijuanaDate(alert.case_files.uploaded_at))
+                      : (alert.bulletin_entries?.bulletin_date
+                          ? formatTijuanaDate(alert.bulletin_entries.bulletin_date)
+                          : '-')
+                    }
                   </TableCell>
                   <TableCell className="text-right">
                     <Button
@@ -157,7 +179,7 @@ export function AlertsTable({ alerts }: AlertsTableProps) {
                       }`}
                     >
                       <div className="p-4 space-y-4">
-                        {/* Mobile: Show juzgado and bulletin date */}
+                        {/* Mobile: Show juzgado and date */}
                         <div className="md:hidden space-y-2 text-sm pb-3 border-b">
                           <div>
                             <span className="font-medium">Juzgado:</span>{' '}
@@ -166,32 +188,46 @@ export function AlertsTable({ alerts }: AlertsTableProps) {
                             </span>
                           </div>
                           <div>
-                            <span className="font-medium">Fecha de Boletín:</span>{' '}
+                            <span className="font-medium">{alert.case_files ? 'Fecha del Documento:' : 'Fecha de Boletín:'}</span>{' '}
                             <span className="text-muted-foreground">
-                              {alert.bulletin_entries?.bulletin_date
-                                ? formatTijuanaDate(alert.bulletin_entries.bulletin_date)
-                                : '-'}
+                              {alert.case_files
+                                ? (alert.case_files.tribunal_fecha
+                                    ? formatTijuanaDate(alert.case_files.tribunal_fecha)
+                                    : formatTijuanaDate(alert.case_files.uploaded_at))
+                                : (alert.bulletin_entries?.bulletin_date
+                                    ? formatTijuanaDate(alert.bulletin_entries.bulletin_date)
+                                    : '-')
+                              }
                             </span>
                           </div>
                         </div>
 
                         {/* Case Details */}
                         <div>
-                          <p className="text-sm font-medium mb-2">Detalles del Caso:</p>
+                          <p className="text-sm font-medium mb-2">
+                            {alert.case_files ? 'Resumen AI del Documento:' : 'Detalles del Caso:'}
+                          </p>
                           <div className="p-3 bg-background rounded-md text-sm border">
-                            {alert.bulletin_entries?.raw_text}
+                            {alert.case_files
+                              ? (alert.case_files.ai_summary || alert.case_files.tribunal_descripcion)
+                              : alert.bulletin_entries?.raw_text
+                            }
                           </div>
                         </div>
 
-                        {/* Bulletin Info */}
+                        {/* Source Info */}
                         <div className="flex items-center justify-between text-sm">
                           <div className="text-muted-foreground">
                             <span className="font-medium">Fuente:</span>{' '}
-                            <span className="capitalize">
-                              {alert.bulletin_entries?.source?.replace('_', ' ')}
-                            </span>
+                            {alert.case_files ? (
+                              <span className="capitalize">Tribunal Electrónico PJBC</span>
+                            ) : (
+                              <span className="capitalize">
+                                {alert.bulletin_entries?.source?.replace('_', ' ')}
+                              </span>
+                            )}
                           </div>
-                          {alert.bulletin_entries?.bulletin_url && (
+                          {alert.bulletin_entries?.bulletin_url && !alert.case_files && (
                             <a
                               href={alert.bulletin_entries.bulletin_url}
                               target="_blank"

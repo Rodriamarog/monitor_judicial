@@ -49,6 +49,14 @@ interface Alert {
     juzgado: string
     case_number: string
   } | null
+  case_files: {
+    file_name: string
+    ai_summary: string | null
+    tribunal_descripcion: string
+    tribunal_fecha: string | null
+    uploaded_at: string
+    source: string
+  } | null
 }
 
 interface MonitoredCase {
@@ -142,6 +150,14 @@ export default function AlertsPage() {
             source,
             juzgado,
             case_number
+          ),
+          case_files (
+            file_name,
+            ai_summary,
+            tribunal_descripcion,
+            tribunal_fecha,
+            uploaded_at,
+            source
           )
         `)
         .eq('user_id', user.id)
