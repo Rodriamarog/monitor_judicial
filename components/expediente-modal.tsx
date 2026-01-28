@@ -489,7 +489,7 @@ export function ExpedienteModal({ case_, open, onOpenChange }: ExpedienteModalPr
             <CardTitle className="text-lg">Información General</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
               <div className="space-y-1">
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
                   <FileText className="h-4 w-4" />
@@ -503,7 +503,7 @@ export function ExpedienteModal({ case_, open, onOpenChange }: ExpedienteModalPr
                   <Building2 className="h-4 w-4" />
                   <span>Juzgado</span>
                 </div>
-                <p className="font-medium text-sm">{case_.juzgado}</p>
+                <p className="font-medium text-sm line-clamp-2" title={case_.juzgado}>{case_.juzgado}</p>
               </div>
 
               <div className="space-y-1">
