@@ -600,15 +600,15 @@ export function ExpedienteModal({ case_, open, onOpenChange }: ExpedienteModalPr
         {/* Tabs for different sections */}
         <Tabs defaultValue="alerts" className="flex-1 overflow-hidden flex flex-col">
           <TabsList className="grid w-full grid-cols-3 flex-shrink-0">
-            <TabsTrigger value="alerts">
+            <TabsTrigger value="alerts" className="data-[state=active]:border-2 data-[state=active]:border-primary">
               <Bell className="h-4 w-4 mr-2" />
               Alertas
             </TabsTrigger>
-            <TabsTrigger value="files">
+            <TabsTrigger value="files" className="data-[state=active]:border-2 data-[state=active]:border-primary">
               <FileText className="h-4 w-4 mr-2" />
               Archivos
             </TabsTrigger>
-            <TabsTrigger value="balance">
+            <TabsTrigger value="balance" className="data-[state=active]:border-2 data-[state=active]:border-primary">
               <DollarSign className="h-4 w-4 mr-2" />
               Por Cobrar
             </TabsTrigger>
@@ -650,20 +650,32 @@ export function ExpedienteModal({ case_, open, onOpenChange }: ExpedienteModalPr
                             onClick={() => toggleAlertExpand(alert.id)}
                           >
                             <TableCell className="font-medium">
-                              <div>{formatTijuanaDate(alert.created_at)}</div>
-                              {alert.is_historical && (
-                                <Badge variant="secondary" className="text-xs mt-1">
-                                  Histórica
-                                </Badge>
-                              )}
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span>{formatTijuanaDate(alert.created_at)}</span>
+                                {alert.is_historical && (
+                                  <Badge variant="secondary" className="text-xs">
+                                    Histórica
+                                  </Badge>
+                                )}
+                                {alert.case_files && (
+                                  <Badge variant="secondary" className="text-xs bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300">
+                                    Tribunal Electrónico
+                                  </Badge>
+                                )}
+                              </div>
                             </TableCell>
                             <TableCell className="hidden md:table-cell text-sm">
-                              {alert.bulletin_entries?.bulletin_date
-                                ? formatTijuanaDate(alert.bulletin_entries.bulletin_date)
-                                : '-'}
+                              {alert.case_files
+                                ? (alert.case_files.tribunal_fecha
+                                    ? formatTijuanaDate(alert.case_files.tribunal_fecha)
+                                    : formatTijuanaDate(alert.case_files.uploaded_at))
+                                : (alert.bulletin_entries?.bulletin_date
+                                    ? formatTijuanaDate(alert.bulletin_entries.bulletin_date)
+                                    : '-')
+                              }
                             </TableCell>
                             <TableCell className="hidden lg:table-cell text-sm">
-                              {alert.bulletin_entries?.juzgado || '-'}
+                              {alert.bulletin_entries?.juzgado || case_.juzgado || '-'}
                             </TableCell>
                             <TableCell className="text-right">
                               <Button
@@ -704,20 +716,25 @@ export function ExpedienteModal({ case_, open, onOpenChange }: ExpedienteModalPr
                                 }`}
                               >
                                 <div className="p-4 space-y-4">
-                                  {/* Mobile: Show bulletin date and juzgado */}
+                                  {/* Mobile: Show date and juzgado */}
                                   <div className="md:hidden space-y-2 text-sm pb-3 border-b">
                                     <div>
-                                      <span className="font-medium">Fecha de Boletín:</span>{' '}
+                                      <span className="font-medium">{alert.case_files ? 'Fecha del Documento:' : 'Fecha de Boletín:'}</span>{' '}
                                       <span className="text-muted-foreground">
-                                        {alert.bulletin_entries?.bulletin_date
-                                          ? formatTijuanaDate(alert.bulletin_entries.bulletin_date)
-                                          : '-'}
+                                        {alert.case_files
+                                          ? (alert.case_files.tribunal_fecha
+                                              ? formatTijuanaDate(alert.case_files.tribunal_fecha)
+                                              : formatTijuanaDate(alert.case_files.uploaded_at))
+                                          : (alert.bulletin_entries?.bulletin_date
+                                              ? formatTijuanaDate(alert.bulletin_entries.bulletin_date)
+                                              : '-')
+                                        }
                                       </span>
                                     </div>
                                     <div>
                                       <span className="font-medium">Juzgado:</span>{' '}
                                       <span className="text-muted-foreground">
-                                        {alert.bulletin_entries?.juzgado || '-'}
+                                        {alert.bulletin_entries?.juzgado || case_.juzgado || '-'}
                                       </span>
                                     </div>
                                   </div>
