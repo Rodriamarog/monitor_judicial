@@ -4,6 +4,9 @@ import { revalidatePath } from 'next/cache'
 import { getTierConfig } from '@/lib/subscription-tiers'
 import { DashboardClient } from '@/components/dashboard-client'
 
+// Force dynamic rendering to always show fresh alert counts
+export const dynamic = 'force-dynamic'
+
 export default async function DashboardPage() {
   const supabase = await createClient()
 
@@ -27,17 +30,18 @@ export default async function DashboardPage() {
     .eq('id', user.id)
     .single()
 
-  // Get alert counts for each case
-  const { data: alerts } = await supabase
-    .from('alerts')
-    .select('monitored_case_id')
-    .eq('user_id', user.id)
+  // Get alert counts for each case (efficient aggregation in database)
+  const { data: alertCountsData, error: alertsError } = await supabase
+    .rpc('get_alert_counts_by_case', { p_user_id: user.id })
+
+  if (alertsError) {
+    console.error('Error fetching alert counts:', alertsError)
+  }
 
   // Create a map of case_id -> alert_count
   const alertCounts = new Map<string, number>()
-  alerts?.forEach((alert) => {
-    const caseId = alert.monitored_case_id
-    alertCounts.set(caseId, (alertCounts.get(caseId) || 0) + 1)
+  alertCountsData?.forEach((row) => {
+    alertCounts.set(row.monitored_case_id, Number(row.alert_count))
   })
 
   // Get payment sums for each case

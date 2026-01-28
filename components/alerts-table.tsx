@@ -8,6 +8,47 @@ import { Badge } from '@/components/ui/badge'
 import { ChevronDown, ChevronUp, ExternalLink } from 'lucide-react'
 import { formatTijuanaDate } from '@/lib/date-utils'
 
+// Format text with markdown-style bold and preserve line breaks
+function formatAIText(text: string) {
+  if (!text) return null
+
+  // Split by line breaks
+  const lines = text.split('\n')
+
+  return (
+    <div className="space-y-2">
+      {lines.map((line, idx) => {
+        if (!line.trim()) return null
+
+        // Check if it's a bullet point
+        const isBullet = line.trim().match(/^[*\-•]\s+/)
+        const cleanLine = line.replace(/^[*\-•]\s+/, '')
+
+        // Parse bold text (**text**)
+        const parts = cleanLine.split(/(\*\*[^*]+\*\*)/)
+
+        const formattedParts = parts.map((part, i) => {
+          if (part.startsWith('**') && part.endsWith('**')) {
+            return <strong key={i}>{part.slice(2, -2)}</strong>
+          }
+          return <span key={i}>{part}</span>
+        })
+
+        if (isBullet) {
+          return (
+            <div key={idx} className="flex gap-2">
+              <span className="text-muted-foreground">•</span>
+              <div>{formattedParts}</div>
+            </div>
+          )
+        }
+
+        return <div key={idx}>{formattedParts}</div>
+      })}
+    </div>
+  )
+}
+
 interface Alert {
   id: string
   created_at: string
@@ -103,23 +144,23 @@ export function AlertsTable({ alerts }: AlertsTableProps) {
                         </div>
                       </div>
                     ) : (
-                      <div>
+                      <div className="flex items-center gap-2 flex-wrap">
                         <div className="font-mono">
                           {alert.monitored_cases?.case_number}
                         </div>
-                        {alert.monitored_cases?.nombre && (
-                          <div className="text-xs text-muted-foreground mt-1 hidden sm:block">
-                            {alert.monitored_cases.nombre}
-                          </div>
-                        )}
                         {alert.case_files ? (
-                          <Badge variant="secondary" className="text-xs mt-1 bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300">
-                            🏛️ Tribunal Electrónico
+                          <Badge variant="secondary" className="text-xs bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300">
+                            Tribunal Electrónico
                           </Badge>
                         ) : (
-                          <Badge variant="outline" className="text-xs mt-1">
-                            📰 Boletín Judicial
+                          <Badge variant="outline" className="text-xs">
+                            Boletín Judicial
                           </Badge>
+                        )}
+                        {alert.monitored_cases?.nombre && (
+                          <div className="text-xs text-muted-foreground w-full hidden sm:block">
+                            {alert.monitored_cases.nombre}
+                          </div>
                         )}
                       </div>
                     )}
@@ -209,7 +250,7 @@ export function AlertsTable({ alerts }: AlertsTableProps) {
                           </p>
                           <div className="p-3 bg-background rounded-md text-sm border">
                             {alert.case_files
-                              ? (alert.case_files.ai_summary || alert.case_files.tribunal_descripcion)
+                              ? formatAIText(alert.case_files.ai_summary || alert.case_files.tribunal_descripcion)
                               : alert.bulletin_entries?.raw_text
                             }
                           </div>

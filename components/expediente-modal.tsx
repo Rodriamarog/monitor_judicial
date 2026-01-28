@@ -30,6 +30,44 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 
+// Format text with markdown-style bold and preserve line breaks
+function formatAIText(text: string) {
+  if (!text) return null
+
+  const lines = text.split('\n')
+
+  return (
+    <div className="space-y-2">
+      {lines.map((line, idx) => {
+        if (!line.trim()) return null
+
+        const isBullet = line.trim().match(/^[*\-•]\s+/)
+        const cleanLine = line.replace(/^[*\-•]\s+/, '')
+
+        const parts = cleanLine.split(/(\*\*[^*]+\*\*)/)
+
+        const formattedParts = parts.map((part, i) => {
+          if (part.startsWith('**') && part.endsWith('**')) {
+            return <strong key={i}>{part.slice(2, -2)}</strong>
+          }
+          return <span key={i}>{part}</span>
+        })
+
+        if (isBullet) {
+          return (
+            <div key={idx} className="flex gap-2">
+              <span className="text-muted-foreground">•</span>
+              <div>{formattedParts}</div>
+            </div>
+          )
+        }
+
+        return <div key={idx}>{formattedParts}</div>
+      })}
+    </div>
+  )
+}
+
 interface Case {
   id: string
   case_number: string
@@ -57,6 +95,14 @@ interface Alert {
     source: string
     juzgado: string
     case_number: string
+  } | null
+  case_files: {
+    file_name: string
+    ai_summary: string | null
+    tribunal_descripcion: string
+    tribunal_fecha: string | null
+    uploaded_at: string
+    source: string
   } | null
 }
 
@@ -150,6 +196,14 @@ export function ExpedienteModal({ case_, open, onOpenChange }: ExpedienteModalPr
             source,
             juzgado,
             case_number
+          ),
+          case_files (
+            file_name,
+            ai_summary,
+            tribunal_descripcion,
+            tribunal_fecha,
+            uploaded_at,
+            source
           )
         `)
         .eq('user_id', user.id)
@@ -670,21 +724,30 @@ export function ExpedienteModal({ case_, open, onOpenChange }: ExpedienteModalPr
 
                                   {/* Case Details */}
                                   <div>
-                                    <p className="text-sm font-medium mb-2">Detalles del Caso:</p>
+                                    <p className="text-sm font-medium mb-2">
+                                      {alert.case_files ? 'Resumen del Documento:' : 'Detalles del Caso:'}
+                                    </p>
                                     <div className="p-3 bg-background rounded-md text-sm border">
-                                      {alert.bulletin_entries?.raw_text || 'No hay detalles disponibles'}
+                                      {alert.case_files
+                                        ? formatAIText(alert.case_files.ai_summary || alert.case_files.tribunal_descripcion)
+                                        : (alert.bulletin_entries?.raw_text || 'No hay detalles disponibles')
+                                      }
                                     </div>
                                   </div>
 
-                                  {/* Bulletin Info */}
+                                  {/* Source Info */}
                                   <div className="flex items-center justify-between text-sm">
                                     <div className="text-muted-foreground">
                                       <span className="font-medium">Fuente:</span>{' '}
-                                      <span className="capitalize">
-                                        {alert.bulletin_entries?.source?.replace('_', ' ') || 'Boletín Judicial'}
-                                      </span>
+                                      {alert.case_files ? (
+                                        <span className="capitalize">Tribunal Electrónico PJBC</span>
+                                      ) : (
+                                        <span className="capitalize">
+                                          {alert.bulletin_entries?.source?.replace('_', ' ') || 'Boletín Judicial'}
+                                        </span>
+                                      )}
                                     </div>
-                                    {alert.bulletin_entries?.bulletin_url && (
+                                    {alert.bulletin_entries?.bulletin_url && !alert.case_files && (
                                       <a
                                         href={alert.bulletin_entries.bulletin_url}
                                         target="_blank"
@@ -805,16 +868,6 @@ export function ExpedienteModal({ case_, open, onOpenChange }: ExpedienteModalPr
                                 </div>
 
                                 {/* AI Summary for TE documents */}
-                                {file.source === 'tribunal_electronico' && file.ai_summary && (
-                                  <div className="mt-2 p-2 bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded text-xs">
-                                    <p className="font-medium text-blue-900 dark:text-blue-100 mb-1">
-                                      📋 Resumen IA
-                                    </p>
-                                    <p className="text-blue-800 dark:text-blue-200 whitespace-pre-wrap">
-                                      {file.ai_summary}
-                                    </p>
-                                  </div>
-                                )}
                               </TableCell>
                               <TableCell className="text-sm text-muted-foreground">
                                 {formatFileSize(file.file_size)}

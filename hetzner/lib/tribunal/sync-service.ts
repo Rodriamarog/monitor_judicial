@@ -180,30 +180,14 @@ export async function syncTribunalForUser(
       syncLogId
     );
 
-    // Launch browser for PDF downloads (reuse same session)
-    logger.info('Launching browser for PDF downloads...', syncLogId);
-    browser = await puppeteer.launch({
-      headless: true,
-      defaultViewport: { width: 1920, height: 1080 },
-      args: [
-        '--no-sandbox',
-        '--disable-setuid-sandbox',
-        '--disable-blink-features=AutomationControlled',
-        '--disable-dev-shm-usage'
-      ]
-    });
+    // Use the browser and page from the scraper (already logged in!)
+    if (!scraperResult.browser || !scraperResult.page) {
+      throw new Error('Scraper did not return browser/page');
+    }
 
-    const page = await browser.newPage();
-
-    // Login to get session for PDF downloads
-    await page.setUserAgent(
-      'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36'
-    );
-
-    // (We'll reuse the login logic from scraper, or assume we can navigate directly)
-    // For simplicity, we'll just navigate to the documents page
-    // The scraper already logged in, but we need a fresh page session
-    // TODO: Consider refactoring to share the browser session from scraper
+    browser = scraperResult.browser;
+    const page = scraperResult.page;
+    logger.info('Using authenticated browser session from scraper', syncLogId);
 
     let documentsProcessed = 0;
     let documentsFailed = 0;

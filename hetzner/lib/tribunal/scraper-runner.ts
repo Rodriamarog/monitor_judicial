@@ -25,6 +25,8 @@ export interface ScraperParams {
 export interface ScraperResult {
   success: boolean;
   documents: Document[];
+  browser?: Browser;
+  page?: Page;
   error?: string;
 }
 
@@ -263,26 +265,35 @@ export async function runTribunalScraper(
 
     return {
       success: true,
-      documents
+      documents,
+      browser,
+      page
     };
 
   } catch (error) {
     console.error('[Scraper] Error:', error);
+
+    // Close browser on error
+    if (browser) {
+      await browser.close().catch(() => {});
+    }
+
     return {
       success: false,
       documents: [],
       error: error instanceof Error ? error.message : 'Error desconocido'
     };
   } finally {
-    // Cleanup
-    if (browser) {
-      await browser.close().catch(() => {});
-    }
-    if (keyPath && fs.existsSync(keyPath)) {
-      fs.unlinkSync(keyPath);
-    }
-    if (cerPath && fs.existsSync(cerPath)) {
-      fs.unlinkSync(cerPath);
+    // Cleanup temp files (but keep browser open on success!)
+    try {
+      if (keyPath && fs.existsSync(keyPath)) {
+        fs.unlinkSync(keyPath);
+      }
+      if (cerPath && fs.existsSync(cerPath)) {
+        fs.unlinkSync(cerPath);
+      }
+    } catch (err) {
+      // Ignore cleanup errors
     }
   }
 }

@@ -113,33 +113,20 @@ export async function downloadTribunalPDF(
 
 /**
  * Extract download parameters from the document's button/link
+ * Uses the downloadOnclick already extracted by the scraper instead of searching DOM
  */
 async function extractDownloadParams(page: Page, doc: Document): Promise<any | null> {
-  return await page.evaluate((targetExpediente, targetDescripcion) => {
-    const elements = Array.from(
-      document.querySelectorAll('button[onclick*="VerArchivoNotificacion"], a[onclick*="VerArchivoNotificacion"]')
-    );
+  // Use the downloadOnclick that was already extracted by the scraper
+  if (!doc.downloadOnclick) {
+    console.error(`[PDF Download] No downloadOnclick found for doc ${doc.numero}`);
+    return null;
+  }
 
-    let matchedElement: HTMLElement | null = null;
-
-    for (const element of elements) {
-      const onclick = (element as HTMLElement).getAttribute('onclick') || '';
-      if (onclick.includes(targetDescripcion)) {
-        matchedElement = element as HTMLElement;
-        break;
-      }
-    }
-
-    if (!matchedElement) {
-      return null;
-    }
-
-    const onclick = matchedElement.getAttribute('onclick');
-    if (!onclick) return null;
-
+  return await page.evaluate((onclick) => {
     // Parse VerArchivoNotificacion(tipoJuzgadoId, partidoJudicialId, Id, documentoId, processId, nameDocument, Index)
     const match = onclick.match(/VerArchivoNotificacion\((\d+),(\d+),(\d+),(\d+),(\d+),'([^']+)',(-?\d+)\)/);
     if (!match) {
+      console.log(`[PDF Download] Regex did not match onclick: ${onclick}`);
       return null;
     }
 
@@ -153,61 +140,68 @@ async function extractDownloadParams(page: Page, doc: Document): Promise<any | n
       Index: match[7],
       profesionistaId: (document.getElementById('pProfesionistaId') as HTMLInputElement)?.value || ''
     };
-  }, doc.expediente, doc.descripcion);
+  }, doc.downloadOnclick);
 }
 
 /**
  * Get process_id by calling AJAX endpoints
  */
 async function getProcessId(page: Page, params: any): Promise<string | null> {
-  return await page.evaluate(async (p) => {
-    const $ = (window as any).$;
+  // Use evaluate with a new Function to avoid tsx bundler issues
+  const result = await page.evaluate(
+    new Function('p', `
+      return (async function() {
+        const $ = window.$;
 
-    // First AJAX call: Validate notification type
-    const validateResult: any = await new Promise((resolve, reject) => {
-      $.ajax({
-        type: 'POST',
-        url: '/Documentos/ValidarTipoNotificacionPorDocumento/',
-        dataType: 'json',
-        data: {
-          tipoJuzgadoId: p.tipoJuzgadoId,
-          partidoJudicialId: p.partidoJudicialId,
-          documentoId: p.documentoId,
-          profesionistaId: p.profesionistaId
-        },
-        success: (data: any) => resolve(data),
-        error: (xhr: any, status: any, error: any) => reject(error)
-      });
-    });
+        // First AJAX call: Validate notification type
+        const validateResult = await new Promise((resolve, reject) => {
+          $.ajax({
+            type: 'POST',
+            url: '/Documentos/ValidarTipoNotificacionPorDocumento/',
+            dataType: 'json',
+            data: {
+              tipoJuzgadoId: p.tipoJuzgadoId,
+              partidoJudicialId: p.partidoJudicialId,
+              documentoId: p.documentoId,
+              profesionistaId: p.profesionistaId
+            },
+            success: (data) => resolve(data),
+            error: (xhr, status, error) => reject(error)
+          });
+        });
 
-    if (String(validateResult.result) !== '308') {
-      throw new Error(`Not electronic notification (got ${validateResult.result})`);
-    }
+        if (String(validateResult.result) !== '308') {
+          throw new Error(\`Not electronic notification (got \${validateResult.result})\`);
+        }
 
-    // Second AJAX call: Get document
-    const documentResult: any = await new Promise((resolve, reject) => {
-      $.ajax({
-        type: 'GET',
-        url: '/Documentos/ObtenerArchivoDocumentoNotificacion/',
-        dataType: 'json',
-        data: {
-          tipoJuzgadoId: p.tipoJuzgadoId,
-          partidoJudicialId: p.partidoJudicialId,
-          documentoNotificacionId: p.Id,
-          documentoId: p.documentoId,
-          processId: p.processId
-        },
-        success: (data: any) => resolve(data),
-        error: (xhr: any, status: any, error: any) => reject(error)
-      });
-    });
+        // Second AJAX call: Get document
+        const documentResult = await new Promise((resolve, reject) => {
+          $.ajax({
+            type: 'GET',
+            url: '/Documentos/ObtenerArchivoDocumentoNotificacion/',
+            dataType: 'json',
+            data: {
+              tipoJuzgadoId: p.tipoJuzgadoId,
+              partidoJudicialId: p.partidoJudicialId,
+              documentoNotificacionId: p.Id,
+              documentoId: p.documentoId,
+              processId: p.processId
+            },
+            success: (data) => resolve(data),
+            error: (xhr, status, error) => reject(error)
+          });
+        });
 
-    if (!documentResult.result || documentResult.result === 'no') {
-      throw new Error('Failed to get document process_id');
-    }
+        if (!documentResult.result || documentResult.result === 'no') {
+          throw new Error('Failed to get document process_id');
+        }
 
-    return documentResult.result;
-  }, params);
+        return documentResult.result;
+      })();
+    `) as any,
+    params
+  );
+  return result as string | null;
 }
 
 /**
