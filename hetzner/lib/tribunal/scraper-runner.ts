@@ -69,7 +69,7 @@ export async function runTribunalScraper(
     // Launch browser
     console.log('[Scraper] Launching browser...');
     browser = await puppeteer.launch({
-      headless: true,
+      headless: false, // Show browser window for debugging
       defaultViewport: {
         width: 1920,
         height: 1080
@@ -78,7 +78,8 @@ export async function runTribunalScraper(
         '--no-sandbox',
         '--disable-setuid-sandbox',
         '--disable-blink-features=AutomationControlled',
-        '--disable-dev-shm-usage'
+        '--disable-dev-shm-usage',
+        '--start-maximized'
       ]
     });
 
@@ -206,7 +207,14 @@ export async function runTribunalScraper(
       throw new Error('No se pudo encontrar el botón de Tribunal Electrónico 2.0');
     }
 
-    await randomDelay(800, 1200);
+    // Wait for navigation to Tribunal 2.0 page
+    console.log('[Scraper] Waiting for Tribunal 2.0 page to load...');
+    await Promise.race([
+      page.waitForNavigation({ waitUntil: 'networkidle2', timeout: 10000 }),
+      randomDelay(5000) // Fallback timeout
+    ]).catch(() => console.log('[Scraper] Navigation timeout, continuing...'));
+
+    await randomDelay(1500, 2500); // Extra wait for page to fully render
     console.log('[Scraper] Navigated to Tribunal 2.0 page');
 
     // Find DOCUMENTOS link
@@ -237,7 +245,7 @@ export async function runTribunalScraper(
       await page.goto(documentosLink.href, { waitUntil: 'networkidle2' });
     } else {
       console.log('[Scraper] Using default Documentos URL...');
-      await page.goto('https://sjpo.pjbc.gob.mx/Documentos/ObtenerDocumentos/', { waitUntil: 'networkidle2' });
+      await page.goto('https://tribunalelectronico.pjbc.gob.mx/Documentos/ObtenerDocumentos/', { waitUntil: 'networkidle2' });
     }
 
     // Wait for documents to load

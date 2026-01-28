@@ -4,6 +4,7 @@
  */
 
 const { runTribunalScraper } = require('./tribunal/scraper-runner');
+const { normalizeExpediente } = require('./tribunal/normalize-expediente');
 
 /**
  * Validate credentials and establish document baseline
@@ -14,13 +15,15 @@ const { runTribunalScraper } = require('./tribunal/scraper-runner');
  * @param {string} params.keyFileBase64 - Base64 encoded .key file
  * @param {string} params.cerFileBase64 - Base64 encoded .cer file
  * @param {Function} params.onProgress - Progress callback function
- * @returns {Promise<Object>} Validation result with lastDocumentDate
+ * @param {string} params.userId - User ID for baseline creation (optional)
+ * @param {Object} params.supabase - Supabase client for baseline storage (optional)
+ * @returns {Promise<Object>} Validation result with baselineCreated flag
  */
 // Helper to add delay between progress steps
 const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
 async function validateCredentialsWithProgress(params) {
-  const { email, password, keyFileBase64, cerFileBase64, onProgress } = params;
+  const { email, password, keyFileBase64, cerFileBase64, onProgress, userId, supabase } = params;
 
   let scraperResult = null;
 
@@ -81,11 +84,68 @@ async function validateCredentialsWithProgress(params) {
 
     const documents = scraperResult.documents;
 
+    // **NEW: Store baseline**
+    let baselineCreated = false;
+    if (userId && supabase) {
+      onProgress('Estableciendo baseline de documentos...');
+
+      try {
+        // Prepare baseline records
+        const baselineRecords = documents.map(doc => {
+          // Parse fecha from DD/MM/YYYY to YYYY-MM-DD
+          let fecha = null;
+          if (doc.fechaPublicacion) {
+            const parts = doc.fechaPublicacion.split('/');
+            if (parts.length === 3) {
+              fecha = `${parts[2]}-${parts[1]}-${parts[0]}`; // YYYY-MM-DD
+            }
+          }
+
+          return {
+            user_id: userId,
+            expediente: normalizeExpediente(doc.expediente),
+            juzgado: doc.juzgado,
+            descripcion: doc.descripcion,
+            fecha: fecha
+          };
+        });
+
+        // Delete old baseline for this user (fresh start)
+        const { error: deleteError } = await supabase
+          .from('tribunal_baseline')
+          .delete()
+          .eq('user_id', userId);
+
+        if (deleteError) {
+          console.error('[Validation] Failed to delete old baseline:', deleteError);
+        }
+
+        // Insert new baseline (batch insert)
+        if (baselineRecords.length > 0) {
+          const { error: baselineError } = await supabase
+            .from('tribunal_baseline')
+            .insert(baselineRecords);
+
+          if (baselineError) {
+            console.error('[Validation] Failed to create baseline:', baselineError);
+            // Don't fail validation if baseline fails - it's optional
+          } else {
+            console.log(`[Validation] Baseline created: ${baselineRecords.length} documents`);
+            baselineCreated = true;
+          }
+        }
+      } catch (error) {
+        console.error('[Validation] Baseline error:', error);
+        // Don't fail validation
+      }
+    }
+
     onProgress(`✓ Validación exitosa (${documents.length} documentos encontrados)`);
 
     return {
       success: true,
-      documentCount: documents.length
+      documentCount: documents.length,
+      baselineCreated
     };
 
   } catch (error) {

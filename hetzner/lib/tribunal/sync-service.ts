@@ -1,6 +1,9 @@
 /**
  * Tribunal Electrónico Sync Service
  * Orchestrates the sync process for a user's tribunal documents
+ *
+ * Updated 2026-01-28: Now syncs only documents for tracked expedientes
+ * and stores them in unified case_files table
  */
 
 import { SupabaseClient } from '@supabase/supabase-js';
@@ -9,6 +12,7 @@ import { runTribunalScraper } from './scraper-runner';
 import { downloadTribunalPDF } from './pdf-downloader';
 import { generateDocumentSummary } from './ai-summarizer';
 import { sendTribunalWhatsAppAlert } from './whatsapp-notifier';
+import { normalizeExpediente } from './normalize-expediente';
 import { Browser } from 'puppeteer';
 import puppeteer from 'puppeteer-extra';
 import StealthPlugin from 'puppeteer-extra-plugin-stealth';
@@ -21,6 +25,7 @@ export interface SyncUserParams {
   vaultKeyFileId: string;
   vaultCerFileId: string;
   email: string;
+  retryCount: number;
   supabase: SupabaseClient;
   logger: NotificationLogger;
 }
@@ -45,6 +50,7 @@ export async function syncTribunalForUser(
     vaultKeyFileId,
     vaultCerFileId,
     email,
+    retryCount,
     supabase,
     logger
   } = params;
@@ -70,6 +76,29 @@ export async function syncTribunalForUser(
     }
 
     syncLogId = syncLog.id;
+
+    // Fetch user's tracked expedientes
+    logger.info('Fetching user tracked expedientes', syncLogId);
+
+    const { data: monitoredCases, error: casesError } = await supabase
+      .from('monitored_cases')
+      .select('id, case_number, juzgado')
+      .eq('user_id', userId);
+
+    if (casesError || !monitoredCases) {
+      throw new Error(`Error fetching monitored cases: ${casesError?.message}`);
+    }
+
+    // Create map: normalized expediente + juzgado → case_id
+    // Key includes juzgado because same case number can exist in different courts
+    const expedienteMap = new Map<string, string>();
+    monitoredCases.forEach(case_ => {
+      const normalized = normalizeExpediente(case_.case_number);
+      const key = `${normalized}|${case_.juzgado}`;
+      expedienteMap.set(key, case_.id);
+    });
+
+    logger.info(`User tracking ${monitoredCases.length} expedientes`, syncLogId);
 
     // Retrieve credentials from Vault using RPC wrapper
     logger.info('Retrieving credentials from Vault', syncLogId);
@@ -103,15 +132,35 @@ export async function syncTribunalForUser(
     });
 
     if (!scraperResult.success) {
-      // Mark credentials as failed
-      await supabase
-        .from('tribunal_credentials')
-        .update({
-          status: 'failed',
-          validation_error: scraperResult.error,
-          last_validation_at: new Date().toISOString()
-        })
-        .eq('user_id', userId);
+      // Implement retry mechanism (3 tries before marking as failed)
+      const newRetryCount = retryCount + 1;
+      const maxRetries = 3;
+
+      if (newRetryCount >= maxRetries) {
+        // Mark credentials as failed after 3 attempts
+        logger.error(`User ${userId} failed after ${newRetryCount} attempts, marking as failed`, syncLogId);
+        await supabase
+          .from('tribunal_credentials')
+          .update({
+            status: 'failed',
+            retry_count: newRetryCount,
+            validation_error: scraperResult.error,
+            last_validation_at: new Date().toISOString()
+          })
+          .eq('user_id', userId);
+      } else {
+        // Mark for retry
+        logger.info(`User ${userId} failed (attempt ${newRetryCount}/${maxRetries}), will retry next sync`, syncLogId);
+        await supabase
+          .from('tribunal_credentials')
+          .update({
+            status: 'retry',
+            retry_count: newRetryCount,
+            validation_error: scraperResult.error,
+            last_validation_at: new Date().toISOString()
+          })
+          .eq('user_id', userId);
+      }
 
       throw new Error(`Scraper failed: ${scraperResult.error}`);
     }
@@ -119,9 +168,17 @@ export async function syncTribunalForUser(
     const allDocuments = scraperResult.documents;
     logger.info(`Scraper found ${allDocuments.length} total documents`, syncLogId);
 
-    // No filtering - we'll try to insert ALL documents
-    // Database will reject duplicates via unique constraint on (user_id, expediente)
-    logger.info(`Attempting to insert ${allDocuments.length} documents (duplicates will be skipped)`, syncLogId);
+    // Filter - Only process documents for tracked expedientes
+    const relevantDocuments = allDocuments.filter(doc => {
+      const normalized = normalizeExpediente(doc.expediente);
+      const key = `${normalized}|${doc.juzgado}`;
+      return expedienteMap.has(key);
+    });
+
+    logger.info(
+      `${relevantDocuments.length} documents match tracked expedientes (filtered from ${allDocuments.length})`,
+      syncLogId
+    );
 
     // Launch browser for PDF downloads (reuse same session)
     logger.info('Launching browser for PDF downloads...', syncLogId);
@@ -152,9 +209,18 @@ export async function syncTribunalForUser(
     let documentsFailed = 0;
     let newDocumentsFound = 0;
 
-    // Process ALL documents - try to insert each one
-    for (const doc of allDocuments) {
-      logger.info(`Processing document: ${doc.expediente}`, syncLogId);
+    // Process only relevant documents
+    for (const doc of relevantDocuments) {
+      const normalizedExpediente = normalizeExpediente(doc.expediente);
+      const key = `${normalizedExpediente}|${doc.juzgado}`;
+      const caseId = expedienteMap.get(key);
+
+      if (!caseId) {
+        logger.warn(`No case_id found for ${doc.expediente} (should not happen)`, syncLogId);
+        continue;
+      }
+
+      logger.info(`Processing ${doc.expediente}: ${doc.descripcion}`, syncLogId);
 
       try {
         // Parse fecha from fechaPublicacion (format: DD/MM/YYYY)
@@ -166,74 +232,158 @@ export async function syncTribunalForUser(
           }
         }
 
-        // Try to insert document
-        const { data: insertedDoc, error: insertError } = await supabase
-          .from('tribunal_documents')
+        // Stage 1: Check if document already exists in case_files
+        // Key: case_id + tribunal_descripcion + tribunal_fecha
+        const { data: existingFile } = await supabase
+          .from('case_files')
+          .select('id')
+          .eq('case_id', caseId)
+          .eq('source', 'tribunal_electronico')
+          .eq('tribunal_descripcion', doc.descripcion)
+          .eq('tribunal_fecha', fecha)
+          .maybeSingle();
+
+        if (existingFile) {
+          logger.info(`Document already processed, skipping`, syncLogId);
+          continue; // Already downloaded, summarized, and alerted
+        }
+
+        // Stage 2: Check if document is in baseline (historical)
+        const { data: inBaseline } = await supabase
+          .from('tribunal_baseline')
+          .select('id')
+          .eq('user_id', userId)
+          .eq('expediente', normalizedExpediente)
+          .eq('juzgado', doc.juzgado)
+          .eq('descripcion', doc.descripcion)
+          .eq('fecha', fecha)
+          .maybeSingle();
+
+        if (inBaseline) {
+          logger.info(`Document in baseline (historical), skipping alert`, syncLogId);
+          // Create stub entry in case_files to mark as seen (without download/summarize/alert)
+          const dateStr = fecha ? fecha.replace(/-/g, '') : 'sin-fecha';
+          const fileName = `${normalizedExpediente} - ${doc.descripcion.substring(0, 50)} - ${dateStr}.pdf`;
+
+          await supabase
+            .from('case_files')
+            .insert({
+              user_id: userId,
+              case_id: caseId,
+              file_name: fileName,
+              file_path: null,  // No PDF downloaded
+              file_size: 0,
+              mime_type: 'application/pdf',
+              source: 'tribunal_electronico',
+              ai_summary: null,  // No AI summary
+              tribunal_descripcion: doc.descripcion,
+              tribunal_fecha: fecha
+            });
+
+          continue; // Skip download, summarize, alert
+        }
+
+        // New document found (not in case_files, not in baseline) - process it fully
+        logger.info(`✨ New document found (not in baseline), processing...`, syncLogId);
+
+        // NEW document found - process it
+        newDocumentsFound++;
+        logger.info(`✨ New document found, processing...`, syncLogId);
+
+        // Download PDF and upload to storage
+        logger.info(`Downloading PDF`, syncLogId);
+        const pdfResult = await downloadTribunalPDF({
+          document: doc,
+          page,
+          browser,
+          userId,
+          supabase
+        });
+
+        if (!pdfResult.success) {
+          logger.error(`PDF download failed: ${pdfResult.error}`, syncLogId);
+          documentsFailed++;
+          continue;
+        }
+
+        logger.info(`✓ PDF downloaded: ${pdfResult.pdfPath}`, syncLogId);
+
+        // Generate AI summary with rate limiting
+        logger.info(`Generating AI summary`, syncLogId);
+        const summaryResult = await generateDocumentSummary({
+          pdfPath: pdfResult.pdfPath!,
+          supabase,
+          expediente: doc.expediente,
+          juzgado: doc.juzgado,
+          descripcion: doc.descripcion
+        });
+
+        const aiSummary = summaryResult.success ? summaryResult.summary : null;
+
+        if (summaryResult.success) {
+          logger.info(`✓ AI summary generated`, syncLogId);
+        } else {
+          logger.warn(`⚠ AI summary failed: ${summaryResult.error}`, syncLogId);
+        }
+
+        // Rate limiting: 2 second delay before next AI call
+        await new Promise(resolve => setTimeout(resolve, 2000));
+
+        // Generate filename
+        const dateStr = fecha ? fecha.replace(/-/g, '') : 'sin-fecha';
+        const fileName = `${normalizedExpediente} - ${doc.descripcion.substring(0, 50)} - ${dateStr}.pdf`;
+
+        // Insert into case_files (unified table)
+        const { data: caseFile, error: fileError } = await supabase
+          .from('case_files')
           .insert({
             user_id: userId,
-            numero: doc.numero,
-            expediente: doc.expediente,
-            juzgado: doc.juzgado,
-            descripcion: doc.descripcion,
-            fecha: fecha
+            case_id: caseId,
+            file_name: fileName,
+            file_path: pdfResult.pdfPath,
+            file_size: pdfResult.sizeBytes,
+            mime_type: 'application/pdf',
+            source: 'tribunal_electronico',
+            ai_summary: aiSummary,
+            tribunal_descripcion: doc.descripcion,
+            tribunal_fecha: fecha
           })
           .select()
           .single();
 
-        if (insertError) {
-          // Check if duplicate (unique constraint on user_id + expediente)
-          if (insertError.code === '23505') {
-            logger.info(`Document ${doc.expediente} already exists, skipping`, syncLogId);
-            continue; // Not a new document, skip processing
+        if (fileError) {
+          // Check if unique constraint violation (race condition)
+          if (fileError.code === '23505') {
+            logger.info(`Document already exists (race condition), skipping`, syncLogId);
+            continue;
           }
-          throw insertError;
+          logger.error(`Failed to create case_file: ${fileError.message}`, syncLogId);
+          documentsFailed++;
+          continue;
         }
 
-        // If we got here, it's a NEW document!
-        newDocumentsFound++;
-
-        const documentId = insertedDoc.id;
-        logger.info(`Inserted document record ${documentId}`, syncLogId);
-
-        // Note: PDF download requires navigating to the documents page with the browser
-        // Since we're running scraper separately, we can't reuse the page easily
-        // For now, we'll skip PDF download and just send notification
-        // TODO: Refactor to share browser session or run PDF download in scraper
-
-        // Instead, let's try a simpler approach: Generate AI summary from descripcion text
-        // and send notification without PDF for now
+        logger.info(`✓ Case file created: ${caseFile.id}`, syncLogId);
 
         // Send WhatsApp notification
-        logger.info(`Sending WhatsApp notification for doc ${documentId}`, syncLogId);
+        logger.info(`Sending WhatsApp alert...`, syncLogId);
         const notifyResult = await sendTribunalWhatsAppAlert({
           userId,
-          documentId,
           expediente: doc.expediente,
           juzgado: doc.juzgado,
           descripcion: doc.descripcion,
           fecha: fecha || new Date().toISOString().split('T')[0],
+          aiSummary: aiSummary || undefined,
           supabase
         });
 
-        // Update document with notification status
-        await supabase
-          .from('tribunal_documents')
-          .update({
-            whatsapp_sent: notifyResult.success,
-            whatsapp_sent_at: notifyResult.success ? new Date().toISOString() : null,
-            whatsapp_status: notifyResult.status,
-            whatsapp_error: notifyResult.error
-          })
-          .eq('id', documentId);
-
         if (notifyResult.success) {
-          logger.info(`✓ WhatsApp sent for doc ${documentId}`, syncLogId);
+          logger.info(`✓ WhatsApp alert sent`, syncLogId);
         } else {
-          logger.warn(`WhatsApp failed for doc ${documentId}: ${notifyResult.error}`, syncLogId);
+          logger.warn(`⚠ WhatsApp alert failed: ${notifyResult.error}`, syncLogId);
         }
 
         documentsProcessed++;
-        logger.info(`✓ Document ${doc.expediente} processed successfully`, syncLogId);
+        logger.info(`✅ Document processed successfully`, syncLogId);
 
       } catch (error) {
         documentsFailed++;
@@ -243,13 +393,14 @@ export async function syncTribunalForUser(
       }
     }
 
-    // Update credentials status
+    // Update credentials status and reset retry count on success
     logger.info(`Sync completed: ${newDocumentsFound} new, ${documentsProcessed} processed, ${documentsFailed} failed`, syncLogId);
     await supabase
       .from('tribunal_credentials')
       .update({
         last_sync_at: new Date().toISOString(),
         status: 'active',
+        retry_count: 0,
         validation_error: null,
         last_validation_at: new Date().toISOString()
       })

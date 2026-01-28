@@ -23,6 +23,16 @@ const { createClient } = require('@supabase/supabase-js');
 const { syncTribunalForUser } = require('./lib/tribunal/sync-service');
 const { createNotificationLogger } = require('../lib/notification-logger');
 
+// Handle cleanup errors from puppeteer plugins without crashing
+process.on('unhandledRejection', (reason, promise) => {
+  // Log the error but don't crash - puppeteer cleanup errors are non-critical
+  if (reason && reason.code === 'ENOTEMPTY') {
+    console.warn('[Sync] Puppeteer cleanup warning (non-critical):', reason.message);
+  } else {
+    console.error('[Sync] Unhandled rejection:', reason);
+  }
+});
+
 async function main() {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -40,11 +50,11 @@ async function main() {
     logger.info('Starting Tribunal Electrónico sync job');
     console.log('[Tribunal Sync] Starting sync job...');
 
-    // Query all users with active credentials
+    // Query all users with active or retry credentials
     const { data: users, error: usersError } = await supabase
       .from('tribunal_credentials')
-      .select('user_id, email, vault_password_id, vault_key_file_id, vault_cer_file_id')
-      .eq('status', 'active');
+      .select('user_id, email, vault_password_id, vault_key_file_id, vault_cer_file_id, retry_count')
+      .in('status', ['active', 'retry']);
 
     if (usersError) {
       logger.error('Error fetching users:', undefined, { error: usersError });
@@ -80,6 +90,7 @@ async function main() {
           vaultKeyFileId: user.vault_key_file_id,
           vaultCerFileId: user.vault_cer_file_id,
           email: user.email,
+          retryCount: user.retry_count || 0,
           supabase,
           logger
         });

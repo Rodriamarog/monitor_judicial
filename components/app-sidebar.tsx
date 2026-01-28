@@ -61,7 +61,6 @@ const navigation: NavSection[] = [
     items: [
       { href: '/dashboard', label: 'Monitoreo por Expediente', icon: FileText },
       { href: '/dashboard/nombres', label: 'Monitoreo Por Nombre', icon: UserSearch },
-      { href: '/dashboard/tribunal', label: 'Tribunal Electrónico', icon: ScanSearch },
       { href: '/dashboard/alerts', label: 'Alertas', icon: Bell },
       // { href: '/dashboard/investigacion', label: 'Investigación', icon: Search },
     ],

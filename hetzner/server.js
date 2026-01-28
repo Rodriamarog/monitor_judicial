@@ -4,9 +4,12 @@
  * Runs on port 3001 (configurable via PORT env var)
  */
 
+require('dotenv').config();
+
 const express = require('express');
 const cors = require('cors');
 const { validateCredentialsWithProgress } = require('./lib/validate-credentials');
+const { createClient } = require('@supabase/supabase-js');
 
 const app = express();
 
@@ -26,7 +29,7 @@ app.use(express.json({ limit: '10mb' })); // Allow large certificate files
  * Response: Server-Sent Events stream with progress updates
  */
 app.post('/validate-credentials', async (req, res) => {
-  const { email, password, keyFileBase64, cerFileBase64 } = req.body;
+  const { email, password, keyFileBase64, cerFileBase64, userId } = req.body;
 
   // Validate required fields
   if (!email || !password || !keyFileBase64 || !cerFileBase64) {
@@ -35,7 +38,7 @@ app.post('/validate-credentials', async (req, res) => {
     });
   }
 
-  console.log(`[Validation] Starting validation for ${email}`);
+  console.log(`[Validation] Starting validation for ${email}${userId ? ` (userId: ${userId})` : ''}`);
 
   // Set SSE headers
   res.setHeader('Content-Type', 'text/event-stream');
@@ -49,13 +52,24 @@ app.post('/validate-credentials', async (req, res) => {
     res.write(`data: ${JSON.stringify({ message })}\n\n`);
   };
 
+  // Create Supabase client for baseline storage (if userId provided)
+  let supabase = null;
+  if (userId && process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY) {
+    supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL,
+      process.env.SUPABASE_SERVICE_ROLE_KEY
+    );
+  }
+
   try {
     const result = await validateCredentialsWithProgress({
       email,
       password,
       keyFileBase64,
       cerFileBase64,
-      onProgress
+      onProgress,
+      userId,
+      supabase
     });
 
     console.log(`[Validation] Result:`, result);

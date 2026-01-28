@@ -75,6 +75,8 @@ interface CaseFile {
   file_size: number
   mime_type: string
   uploaded_at: string
+  source: 'manual_upload' | 'tribunal_electronico'
+  ai_summary: string | null
 }
 
 interface ExpedienteModalProps {
@@ -789,11 +791,30 @@ export function ExpedienteModal({ case_, open, onOpenChange }: ExpedienteModalPr
                               className="cursor-pointer hover:bg-muted/50 transition-colors"
                               onClick={() => handleFilePreview(file)}
                             >
-                              <TableCell className="font-medium max-w-xs truncate">
-                                <div className="flex items-center gap-2">
+                              <TableCell className="font-medium">
+                                <div className="flex items-center gap-2 flex-wrap">
                                   {getFileIcon(file.mime_type)}
-                                  <span>{file.file_name}</span>
+                                  <span className="truncate max-w-xs">{file.file_name}</span>
+
+                                  {/* Badge for Tribunal Electrónico auto-downloads */}
+                                  {file.source === 'tribunal_electronico' && (
+                                    <Badge variant="secondary" className="text-xs shrink-0">
+                                      Tribunal Electrónico
+                                    </Badge>
+                                  )}
                                 </div>
+
+                                {/* AI Summary for TE documents */}
+                                {file.source === 'tribunal_electronico' && file.ai_summary && (
+                                  <div className="mt-2 p-2 bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded text-xs">
+                                    <p className="font-medium text-blue-900 dark:text-blue-100 mb-1">
+                                      📋 Resumen IA
+                                    </p>
+                                    <p className="text-blue-800 dark:text-blue-200 whitespace-pre-wrap">
+                                      {file.ai_summary}
+                                    </p>
+                                  </div>
+                                )}
                               </TableCell>
                               <TableCell className="text-sm text-muted-foreground">
                                 {formatFileSize(file.file_size)}

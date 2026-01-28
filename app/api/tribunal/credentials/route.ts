@@ -68,7 +68,8 @@ export async function POST(request: NextRequest) {
             email,
             password,
             keyFileBase64,
-            cerFileBase64
+            cerFileBase64,
+            userId: user.id  // Pass user ID for baseline creation
           })
         });
 

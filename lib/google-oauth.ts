@@ -33,7 +33,6 @@ export function getAuthUrl(redirectUri: string, state?: string): string {
     access_type: 'offline', // CRITICAL: Get refresh token
     prompt: 'consent',       // CRITICAL: Force consent to get refresh token
     scope: [
-      'https://www.googleapis.com/auth/calendar', // Full calendar access (read/write)
       'https://www.googleapis.com/auth/drive.file', // Create and access own files in Drive
       'https://www.googleapis.com/auth/userinfo.email',
     ],

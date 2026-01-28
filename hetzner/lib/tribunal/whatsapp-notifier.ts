@@ -4,11 +4,11 @@
  */
 
 import { SupabaseClient } from '@supabase/supabase-js';
-import { sendWhatsAppAlert, formatToWhatsApp } from '../whatsapp';
+import { sendTribunalElectronicoAlert, formatToWhatsApp } from '../whatsapp';
 
 export interface NotifyParams {
   userId: string;
-  documentId: string;
+  documentId?: string; // Optional - for backwards compatibility
   expediente: string;
   juzgado: string;
   descripcion: string;
@@ -46,7 +46,7 @@ export async function sendTribunalWhatsAppAlert(
     const { data: profile, error: profileError } = await supabase
       .from('user_profiles')
       .select('phone, whatsapp_enabled')
-      .eq('user_id', userId)
+      .eq('id', userId)
       .single();
 
     if (profileError || !profile) {
@@ -58,7 +58,7 @@ export async function sendTribunalWhatsAppAlert(
       };
     }
 
-    // Check if WhatsApp is enabled
+    // Check if WhatsApp notifications are enabled
     if (!profile.whatsapp_enabled) {
       console.log(`[WhatsApp] User ${userId} has WhatsApp disabled, skipping notification`);
       return {
@@ -81,29 +81,17 @@ export async function sendTribunalWhatsAppAlert(
     // Format phone to WhatsApp format
     const whatsappNumber = formatToWhatsApp(profile.phone);
 
-    // Format bulletin date
-    const bulletinDate = fecha || new Date().toISOString().split('T')[0];
-
-    // Build alert text including AI summary
-    let rawText = descripcion;
-    if (aiSummary) {
-      rawText += `\n\n📋 Resumen IA:\n${aiSummary}`;
-    }
-
-    // Send WhatsApp alert using existing template
-    const result = await sendWhatsAppAlert({
+    // Send Tribunal Electrónico alert with AI summary
+    const result = await sendTribunalElectronicoAlert({
       to: whatsappNumber,
-      bulletinDate,
-      alerts: [{
-        caseNumber: expediente,
-        juzgado,
-        caseName: null,
-        rawText
-      }]
+      expediente,
+      juzgado,
+      aiSummary
     });
 
     if (result.success) {
-      console.log(`[WhatsApp] ✓ Alert sent to ${whatsappNumber} for doc ${documentId}`);
+      const docRef = documentId ? `doc ${documentId}` : `${expediente}`;
+      console.log(`[WhatsApp] ✓ Alert sent to ${whatsappNumber} for ${docRef}`);
       return {
         success: true,
         messageId: result.messageId,

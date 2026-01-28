@@ -8,12 +8,14 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
-import { Loader2, CheckCircle2, AlertTriangle, FileText } from 'lucide-react'
+import { Loader2, CheckCircle2, AlertTriangle, FileText, Trash2, RefreshCw, Upload, File, X } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Switch } from '@/components/ui/switch'
 import { SubscriptionButton } from '@/components/subscription-button'
 import { CollaboratorsSection } from '@/components/collaborators-section'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog'
 
 export default function SettingsPage() {
   const [loading, setLoading] = useState(true)
@@ -34,6 +36,21 @@ export default function SettingsPage() {
   const [userEmail, setUserEmail] = useState('')
   const [collaborators, setCollaborators] = useState<Array<{email: string}>>([])
   const [collaboratorsSaving, setCollaboratorsSaving] = useState(false)
+  const [tribunalStatus, setTribunalStatus] = useState<{
+    hasCredentials: boolean
+    lastSyncAt: string | null
+  }>({ hasCredentials: false, lastSyncAt: null })
+  const [tribunalStatusLoading, setTribunalStatusLoading] = useState(true)
+  const [showCredentialsDialog, setShowCredentialsDialog] = useState(false)
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false)
+  const [isUpdateMode, setIsUpdateMode] = useState(false)
+  const [tribunalEmail, setTribunalEmail] = useState('')
+  const [tribunalPassword, setTribunalPassword] = useState('')
+  const [tribunalKeyFile, setTribunalKeyFile] = useState<File | null>(null)
+  const [tribunalCerFile, setTribunalCerFile] = useState<File | null>(null)
+  const [tribunalSaving, setTribunalSaving] = useState(false)
+  const [tribunalDeleting, setTribunalDeleting] = useState(false)
+  const [tribunalValidationProgress, setTribunalValidationProgress] = useState('')
 
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -94,6 +111,18 @@ export default function SettingsPage() {
       const googleData = await googleStatus.json()
       setGoogleConnected(googleData.connected || false)
       setScopeValid(googleData.scope_valid || false)
+
+      // Check Tribunal Electrónico status
+      setTribunalStatusLoading(true)
+      const tribunalStatusRes = await fetch('/api/tribunal/credentials/status')
+      if (tribunalStatusRes.ok) {
+        const tribunalData = await tribunalStatusRes.json()
+        setTribunalStatus({
+          hasCredentials: tribunalData.hasCredentials || false,
+          lastSyncAt: tribunalData.lastSyncAt || null
+        })
+      }
+      setTribunalStatusLoading(false)
     } catch (err) {
       console.error('Error loading profile:', err)
       setError('Error al cargar perfil')
@@ -223,6 +252,139 @@ export default function SettingsPage() {
     } finally {
       setCollaboratorsSaving(false)
     }
+  }
+
+  const openCredentialsDialog = (updateMode: boolean) => {
+    setIsUpdateMode(updateMode)
+    setShowCredentialsDialog(true)
+    // Reset form
+    setTribunalEmail('')
+    setTribunalPassword('')
+    setTribunalKeyFile(null)
+    setTribunalCerFile(null)
+    setTribunalValidationProgress('')
+    setError(null)
+  }
+
+  const handleSaveTribunalCredentials = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setTribunalSaving(true)
+    setError(null)
+    setTribunalValidationProgress('Procesando archivos...')
+
+    let progressInterval: NodeJS.Timeout | null = null
+
+    try {
+      // Validate inputs
+      if (!tribunalEmail || !tribunalPassword || !tribunalKeyFile || !tribunalCerFile) {
+        throw new Error('Todos los campos son requeridos')
+      }
+
+      // Convert files to base64
+      const keyFileBase64 = await fileToBase64(tribunalKeyFile)
+      const cerFileBase64 = await fileToBase64(tribunalCerFile)
+
+      // Call API route which handles validation AND baseline creation
+      setTribunalValidationProgress('Validando credenciales con Tribunal Electrónico...')
+
+      // Simulate progress updates for better UX (actual validation happens on server)
+      const progressMessages = [
+        'Validando credenciales con Tribunal Electrónico...',
+        'Conectando al portal del Tribunal...',
+        'Verificando acceso...',
+        'Escaneando documentos existentes...',
+        'Creando baseline de documentos históricos...',
+        'Guardando credenciales de forma segura...'
+      ]
+
+      let progressIndex = 0
+      progressInterval = setInterval(() => {
+        progressIndex++
+        if (progressIndex < progressMessages.length) {
+          setTribunalValidationProgress(progressMessages[progressIndex])
+        }
+      }, 8000) // Update every 8 seconds
+
+      const saveResponse = await fetch('/api/tribunal/credentials', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: tribunalEmail,
+          password: tribunalPassword,
+          keyFileBase64: keyFileBase64.split(',')[1], // Remove data:* prefix
+          cerFileBase64: cerFileBase64.split(',')[1],
+          keyFileName: tribunalKeyFile.name,
+          cerFileName: tribunalCerFile.name,
+          skipValidation: false // Let API validate and create baseline
+        })
+      })
+
+      if (progressInterval) clearInterval(progressInterval)
+
+      if (!saveResponse.ok) {
+        const errorData = await saveResponse.json()
+        throw new Error(errorData.error || 'Error al guardar credenciales')
+      }
+
+      setTribunalValidationProgress('✓ Credenciales guardadas exitosamente')
+      setSuccess(true)
+      setTimeout(() => {
+        setSuccess(false)
+        setShowCredentialsDialog(false)
+      }, 2000)
+
+      await loadProfile() // Refresh status
+
+      // Reset form
+      setTribunalEmail('')
+      setTribunalPassword('')
+      setTribunalKeyFile(null)
+      setTribunalCerFile(null)
+      setTribunalValidationProgress('')
+    } catch (err) {
+      console.error('Error saving tribunal credentials:', err)
+      setError(err instanceof Error ? err.message : 'Error al guardar credenciales')
+      setTribunalValidationProgress('')
+    } finally {
+      if (progressInterval) clearInterval(progressInterval)
+      setTribunalSaving(false)
+    }
+  }
+
+  const handleDeleteTribunalCredentials = async () => {
+    setTribunalDeleting(true)
+    setError(null)
+
+    try {
+      const response = await fetch('/api/tribunal/credentials', {
+        method: 'DELETE'
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Error al eliminar credenciales')
+      }
+
+      setSuccess(true)
+      setTimeout(() => setSuccess(false), 3000)
+      setShowDeleteDialog(false)
+      await loadProfile() // Refresh status
+    } catch (err) {
+      console.error('Error deleting tribunal credentials:', err)
+      setError(err instanceof Error ? err.message : 'Error al eliminar credenciales')
+    } finally {
+      setTribunalDeleting(false)
+    }
+  }
+
+  // Helper function to convert File to base64
+  const fileToBase64 = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader()
+      reader.readAsDataURL(file)
+      reader.onload = () => resolve(reader.result as string)
+      reader.onerror = error => reject(error)
+    })
   }
 
   if (loading) {
@@ -484,6 +646,313 @@ export default function SettingsPage() {
           </form>
         </CardContent>
       </Card>
+
+      {/* Tribunal Electrónico Card */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Tribunal Electrónico</CardTitle>
+          <CardDescription>
+            Descarga automática de documentos del Tribunal Electrónico PJBC
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Cuando está habilitado, el sistema descargará automáticamente documentos
+              del Tribunal Electrónico para todos los expedientes que estás monitoreando.
+              Los documentos aparecerán en la pestaña "Archivos" de cada expediente con un badge de Tribunal Electrónico.
+            </p>
+
+            {tribunalStatusLoading ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+              </div>
+            ) : tribunalStatus.hasCredentials ? (
+              <div className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <Badge variant="default" className="bg-green-600">✓ Configurado</Badge>
+                  {tribunalStatus.lastSyncAt && (
+                    <span className="text-sm text-muted-foreground">
+                      Última sincronización: {new Date(tribunalStatus.lastSyncAt).toLocaleDateString('es-MX', {
+                        year: 'numeric',
+                        month: 'long',
+                        day: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                      })}
+                    </span>
+                  )}
+                </div>
+                <Alert className="bg-blue-50 dark:bg-blue-950/30 border-blue-200 dark:border-blue-800">
+                  <AlertDescription className="text-sm text-blue-900 dark:text-blue-100">
+                    <strong>Nota:</strong> Las credenciales del Tribunal Electrónico están configuradas y activas.
+                    Los documentos se sincronizan automáticamente cada 24 horas y aparecen en la pestaña "Archivos" de tus expedientes monitoreados.
+                  </AlertDescription>
+                </Alert>
+
+                <div className="flex gap-2 mt-4">
+                  <Button
+                    variant="outline"
+                    className="flex-1"
+                    onClick={() => openCredentialsDialog(true)}
+                  >
+                    <RefreshCw className="h-4 w-4 mr-2" />
+                    Actualizar Credenciales
+                  </Button>
+
+                  <Button
+                    variant="destructive"
+                    className="flex-1"
+                    onClick={() => setShowDeleteDialog(true)}
+                    disabled={tribunalDeleting}
+                  >
+                    {tribunalDeleting ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Eliminando...
+                      </>
+                    ) : (
+                      <>
+                        <Trash2 className="h-4 w-4 mr-2" />
+                        Eliminar Credenciales
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <Alert>
+                  <AlertDescription className="text-sm">
+                    No has configurado tus credenciales del Tribunal Electrónico.
+                    Configura tus credenciales para habilitar la descarga automática de documentos.
+                  </AlertDescription>
+                </Alert>
+                <Button
+                  className="w-full"
+                  onClick={() => openCredentialsDialog(false)}
+                >
+                  <CheckCircle2 className="h-4 w-4 mr-2" />
+                  Configurar Credenciales
+                </Button>
+              </div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Add/Update Credentials Dialog */}
+      <Dialog open={showCredentialsDialog} onOpenChange={setShowCredentialsDialog}>
+        <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>
+              {isUpdateMode ? 'Actualizar' : 'Configurar'} Credenciales del Tribunal Electrónico
+            </DialogTitle>
+            <DialogDescription className="space-y-2">
+              <p>
+                {isUpdateMode
+                  ? 'Ingresa tus nuevas credenciales y certificados. Se validarán antes de guardar.'
+                  : 'Ingresa tus credenciales del Tribunal Electrónico PJBC para habilitar la sincronización automática de documentos.'}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                Nota: Se validarán tus credenciales conectándose al Tribunal Electrónico. Este proceso puede tomar 30-60 segundos.
+              </p>
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleSaveTribunalCredentials} className="space-y-4">
+            {error && (
+              <Alert variant="destructive">
+                <AlertTriangle className="h-4 w-4" />
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
+            )}
+
+            <div className="space-y-2">
+              <Label htmlFor="tribunal-email">Email</Label>
+              <Input
+                id="tribunal-email"
+                type="email"
+                placeholder="tu@email.com"
+                value={tribunalEmail}
+                onChange={(e) => setTribunalEmail(e.target.value)}
+                disabled={tribunalSaving}
+                required
+              />
+              <p className="text-xs text-muted-foreground">
+                Tu correo electrónico del Tribunal Electrónico PJBC
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="tribunal-password">Contraseña</Label>
+              <Input
+                id="tribunal-password"
+                type="password"
+                placeholder="••••••••"
+                value={tribunalPassword}
+                onChange={(e) => setTribunalPassword(e.target.value)}
+                disabled={tribunalSaving}
+                required
+              />
+              <p className="text-xs text-muted-foreground">
+                Tu contraseña del Tribunal Electrónico
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="tribunal-key">Archivo .key (Llave Privada)</Label>
+              <div className="relative">
+                <input
+                  id="tribunal-key"
+                  type="file"
+                  accept=".key"
+                  onChange={(e) => setTribunalKeyFile(e.target.files?.[0] || null)}
+                  disabled={tribunalSaving}
+                  required
+                  className="hidden"
+                />
+                {!tribunalKeyFile ? (
+                  <label
+                    htmlFor="tribunal-key"
+                    className="flex items-center justify-center gap-2 w-full px-4 py-3 border-2 border-dashed border-muted-foreground/25 rounded-lg hover:border-muted-foreground/50 hover:bg-muted/50 cursor-pointer transition-colors"
+                  >
+                    <Upload className="h-5 w-5 text-muted-foreground" />
+                    <span className="text-sm text-muted-foreground">
+                      Seleccionar archivo .key
+                    </span>
+                  </label>
+                ) : (
+                  <div className="flex items-center gap-2 w-full px-4 py-3 border-2 border-green-500 bg-green-50 dark:bg-green-950/20 rounded-lg">
+                    <File className="h-5 w-5 text-green-600 dark:text-green-400" />
+                    <span className="text-sm text-green-700 dark:text-green-300 flex-1 truncate">
+                      {tribunalKeyFile.name}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setTribunalKeyFile(null)}
+                      disabled={tribunalSaving}
+                      className="p-1 hover:bg-green-100 dark:hover:bg-green-900/30 rounded transition-colors"
+                    >
+                      <X className="h-4 w-4 text-green-600 dark:text-green-400" />
+                    </button>
+                  </div>
+                )}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Tu archivo de llave privada (.key)
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="tribunal-cer">Archivo .cer (Certificado)</Label>
+              <div className="relative">
+                <input
+                  id="tribunal-cer"
+                  type="file"
+                  accept=".cer"
+                  onChange={(e) => setTribunalCerFile(e.target.files?.[0] || null)}
+                  disabled={tribunalSaving}
+                  required
+                  className="hidden"
+                />
+                {!tribunalCerFile ? (
+                  <label
+                    htmlFor="tribunal-cer"
+                    className="flex items-center justify-center gap-2 w-full px-4 py-3 border-2 border-dashed border-muted-foreground/25 rounded-lg hover:border-muted-foreground/50 hover:bg-muted/50 cursor-pointer transition-colors"
+                  >
+                    <Upload className="h-5 w-5 text-muted-foreground" />
+                    <span className="text-sm text-muted-foreground">
+                      Seleccionar archivo .cer
+                    </span>
+                  </label>
+                ) : (
+                  <div className="flex items-center gap-2 w-full px-4 py-3 border-2 border-green-500 bg-green-50 dark:bg-green-950/20 rounded-lg">
+                    <File className="h-5 w-5 text-green-600 dark:text-green-400" />
+                    <span className="text-sm text-green-700 dark:text-green-300 flex-1 truncate">
+                      {tribunalCerFile.name}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setTribunalCerFile(null)}
+                      disabled={tribunalSaving}
+                      className="p-1 hover:bg-green-100 dark:hover:bg-green-900/30 rounded transition-colors"
+                    >
+                      <X className="h-4 w-4 text-green-600 dark:text-green-400" />
+                    </button>
+                  </div>
+                )}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Tu archivo de certificado (.cer)
+              </p>
+            </div>
+
+            {tribunalValidationProgress && (
+              <Alert className="bg-blue-50 dark:bg-blue-950/30 border-blue-200 dark:border-blue-800">
+                <Loader2 className="h-4 w-4 animate-spin text-blue-600 dark:text-blue-400" />
+                <AlertDescription className="text-blue-900 dark:text-blue-100">
+                  {tribunalValidationProgress}
+                </AlertDescription>
+              </Alert>
+            )}
+
+            <DialogFooter className="gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  setShowCredentialsDialog(false)
+                  setTribunalValidationProgress('')
+                  setError(null)
+                }}
+                disabled={tribunalSaving}
+              >
+                Cancelar
+              </Button>
+              <Button type="submit" disabled={tribunalSaving}>
+                {tribunalSaving ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Procesando...
+                  </>
+                ) : (
+                  <>{isUpdateMode ? 'Actualizar' : 'Guardar'}</>
+                )}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Eliminar credenciales del Tribunal Electrónico?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta acción eliminará tus credenciales guardadas y deshabilitará la sincronización automática
+              de documentos. Podrás volver a configurarlas en cualquier momento.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={tribunalDeleting}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteTribunalCredentials}
+              disabled={tribunalDeleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {tribunalDeleting ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Eliminando...
+                </>
+              ) : (
+                'Eliminar'
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Collaborators Card */}
       <Card>
