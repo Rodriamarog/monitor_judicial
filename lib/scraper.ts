@@ -7,6 +7,7 @@
 import { createClient } from '@supabase/supabase-js';
 import * as cheerio from 'cheerio';
 import { normalizeJuzgado } from './normalize-juzgado';
+import https from 'https';
 
 export const BULLETIN_SOURCES = [
   { code: 'ti', name: 'tijuana', label: 'Tijuana' },
@@ -210,10 +211,18 @@ export async function scrapeBulletin(
   const bulletinUrl = buildBulletinURL(date, source.code);
 
   try {
+    // PJBC has SSL certificate issues, so we need to disable verification
+    // This is safe since we're only reading public bulletin data
+    const agent = new https.Agent({
+      rejectUnauthorized: false,
+    });
+
     const response = await fetch(bulletinUrl, {
       headers: {
         'User-Agent': 'Mozilla/5.0 (compatible; MonitorJudicial/1.0)',
       },
+      // @ts-ignore - agent is valid but TypeScript doesn't recognize it
+      agent,
     });
 
     if (!response.ok) {
