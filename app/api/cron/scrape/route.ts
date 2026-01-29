@@ -141,7 +141,11 @@ export async function GET(request: NextRequest) {
           }
 
           const bulletinDate = (firstBulletinAlert.bulletin_entries as any).bulletin_date;
-          const alerts = userAlerts.map(alert => {
+
+          // Filter to only bulletin alerts (exclude Tribunal alerts which have case_file_id)
+          const bulletinAlerts = userAlerts.filter(a => a.bulletin_entries && !(a as any).case_file_id);
+
+          const alerts = bulletinAlerts.map(alert => {
             const monitoredCase = alert.monitored_cases as any;
             const bulletinEntry = alert.bulletin_entries as any;
             return {
@@ -306,8 +310,8 @@ export async function GET(request: NextRequest) {
             }
           }
 
-          // Mark all alerts for this user as sent (or failed)
-          for (const alert of userAlerts) {
+          // Mark all bulletin alerts for this user as sent (or failed)
+          for (const alert of bulletinAlerts) {
             await markAlertAsSent(
               alert.id,
               emailResult.success,
