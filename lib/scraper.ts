@@ -7,6 +7,7 @@
 import { createClient } from '@supabase/supabase-js';
 import * as cheerio from 'cheerio';
 import { normalizeJuzgado } from './normalize-juzgado';
+import axios from 'axios';
 import https from 'https';
 
 export const BULLETIN_SOURCES = [
@@ -217,30 +218,32 @@ export async function scrapeBulletin(
       rejectUnauthorized: false,
     });
 
-    const response = await fetch(bulletinUrl, {
+    const response = await axios.get(bulletinUrl, {
       headers: {
         'User-Agent': 'Mozilla/5.0 (compatible; MonitorJudicial/1.0)',
       },
-      // @ts-ignore - agent is valid but TypeScript doesn't recognize it
-      agent,
+      httpsAgent: agent,
+      responseType: 'arraybuffer', // Get raw buffer for encoding
+      validateStatus: (status) => status < 500, // Don't throw on 404
     });
 
-    if (!response.ok) {
-      if (response.status === 404) {
-        return {
-          source: source.name,
-          bulletin_date: date,
-          bulletin_url: bulletinUrl,
-          entries: [],
-          found: false,
-          error_message: '404 - Bulletin not published yet',
-        };
-      }
+    if (response.status === 404) {
+      return {
+        source: source.name,
+        bulletin_date: date,
+        bulletin_url: bulletinUrl,
+        entries: [],
+        found: false,
+        error_message: '404 - Bulletin not published yet',
+      };
+    }
+
+    if (response.status !== 200) {
       throw new Error(`HTTP ${response.status}: ${response.statusText}`);
     }
 
     // PJBC uses windows-1252 encoding
-    const buffer = await response.arrayBuffer();
+    const buffer = response.data;
     const decoder = new TextDecoder('windows-1252');
     const html = decoder.decode(buffer);
 
