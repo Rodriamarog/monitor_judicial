@@ -40,7 +40,7 @@ export default async function DashboardPage() {
 
   // Create a map of case_id -> alert_count
   const alertCounts = new Map<string, number>()
-  alertCountsData?.forEach((row) => {
+  alertCountsData?.forEach((row: { monitored_case_id: string; alert_count: number }) => {
     alertCounts.set(row.monitored_case_id, Number(row.alert_count))
   })
 
