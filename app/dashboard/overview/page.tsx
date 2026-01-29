@@ -85,10 +85,7 @@ async function DashboardContent() {
       .eq('is_read', false),
 
     supabase
-      .from('alerts')
-      .select('created_at')
-      .eq('user_id', user.id)
-      .gte('created_at', thirtyDaysAgo.toISOString()),
+      .rpc('get_alert_activity', { p_user_id: user.id, p_days_ago: 30 }),
 
     supabase
       .from('alerts')
@@ -251,16 +248,11 @@ async function DashboardContent() {
       .eq('user_id', user.id),
   ])
 
-  // Transform alert activity data (daily counts for last 30 days)
-  const dailyCounts: Record<string, number> = {}
-  alertActivityData?.forEach((alert) => {
-    const date = new Date(alert.created_at).toISOString().split('T')[0]
-    dailyCounts[date] = (dailyCounts[date] || 0) + 1
-  })
-
-  const alertActivity = Object.entries(dailyCounts)
-    .map(([date, count]) => ({ date, count }))
-    .sort((a, b) => a.date.localeCompare(b.date))
+  // Alert activity data is already aggregated by the RPC function
+  const alertActivity = alertActivityData?.map((row) => ({
+    date: row.alert_date,
+    count: Number(row.alert_count)
+  })) || []
 
   // Transform notification stats
   // Only count notifications where an actual attempt was made (not null)
