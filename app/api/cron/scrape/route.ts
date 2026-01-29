@@ -93,20 +93,22 @@ export async function GET(request: NextRequest) {
 
     // Historical bulletins retained indefinitely for analysis (removed 90-day cleanup 2026-01-14)
 
-    // Step 3: Send email notifications for new alerts
+    // Step 3: Send notifications for ALL unsent alerts (not just newly created ones)
+    // This ensures we catch any alerts that failed to send previously
     let emailResults = {
       sent: 0,
       failed: 0,
       errors: [] as string[],
     };
 
-    if (matchResults.alerts_created > 0) {
-      try {
-        const unsentAlerts = await getUnsentAlerts(supabaseUrl, supabaseKey);
-        logger.info(`Found ${unsentAlerts.length} unsent alerts to process`, undefined, {
-          alertCount: unsentAlerts.length
-        });
-        console.log(`Found ${unsentAlerts.length} unsent alerts to process`);
+    try {
+      const unsentAlerts = await getUnsentAlerts(supabaseUrl, supabaseKey);
+      logger.info(`Found ${unsentAlerts.length} unsent alerts to process`, undefined, {
+        alertCount: unsentAlerts.length
+      });
+      console.log(`Found ${unsentAlerts.length} unsent alerts to process`);
+
+      if (unsentAlerts.length > 0) {
 
         // Group alerts by user_id
         const alertsByUser = new Map<string, typeof unsentAlerts>();
@@ -340,15 +342,17 @@ export async function GET(request: NextRequest) {
 
         // Flush all logs to database
         await logger.flush();
-      } catch (error) {
-        logger.error('Error sending notifications', undefined, {
-          error: error instanceof Error ? error.message : String(error),
-          stack: error instanceof Error ? error.stack : undefined
-        });
-        await logger.flush();
-        console.error('Error sending emails:', error);
-        emailResults.errors.push(error instanceof Error ? error.message : 'Unknown error');
+      } else {
+        console.log('No unsent alerts found');
       }
+    } catch (error) {
+      logger.error('Error sending notifications', undefined, {
+        error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined
+      });
+      await logger.flush();
+      console.error('Error sending emails:', error);
+      emailResults.errors.push(error instanceof Error ? error.message : 'Unknown error');
     }
 
     return NextResponse.json({
