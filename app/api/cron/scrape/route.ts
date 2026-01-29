@@ -131,7 +131,14 @@ export async function GET(request: NextRequest) {
           }
 
           // Prepare consolidated alert data
-          const bulletinDate = (firstAlert.bulletin_entries as any).bulletin_date;
+          // Get bulletin date from first bulletin entry (skip Tribunal alerts)
+          const firstBulletinAlert = userAlerts.find(a => (a.bulletin_entries as any)?.bulletin_date);
+          if (!firstBulletinAlert || !(firstBulletinAlert.bulletin_entries as any)?.bulletin_date) {
+            console.warn(`Skipping ${userAlerts.length} alerts for user ${userId} - no bulletin entries (possibly Tribunal alerts)`);
+            continue;
+          }
+
+          const bulletinDate = (firstBulletinAlert.bulletin_entries as any).bulletin_date;
           const alerts = userAlerts.map(alert => {
             const monitoredCase = alert.monitored_cases as any;
             const bulletinEntry = alert.bulletin_entries as any;
