@@ -1,8 +1,7 @@
 'use client'
 
-import { useState, useMemo, useEffect, useRef, useCallback } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { useVirtualizer } from '@tanstack/react-virtual'
 import {
   Table,
   TableBody,
@@ -13,7 +12,7 @@ import {
 } from '@/components/ui/table'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Trash2, Search, ChevronUp, ChevronDown, Pencil, Loader2 } from 'lucide-react'
+import { Trash2, Search, ChevronUp, ChevronDown, Loader2, Pencil } from 'lucide-react'
 import { formatTijuanaDate } from '@/lib/date-utils'
 import { ExpedienteModal } from '@/components/expediente-modal'
 import { EditCaseDialog } from '@/components/edit-case-dialog'
@@ -46,15 +45,12 @@ export function CasesTable({ cases, onDelete, onUpdate }: CasesTableProps) {
   const [deletingCaseId, setDeletingCaseId] = useState<string | null>(null)
   const [tableHeight, setTableHeight] = useState(600)
 
-  // Edit dialog state - now just tracks which case is being edited
+  // Edit dialog state
   const [editingCase, setEditingCase] = useState<Case | null>(null)
 
   // Expediente modal state
   const [selectedCaseForModal, setSelectedCaseForModal] = useState<Case | null>(null)
   const [modalOpen, setModalOpen] = useState(false)
-
-  // Ref for the scrollable container (for virtual scrolling)
-  const parentRef = useRef<HTMLDivElement>(null)
 
   // Calculate table height based on available window space
   useEffect(() => {
@@ -124,14 +120,6 @@ export function CasesTable({ cases, onDelete, onUpdate }: CasesTableProps) {
     return sorted
   }, [filteredCases, sortOrder])
 
-  // Virtual scrolling setup
-  const rowVirtualizer = useVirtualizer({
-    count: sortedCases.length,
-    getScrollElement: () => parentRef.current,
-    estimateSize: () => 53, // Estimated row height in pixels
-    overscan: 5, // Render 5 extra rows above/below viewport
-  })
-
   const toggleSortOrder = () => {
     setSortOrder((prev) => {
       if (prev === 'alerts') return 'desc'
@@ -170,18 +158,81 @@ export function CasesTable({ cases, onDelete, onUpdate }: CasesTableProps) {
   const handleEditClick = (case_: Case, event: React.MouseEvent) => {
     event.stopPropagation()
     setEditingCase(case_)
+    setEditCaseNumber(case_.case_number)
+    setEditJuzgado(case_.juzgado)
+    setEditNombre(case_.nombre || '')
+
+    // Parse phone number to extract country code
+    if (case_.telefono) {
+      if (case_.telefono.startsWith('+1')) {
+        setEditCountryCode('+1')
+        setEditTelefono(case_.telefono.substring(2))
+      } else if (case_.telefono.startsWith('+52')) {
+        setEditCountryCode('+52')
+        setEditTelefono(case_.telefono.substring(3))
+      } else {
+        // Default fallback if no recognized country code
+        setEditCountryCode('+52')
+        setEditTelefono(case_.telefono)
+      }
+    } else {
+      setEditCountryCode('+52')
+      setEditTelefono('')
+    }
+
+    setEditTotalAmountCharged(case_.total_amount_charged ? case_.total_amount_charged.toString() : '')
+    setEditCurrency(case_.currency || 'MXN')
+    setEditError(null)
   }
 
-  // Memoized callbacks to prevent EditCaseDialog from re-rendering on every parent render
-  const handleEditClose = useCallback(() => {
-    setEditingCase(null)
-  }, [])
+  const handleEditSave = async () => {
+    if (!editingCase || !onUpdate) return
 
-  const handleEditSave = useCallback(async (caseId: string, updates: any) => {
-    if (onUpdate) {
-      await onUpdate(caseId, updates)
+    setEditLoading(true)
+    setEditError(null)
+
+    try {
+      // Validate case number format
+      if (!/^\d{1,5}\/\d{4}$/.test(editCaseNumber)) {
+        setEditError('Formato de caso inválido. Use: 00000/0000')
+        setEditLoading(false)
+        return
+      }
+
+      // Normalize case number to 5 digits
+      const match = editCaseNumber.match(/^(\d{1,5})\/(\d{4})$/)
+      if (!match) {
+        setEditError('Formato de caso inválido')
+        setEditLoading(false)
+        return
+      }
+
+      const [, caseNum, year] = match
+      const normalizedCaseNumber = caseNum.padStart(5, '0') + '/' + year
+
+      const totalAmount = editTotalAmountCharged ? parseFloat(editTotalAmountCharged) : 0
+
+      // Format phone number: combine country code + phone number (remove spaces/dashes)
+      const formattedPhone = editTelefono
+        ? `${editCountryCode}${editTelefono.replace(/[\s\-()]/g, '')}`
+        : null
+
+      await onUpdate(editingCase.id, {
+        case_number: normalizedCaseNumber,
+        juzgado: editJuzgado,
+        nombre: editNombre || null,
+        telefono: formattedPhone,
+        total_amount_charged: totalAmount,
+        currency: editCurrency,
+      })
+
+      setEditingCase(null)
+    } catch (err) {
+      setEditError(err instanceof Error ? err.message : 'Error al actualizar')
+    } finally {
+      setEditLoading(false)
     }
-  }, [onUpdate])
+  }
 
   return (
     <div className="space-y-4">
@@ -198,9 +249,8 @@ export function CasesTable({ cases, onDelete, onUpdate }: CasesTableProps) {
         </div>
       </div>
 
-      {/* Cases Table - Scrollable Container with Virtual Scrolling */}
+      {/* Cases Table - Scrollable Container */}
       <div
-        ref={parentRef}
         className="border rounded-md overflow-auto"
         style={{ height: `${tableHeight}px` }}
       >
@@ -265,22 +315,12 @@ export function CasesTable({ cases, onDelete, onUpdate }: CasesTableProps) {
                 </TableCell>
               </TableRow>
             ) : (
-              <>
-                {/* Spacer for virtual scrolling - creates space above visible rows */}
-                <TableRow style={{ height: `${rowVirtualizer.getVirtualItems()[0]?.start ?? 0}px` }}>
-                  <TableCell colSpan={8} style={{ padding: 0, border: 'none' }} />
-                </TableRow>
-
-                {/* Only render visible rows */}
-                {rowVirtualizer.getVirtualItems().map((virtualRow) => {
-                  const case_ = sortedCases[virtualRow.index]
-                  return (
+              sortedCases.map((case_) => (
                 <TableRow
                   key={case_.id}
                   onClick={(e) => handleRowClick(case_, e)}
                   className="cursor-pointer hover:bg-muted/50 transition-colors"
                   title="Clic para ver detalles del expediente"
-                  data-index={virtualRow.index}
                 >
                   <TableCell className="text-center">
                     <div className="flex justify-center">
@@ -356,21 +396,7 @@ export function CasesTable({ cases, onDelete, onUpdate }: CasesTableProps) {
                     </div>
                   </TableCell>
                 </TableRow>
-                  )
-                })}
-
-                {/* Spacer for virtual scrolling - creates space below visible rows */}
-                <TableRow
-                  style={{
-                    height: `${
-                      rowVirtualizer.getTotalSize() -
-                      (rowVirtualizer.getVirtualItems()[rowVirtualizer.getVirtualItems().length - 1]?.end ?? 0)
-                    }px`,
-                  }}
-                >
-                  <TableCell colSpan={8} style={{ padding: 0, border: 'none' }} />
-                </TableRow>
-              </>
+              ))
             )}
           </TableBody>
         </Table>
@@ -381,13 +407,157 @@ export function CasesTable({ cases, onDelete, onUpdate }: CasesTableProps) {
         Mostrando {sortedCases.length} de {cases.length} casos
       </div>
 
-      {/* Edit Case Dialog */}
-      <EditCaseDialog
-        case_={editingCase}
-        open={!!editingCase}
-        onClose={handleEditClose}
-        onSave={handleEditSave}
-      />
+      {/* Edit Dialog */}
+      <Dialog open={!!editingCase} onOpenChange={(open) => !open && setEditingCase(null)}>
+        <DialogContent className="overflow-x-hidden">
+          <DialogHeader>
+            <DialogTitle>Editar Caso</DialogTitle>
+            <DialogDescription>
+              Modifique los detalles del caso monitoreado
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-4">
+            {editError && (
+              <div className="text-sm text-destructive bg-destructive/10 p-3 rounded-md">
+                {editError}
+              </div>
+            )}
+
+            <div className="space-y-2">
+              <Label htmlFor="edit-case-number">Número de Caso</Label>
+              <Input
+                id="edit-case-number"
+                value={editCaseNumber}
+                onChange={(e) => setEditCaseNumber(e.target.value)}
+                placeholder="00342/2025"
+              />
+              <p className="text-xs text-muted-foreground">
+                Formato: 1-5 dígitos / 4 dígitos (año)
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="edit-juzgado">Juzgado</Label>
+              <Select value={editJuzgado} onValueChange={setEditJuzgado} disabled={loadingJuzgados}>
+                <SelectTrigger id="edit-juzgado">
+                  <SelectValue placeholder={loadingJuzgados ? "Cargando juzgados..." : "Seleccione un juzgado"} />
+                </SelectTrigger>
+                <SelectContent className="max-h-[300px]">
+                  {loadingJuzgados ? (
+                    <div className="px-2 py-4 text-center text-sm text-muted-foreground">
+                      <Loader2 className="h-4 w-4 animate-spin mx-auto mb-2" />
+                      Cargando juzgados...
+                    </div>
+                  ) : (
+                    Object.entries(juzgadosByCity).map(([city, juzgadosInCity]) => (
+                      <div key={city}>
+                        <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground capitalize">
+                          {city === 'other' ? 'Otros' : city}
+                        </div>
+                        {juzgadosInCity.map((j) => (
+                          <SelectItem key={j.id} value={j.name}>
+                            {j.name}
+                          </SelectItem>
+                        ))}
+                      </div>
+                    ))
+                  )}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="edit-nombre">Nombre (opcional)</Label>
+              <Input
+                id="edit-nombre"
+                value={editNombre}
+                onChange={(e) => setEditNombre(e.target.value)}
+                placeholder="Nombre de la parte"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="edit-telefono">Teléfono del Cliente (opcional)</Label>
+              <div className="flex gap-2">
+                <Select
+                  value={editCountryCode}
+                  onValueChange={setEditCountryCode}
+                >
+                  <SelectTrigger className="w-[100px]">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="+52">🇲🇽 +52</SelectItem>
+                    <SelectItem value="+1">🇺🇸 +1</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Input
+                  id="edit-telefono"
+                  type="tel"
+                  value={editTelefono}
+                  onChange={(e) => setEditTelefono(e.target.value)}
+                  placeholder="664 123 4567"
+                  maxLength={15}
+                  className="flex-1"
+                />
+              </div>
+            </div>
+
+            {/* Balance Fields */}
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="edit-total-amount">Monto a Cobrar (Opcional)</Label>
+                <Input
+                  id="edit-total-amount"
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  placeholder="0.00"
+                  value={editTotalAmountCharged}
+                  onChange={(e) => setEditTotalAmountCharged(e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-currency">Moneda</Label>
+                <Select value={editCurrency} onValueChange={setEditCurrency}>
+                  <SelectTrigger id="edit-currency">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="MXN">MXN (Pesos)</SelectItem>
+                    <SelectItem value="USD">USD (Dólares)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setEditingCase(null)}
+              disabled={editLoading}
+            >
+              Cancelar
+            </Button>
+            <Button
+              onClick={handleEditSave}
+              disabled={editLoading}
+              className="cursor-pointer"
+            >
+              {editLoading ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  Guardando...
+                </>
+              ) : (
+                'Guardar Cambios'
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Expediente Details Modal */}
       <ExpedienteModal

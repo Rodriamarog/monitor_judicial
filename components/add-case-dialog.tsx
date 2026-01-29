@@ -185,6 +185,13 @@ export function AddCaseDialog({ open, onOpenChange }: AddCaseDialogProps) {
       return
     }
 
+    // Validate phone number
+    if (telefono && telefono.length !== 10) {
+      setError('El número de teléfono debe tener exactamente 10 dígitos')
+      setLoading(false)
+      return
+    }
+
     // Insert new case
     const totalAmount = totalAmountCharged ? parseFloat(totalAmountCharged) : 0
 
@@ -371,16 +378,21 @@ export function AddCaseDialog({ open, onOpenChange }: AddCaseDialogProps) {
               <Input
                 id="telefono"
                 type="tel"
-                placeholder="664 123 4567"
+                placeholder="6641234567"
                 value={telefono}
-                onChange={(e) => setTelefono(e.target.value)}
-                maxLength={15}
+                onChange={(e) => {
+                  const value = e.target.value.replace(/\D/g, '') // Remove non-digits
+                  if (value.length <= 10) {
+                    setTelefono(value)
+                  }
+                }}
+                maxLength={10}
                 disabled={loading || success}
                 className="flex-1"
               />
             </div>
             <p className="text-xs text-muted-foreground">
-              Número de teléfono del cliente (sin código de país, solo dígitos)
+              Número de teléfono del cliente (10 dígitos, sin código de país)
             </p>
           </div>
 

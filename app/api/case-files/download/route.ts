@@ -5,57 +5,60 @@ export async function GET(request: NextRequest) {
   try {
     const supabase = await createClient()
 
-    // Get authenticated user
+    // Check authentication
     const {
       data: { user },
-      error: userError,
     } = await supabase.auth.getUser()
 
-    if (userError || !user) {
+    if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // Get fileId and download flag from query params
+    // Get fileId from query params
     const { searchParams } = new URL(request.url)
     const fileId = searchParams.get('fileId')
     const download = searchParams.get('download') === 'true'
 
     if (!fileId) {
-      return NextResponse.json({ error: 'Missing fileId' }, { status: 400 })
+      return NextResponse.json({ error: 'File ID is required' }, { status: 400 })
     }
 
-    // Get file metadata and verify ownership
-    const { data: fileData, error: fileError } = await supabase
+    // Get file details from database
+    const { data: file, error: fileError } = await supabase
       .from('case_files')
       .select('*')
       .eq('id', fileId)
-      .eq('user_id', user.id)
+      .eq('user_id', user.id) // Ensure user owns this file
       .single()
 
-    if (fileError || !fileData) {
-      return NextResponse.json({ error: 'File not found or unauthorized' }, { status: 404 })
+    if (fileError || !file) {
+      console.error('Error fetching file:', fileError)
+      return NextResponse.json({ error: 'File not found' }, { status: 404 })
     }
 
-    // Generate signed URL (valid for 1 hour)
-    // If download flag is set, force download instead of display
-    const { data: signedUrlData, error: urlError } = await supabase.storage
-      .from('case-files')
-      .createSignedUrl(fileData.file_path, 3600, {
-        download: download ? fileData.file_name : false
+    // Generate signed URL for the file
+    const { data: signedUrlData, error: signedUrlError } = await supabase.storage
+      .from('tribunal-documents')
+      .createSignedUrl(file.file_path, 3600, {
+        download: download ? file.file_name : undefined
       })
 
-    if (urlError || !signedUrlData) {
-      console.error('Signed URL error:', urlError)
+    if (signedUrlError || !signedUrlData) {
+      console.error('Error generating signed URL:', signedUrlError)
       return NextResponse.json({ error: 'Failed to generate download URL' }, { status: 500 })
     }
 
     return NextResponse.json({
       signedUrl: signedUrlData.signedUrl,
-      fileName: fileData.file_name,
-      mimeType: fileData.mime_type
+      fileName: file.file_name,
+      mimeType: file.mime_type
     })
+
   } catch (error) {
-    console.error('Download file error:', error)
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    console.error('Error in download route:', error)
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    )
   }
 }
