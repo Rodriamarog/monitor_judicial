@@ -249,7 +249,7 @@ async function DashboardContent() {
   ])
 
   // Alert activity data is already aggregated by the RPC function
-  const alertActivity = alertActivityData?.map((row) => ({
+  const alertActivity = alertActivityData?.map((row: { alert_date: string; alert_count: number }) => ({
     date: row.alert_date,
     count: Number(row.alert_count)
   })) || []
