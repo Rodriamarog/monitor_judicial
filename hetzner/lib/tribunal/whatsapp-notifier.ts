@@ -82,11 +82,15 @@ export async function sendTribunalWhatsAppAlert(
     const whatsappNumber = formatToWhatsApp(profile.phone);
 
     // Send Tribunal Electrónico alert with AI summary
+    // IMPORTANT: The "fecha" parameter is intentionally misnamed - it contains AI SUMMARY, not a date
+    // This is a workaround for the WhatsApp template structure "el {{4}}"
+    // The AI summary starts with "resumen:" so the message reads "el resumen: [content]"
+    // See hetzner/lib/whatsapp.ts for full documentation of this workaround
     const result = await sendTribunalElectronicoAlert({
       to: whatsappNumber,
       expediente,
       juzgado,
-      aiSummary
+      fecha: aiSummary || descripcion // AI summary (not actually a date despite parameter name!)
     });
 
     if (result.success) {

@@ -125,25 +125,42 @@ export async function sendWhatsAppAlert(
 
 /**
  * Send WhatsApp alert for Tribunal Electrónico documents
- * Uses the same template but with different variable mapping
+ * Uses the same template as bulletin alerts but with different variable mapping
  *
- * Template:
+ * Template (notificacion_de_compra_2):
  * "Hay una nueva actualización en tu {{1}}
  *  por {{2}}
  *  en {{3}}
  *  el {{4}}."
  *
+ * IMPORTANT: The template expects "el {{4}}" which means "on the {{4}}"
+ * This creates a grammatical structure where {{4}} should be a noun that works with "el"
+ *
  * Mapping for Tribunal Electrónico:
  * {{1}} = caso [expediente]
  * {{2}} = TRIBUNAL ELECTRÓNICO
  * {{3}} = Location (extracted from juzgado)
- * {{4}} = documento indica: [AI summary]
+ * {{4}} = AI summary starting with "resumen:" to make "el resumen: ..." grammatically correct
+ *
+ * CRITICAL WORKAROUND:
+ * The "fecha" parameter is intentionally misnamed - it actually contains the AI SUMMARY.
+ * This is a clever workaround because:
+ * 1. The template's "el {{4}}" was designed for dates ("el 29/01/2026")
+ * 2. We want to send AI summaries instead for Tribunal alerts
+ * 3. We prepend "resumen: " programmatically to make "el resumen: [content]" grammatically correct
+ * 4. The parameter is named "fecha" for consistency with other parts of the codebase
+ *
+ * The AI summary is cleaned and formatted automatically:
+ * - Prepends "resumen: " prefix (or removes it first if AI already added it)
+ * - Removes newlines (templates don't support \n)
+ * - Removes markdown formatting (**, *, _)
+ * - Truncates to 1024 characters (Twilio's standard variable limit)
  */
 export async function sendTribunalElectronicoAlert(data: {
   to: string; // WhatsApp number (format: whatsapp:+5216641234567)
   expediente: string;
   juzgado: string;
-  aiSummary?: string;
+  fecha: string; // ACTUALLY contains AI summary - named "fecha" for compatibility (see above)
 }): Promise<{ success: boolean; error?: string; messageId?: string }> {
   try {
     if (!whatsappFrom) {
@@ -159,11 +176,29 @@ export async function sendTribunalElectronicoAlert(data: {
     // Extract location from juzgado
     const location = extractLocation(data.juzgado);
 
-    // Format the AI summary with "documento indica:" prefix
-    // If no AI summary, use a generic message
-    const summaryText = data.aiSummary
-      ? `documento indica: ${data.aiSummary}`
-      : 'documento fue actualizado en el sistema';
+    // Clean and truncate AI summary to fit WhatsApp template limits
+    // Remove newlines (required - templates don't support them)
+    // Remove markdown formatting (**, *, _) - WhatsApp shows them as literals
+    // Prepend "resumen: " to make "el resumen: [content]" grammatically correct
+    // Limit to 1024 chars (Twilio's standard variable limit)
+    let cleanedSummary = data.fecha
+      .replace(/\n/g, ' ')           // Remove newlines
+      .replace(/\*\*/g, '')          // Remove bold markers
+      .replace(/\*/g, '')            // Remove italic/bullet markers
+      .replace(/_/g, '')             // Remove underscores
+      .replace(/\s+/g, ' ')          // Compress whitespace
+      .trim();
+
+    // Remove "resumen:" if AI already added it (for backwards compatibility)
+    if (cleanedSummary.toLowerCase().startsWith('resumen:')) {
+      cleanedSummary = cleanedSummary.substring(8).trim();
+    }
+
+    // Prepend "resumen: " programmatically
+    cleanedSummary = 'resumen: ' + cleanedSummary;
+
+    // Now truncate to fit limit (including the "resumen: " prefix)
+    cleanedSummary = cleanedSummary.substring(0, 1024);
 
     const response = await client.messages.create({
       from: whatsappFrom,
@@ -173,7 +208,7 @@ export async function sendTribunalElectronicoAlert(data: {
         '1': `caso ${data.expediente}`,
         '2': 'TRIBUNAL ELECTRÓNICO',
         '3': location,
-        '4': summaryText,
+        '4': cleanedSummary,
       }),
     });
 

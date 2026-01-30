@@ -553,7 +553,7 @@ export default function AlertsPage() {
             </CardContent>
           </Card>
         ) : (
-          <div className="h-full overflow-auto">
+          <div className="h-full">
             <AlertsTable alerts={filteredAlerts} />
           </div>
         )}

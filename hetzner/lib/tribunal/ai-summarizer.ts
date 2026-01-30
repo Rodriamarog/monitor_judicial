@@ -58,12 +58,29 @@ Expediente: ${expediente}
 Juzgado: ${juzgado}
 Descripción: ${descripcion}
 
-Por favor proporciona:
-1. Tipo de documento (ej: acuerdo, auto, sentencia, notificación)
-2. Resumen ejecutivo (2-3 oraciones) de lo más importante
-3. Acciones requeridas o fechas límite (si aplica)
+IMPORTANTE: Este resumen se enviará por WhatsApp, así que debe ser EXTREMADAMENTE CONCISO.
 
-Responde de manera concisa y enfocada en lo relevante para un abogado.`;
+Proporciona un resumen que incluya:
+1. Tipo de documento en 2-3 palabras (ej: "Auto de trámite", "Sentencia definitiva")
+2. La idea GENERAL del documento (sin detalles específicos)
+3. Si requiere acción urgente o no
+
+Reglas estrictas:
+- NO uses asteriscos, negritas, ni formato markdown
+- NO uses viñetas ni números
+- Máximo 100 palabras (3-4 oraciones cortas)
+- NO incluyas números de caso, fechas específicas, nombres de partes, ni números de oficios
+- Enfócate en el "qué" de manera general, no en los detalles
+- Cada oración debe ser corta y directa
+
+Buenos ejemplos:
+- "Auto de trámite. Se recibieron las pruebas ofrecidas. La admisión se resolverá después. No hay acciones urgentes."
+- "Notificación. Se agregó un oficio relacionado con amparo. Solo es informativo."
+- "Acuerdo. Se programa audiencia próximamente. Debe comparecer cuando sea citado."
+
+Mal ejemplo (demasiado detalle):
+- "Auto de trámite. El juzgado agrega el oficio 18832/2025 del Juzgado Decimosexto sobre amparo 748/2025-I de Metlife México dictado el 27 de enero..."`;
+
 
     const result = await model.generateContent([
       { text: prompt },
