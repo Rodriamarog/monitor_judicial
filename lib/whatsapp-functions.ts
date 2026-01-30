@@ -443,6 +443,14 @@ Hora: ${startTime.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digi
 }
 
 // Handler: Check if client has phone number
+// Helper function to check if a phone number is Mexican (+52)
+function isMexicanPhone(phoneNumber: string | null): boolean {
+  if (!phoneNumber) return false
+  const phone = phoneNumber.replace(/\D/g, '') // Remove non-digits
+  // Mexican numbers: start with 52 (country code) or are exactly 10 digits (local format)
+  return phone.startsWith('52') || phone.length === 10
+}
+
 export async function handleCheckClientPhone(
   args: { case_id: string },
   userId: string
@@ -451,6 +459,7 @@ export async function handleCheckClientPhone(
     const { case_id } = args
     const supabase = getServiceClient()
 
+    // Get client phone
     const { data: caseData, error } = await supabase
       .from('monitored_cases')
       .select('nombre, telefono, case_number')
@@ -465,7 +474,22 @@ export async function handleCheckClientPhone(
       }
     }
 
-    const hasPhone = !!caseData.telefono
+    // Get lawyer phone
+    const { data: userData, error: userError } = await supabase
+      .from('user_profiles')
+      .select('phone')
+      .eq('id', userId)
+      .single()
+
+    if (userError) {
+      console.error('Error getting user profile:', userError)
+    }
+
+    const clientHasPhone = !!caseData.telefono
+    const clientIsMexican = isMexicanPhone(caseData.telefono)
+
+    const lawyerHasPhone = !!userData?.phone
+    const lawyerIsMexican = isMexicanPhone(userData?.phone)
 
     return {
       success: true,
@@ -473,7 +497,10 @@ export async function handleCheckClientPhone(
         case_id,
         client_name: caseData.nombre,
         case_number: caseData.case_number,
-        has_phone: hasPhone,
+        client_has_phone: clientHasPhone,
+        client_is_mexican: clientIsMexican,
+        lawyer_has_phone: lawyerHasPhone,
+        lawyer_is_mexican: lawyerIsMexican,
         phone: caseData.telefono,
       },
       message: hasPhone

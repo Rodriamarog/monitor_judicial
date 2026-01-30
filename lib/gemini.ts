@@ -113,7 +113,7 @@ export const geminiTools = [
       },
       {
         name: 'check_client_phone',
-        description: 'Verifica si un cliente tiene teléfono registrado para poder enviar recordatorios por SMS.',
+        description: 'Verifica si el cliente Y el abogado tienen teléfonos mexicanos (+52) para enviar recordatorios por SMS. Solo números mexicanos pueden recibir SMS.',
         parameters: {
           type: 'object',
           properties: {
@@ -295,7 +295,7 @@ export const openaiTools: OpenAI.Chat.Completions.ChatCompletionTool[] = [
     type: 'function',
     function: {
       name: 'check_client_phone',
-      description: 'Verifica si un cliente tiene teléfono registrado para poder enviar recordatorios por SMS.',
+      description: 'Verifica si el cliente Y el abogado tienen teléfonos mexicanos (+52) para enviar recordatorios por SMS. Solo números mexicanos pueden recibir SMS.',
       parameters: {
         type: 'object',
         properties: {
@@ -506,14 +506,30 @@ Flujo OBLIGATORIO paso a paso:
 
 **Paso 2: Confirmar detalles y preguntar sobre recordatorio**
 - Mostrar: "Perfecto, la cita con [CLIENTE] queda para el [FECHA] a las [HORA]."
-- Preguntar: "¿Quieres que te enviemos un recordatorio por SMS 24 horas antes?"
+- Preguntar: "¿Quieres que les enviemos un recordatorio por SMS 24 horas antes (tanto a ti como al cliente)?"
 - Esperar respuesta del usuario
 
 **Paso 3: Si usuario dice SÍ al recordatorio**
 - Si tiene cliente → llamar check_client_phone INMEDIATAMENTE
-- Mostrar resultado:
-  * Si tiene teléfono: "Perfecto, [CLIENTE] tiene teléfono registrado. Se enviará recordatorio tanto a ti como al cliente."
-  * Si NO tiene teléfono: "⚠️ [CLIENTE] no tiene teléfono registrado, solo tú recibirás el recordatorio."
+- Analizar el resultado y mostrar mensaje apropiado:
+  * Si AMBOS tienen números mexicanos (lawyer_is_mexican: true Y client_is_mexican: true):
+    → "Perfecto, ambos tienen números mexicanos. Les enviaré recordatorio por SMS a ti y a [CLIENTE]."
+
+  * Si SOLO el abogado tiene número mexicano (lawyer_is_mexican: true PERO client_is_mexican: false):
+    → "⚠️ El número de [CLIENTE] no es mexicano (solo podemos enviar SMS a números +52 de México). Solo tú recibirás el recordatorio."
+
+  * Si SOLO el cliente tiene número mexicano (client_is_mexican: true PERO lawyer_is_mexican: false):
+    → "⚠️ Tu número no es mexicano (solo podemos enviar SMS a números +52 de México). Solo [CLIENTE] recibirá el recordatorio."
+
+  * Si NINGUNO tiene número mexicano (lawyer_is_mexican: false Y client_is_mexican: false):
+    → "⚠️ Ninguno de los dos tiene número mexicano (solo podemos enviar SMS a números +52 de México). No se podrá enviar recordatorio por SMS."
+
+  * Si el cliente no tiene teléfono (client_has_phone: false) pero el abogado sí es mexicano:
+    → "⚠️ [CLIENTE] no tiene teléfono registrado. Solo tú recibirás el recordatorio."
+
+  * Si el abogado no tiene teléfono (lawyer_has_phone: false) pero el cliente sí es mexicano:
+    → "⚠️ No tienes teléfono registrado. Solo [CLIENTE] recibirá el recordatorio."
+
 - NO preguntar de nuevo sobre el recordatorio
 - Ir directo a Paso 4
 
