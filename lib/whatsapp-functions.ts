@@ -503,7 +503,7 @@ export async function handleCheckClientPhone(
         lawyer_is_mexican: lawyerIsMexican,
         phone: caseData.telefono,
       },
-      message: hasPhone
+      message: clientHasPhone
         ? `${caseData.nombre} tiene teléfono registrado: ${caseData.telefono}`
         : `⚠️ ${caseData.nombre} NO tiene teléfono registrado. Para enviar recordatorios, agrega el teléfono en la plataforma.`,
     }
