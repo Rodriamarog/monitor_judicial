@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Card, CardContent } from '@/components/ui/card'
-import { Bell, Loader2, FileText, UserSearch } from 'lucide-react'
+import { Bell, Loader2 } from 'lucide-react'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { AlertsTable } from '@/components/alerts-table'
@@ -17,6 +17,7 @@ import {
   CommandInput,
   CommandItem,
   CommandList,
+  CommandSeparator,
 } from '@/components/ui/command'
 import {
   Popover,
@@ -81,28 +82,34 @@ export default function AlertsPage() {
   const [names, setNames] = useState<MonitoredName[]>([])
   const [loading, setLoading] = useState(true)
 
-  // Alert type toggle: 'cases' or 'names'
-  // If there's a 'name' parameter, default to 'names' tab
-  const [alertType, setAlertType] = useState<'cases' | 'names'>(() => {
-    const typeParam = searchParams?.get('type') as 'cases' | 'names'
-    const nameParam = searchParams?.get('name')
-    if (typeParam) return typeParam
-    if (nameParam && nameParam !== 'all') return 'names'
-    return 'cases'
-  })
-
   // Get today's date in YYYY-MM-DD format (Tijuana timezone)
   const getTodayDate = () => {
     return new Date().toLocaleDateString('en-CA', { timeZone: 'America/Tijuana' })
   }
 
+  // Unified filter state
+  const [selectedFilter, setSelectedFilter] = useState<{
+    type: 'all' | 'case' | 'name'
+    id?: string
+  }>(() => {
+    const caseParam = searchParams?.get('case')
+    const nameParam = searchParams?.get('name')
+
+    if (caseParam && caseParam !== 'all') {
+      return { type: 'case', id: caseParam }
+    }
+    if (nameParam && nameParam !== 'all') {
+      return { type: 'name', id: nameParam }
+    }
+
+    return { type: 'all' }
+  })
+
+  const [comboboxOpen, setComboboxOpen] = useState(false)
+
   // Filter states - default to today
-  const [selectedCase, setSelectedCase] = useState<string>(searchParams?.get('case') || 'all')
-  const [selectedName, setSelectedName] = useState<string>(searchParams?.get('name') || 'all')
   const [dateFrom, setDateFrom] = useState<string>(searchParams?.get('from') || getTodayDate())
   const [dateTo, setDateTo] = useState<string>(searchParams?.get('to') || getTodayDate())
-  const [caseComboboxOpen, setCaseComboboxOpen] = useState(false)
-  const [nameComboboxOpen, setNameComboboxOpen] = useState(false)
 
   useEffect(() => {
     async function fetchData() {
@@ -162,20 +169,13 @@ export default function AlertsPage() {
         `)
         .eq('user_id', user.id)
 
-      // Filter by alert type
-      if (alertType === 'cases') {
-        query = query.eq('matched_on', 'case_number')
-        // Apply case filter if selected
-        if (selectedCase && selectedCase !== 'all') {
-          query = query.eq('monitored_case_id', selectedCase)
-        }
-      } else {
-        query = query.eq('matched_on', 'name')
-        // Apply name filter if selected
-        if (selectedName && selectedName !== 'all') {
-          query = query.eq('monitored_name_id', selectedName)
-        }
+      // Apply unified filter
+      if (selectedFilter.type === 'case' && selectedFilter.id) {
+        query = query.eq('monitored_case_id', selectedFilter.id)
+      } else if (selectedFilter.type === 'name' && selectedFilter.id) {
+        query = query.eq('monitored_name_id', selectedFilter.id)
       }
+      // If type === 'all', no filter - fetch both types
 
       const { data: alertsData } = await query.order('created_at', { ascending: false })
 
@@ -184,7 +184,7 @@ export default function AlertsPage() {
     }
 
     fetchData()
-  }, [selectedCase, selectedName, alertType, router, supabase])
+  }, [selectedFilter, router, supabase])
 
   // Filter alerts by date range (using alert creation date)
   const filteredAlerts = useMemo(() => {
@@ -250,6 +250,30 @@ export default function AlertsPage() {
     return dateFrom === '' && dateTo === ''
   }
 
+  // Helper functions for unified filter
+  const getFilterDisplayText = () => {
+    if (selectedFilter.type === 'all') return 'Todos'
+
+    if (selectedFilter.type === 'case') {
+      const matchedCase = cases.find(c => c.id === selectedFilter.id)
+      if (matchedCase) {
+        return `${matchedCase.case_number}${matchedCase.nombre ? ` - ${matchedCase.nombre}` : ''}`
+      }
+    }
+
+    if (selectedFilter.type === 'name') {
+      const matchedName = names.find(n => n.id === selectedFilter.id)
+      if (matchedName) return matchedName.full_name
+    }
+
+    return 'Seleccionar...'
+  }
+
+  const handleFilterSelect = (type: 'all' | 'case' | 'name', id?: string) => {
+    setSelectedFilter({ type, id })
+    setComboboxOpen(false)
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
@@ -267,10 +291,7 @@ export default function AlertsPage() {
           <div>
             <h1 className="text-3xl font-bold">Alertas</h1>
             <p className="text-muted-foreground">
-              {alertType === 'cases'
-                ? 'Historial de casos encontrados en boletines judiciales'
-                : 'Historial de nombres encontrados en boletines judiciales'
-              }
+              Historial de casos y nombres encontrados en boletines judiciales y Tribunal Electrónico
             </p>
           </div>
           <div className="text-right">
@@ -281,92 +302,61 @@ export default function AlertsPage() {
           </div>
         </div>
 
-        {/* Alert Type Toggle */}
-        <Card>
-          <CardContent className="py-3">
-            <div className="flex gap-2">
-              <Button
-                variant={alertType === 'cases' ? 'default' : 'outline'}
-                className="flex-1 gap-2"
-                onClick={() => setAlertType('cases')}
-              >
-                <FileText className="h-4 w-4" />
-                Alertas por Caso
-              </Button>
-              <Button
-                variant={alertType === 'names' ? 'default' : 'outline'}
-                className="flex-1 gap-2"
-                onClick={() => setAlertType('names')}
-              >
-                <UserSearch className="h-4 w-4" />
-                Alertas por Nombre
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-
         {/* Filters */}
         <Card>
           <CardContent className="pt-6">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {/* Case or Name Filter - Searchable Combobox */}
-            {alertType === 'cases' ? (
-              <div className="space-y-2">
-                <Label>Filtrar por Caso</Label>
-                <Popover open={caseComboboxOpen} onOpenChange={setCaseComboboxOpen}>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant="outline"
-                      role="combobox"
-                      aria-expanded={caseComboboxOpen}
-                      className="w-full justify-between"
-                    >
-                      {selectedCase === 'all'
-                        ? 'Todos los casos'
-                        : cases.find((c) => c.id === selectedCase)
-                        ? `${cases.find((c) => c.id === selectedCase)?.case_number}${
-                            cases.find((c) => c.id === selectedCase)?.nombre
-                              ? ` - ${cases.find((c) => c.id === selectedCase)?.nombre}`
-                              : ''
-                          }`
-                        : 'Seleccionar caso...'}
-                      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-full p-0" align="start" side="bottom" avoidCollisions={false}>
-                    <Command>
-                      <CommandInput placeholder="Buscar caso..." />
-                      <CommandList>
-                        <CommandEmpty>No se encontró ningún caso.</CommandEmpty>
-                        <CommandGroup>
-                          <CommandItem
-                            value="all"
-                            onSelect={() => {
-                              setSelectedCase('all')
-                              setCaseComboboxOpen(false)
-                            }}
-                          >
-                            <Check
-                              className={cn(
-                                'mr-2 h-4 w-4',
-                                selectedCase === 'all' ? 'opacity-100' : 'opacity-0'
-                              )}
-                            />
-                            Todos los casos
-                          </CommandItem>
+            {/* Unified Filter - Searchable Combobox */}
+            <div className="space-y-2">
+              <Label>Filtrar Alertas</Label>
+              <Popover open={comboboxOpen} onOpenChange={setComboboxOpen}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    role="combobox"
+                    aria-expanded={comboboxOpen}
+                    className="w-full justify-between"
+                  >
+                    {getFilterDisplayText()}
+                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-full p-0" align="start" side="bottom" avoidCollisions={false}>
+                  <Command>
+                    <CommandInput placeholder="Buscar caso o nombre..." />
+                    <CommandList>
+                      <CommandEmpty>No se encontró ningún resultado.</CommandEmpty>
+
+                      {/* "Todos" option */}
+                      <CommandGroup>
+                        <CommandItem value="all" onSelect={() => handleFilterSelect('all')}>
+                          <Check
+                            className={cn(
+                              'mr-2 h-4 w-4',
+                              selectedFilter.type === 'all' ? 'opacity-100' : 'opacity-0'
+                            )}
+                          />
+                          Todos
+                        </CommandItem>
+                      </CommandGroup>
+
+                      {cases.length > 0 && <CommandSeparator />}
+
+                      {/* Cases section - at the top */}
+                      {cases.length > 0 && (
+                        <CommandGroup heading="Casos por Expediente">
                           {cases.map((c) => (
                             <CommandItem
                               key={c.id}
-                              value={`${c.case_number} ${c.nombre || ''}`}
-                              onSelect={() => {
-                                setSelectedCase(c.id)
-                                setCaseComboboxOpen(false)
-                              }}
+                              value={`case-${c.case_number} ${c.nombre || ''}`}
+                              onSelect={() => handleFilterSelect('case', c.id)}
                             >
                               <Check
                                 className={cn(
                                   'mr-2 h-4 w-4',
-                                  selectedCase === c.id ? 'opacity-100' : 'opacity-0'
+                                  selectedFilter.type === 'case' && selectedFilter.id === c.id
+                                    ? 'opacity-100'
+                                    : 'opacity-0'
                                 )}
                               />
                               <div className="flex flex-col">
@@ -378,62 +368,25 @@ export default function AlertsPage() {
                             </CommandItem>
                           ))}
                         </CommandGroup>
-                      </CommandList>
-                    </Command>
-                  </PopoverContent>
-                </Popover>
-              </div>
-            ) : (
-              <div className="space-y-2">
-                <Label>Filtrar por Nombre</Label>
-                <Popover open={nameComboboxOpen} onOpenChange={setNameComboboxOpen}>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant="outline"
-                      role="combobox"
-                      aria-expanded={nameComboboxOpen}
-                      className="w-full justify-between"
-                    >
-                      {selectedName === 'all'
-                        ? 'Todos los nombres'
-                        : names.find((n) => n.id === selectedName)?.full_name || 'Seleccionar nombre...'}
-                      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-full p-0" align="start" side="bottom" avoidCollisions={false}>
-                    <Command>
-                      <CommandInput placeholder="Buscar nombre..." />
-                      <CommandList>
-                        <CommandEmpty>No se encontró ningún nombre.</CommandEmpty>
-                        <CommandGroup>
-                          <CommandItem
-                            value="all"
-                            onSelect={() => {
-                              setSelectedName('all')
-                              setNameComboboxOpen(false)
-                            }}
-                          >
-                            <Check
-                              className={cn(
-                                'mr-2 h-4 w-4',
-                                selectedName === 'all' ? 'opacity-100' : 'opacity-0'
-                              )}
-                            />
-                            Todos los nombres
-                          </CommandItem>
+                      )}
+
+                      {cases.length > 0 && names.length > 0 && <CommandSeparator />}
+
+                      {/* Names section - at the bottom */}
+                      {names.length > 0 && (
+                        <CommandGroup heading="Nombres Monitoreados">
                           {names.map((n) => (
                             <CommandItem
                               key={n.id}
-                              value={n.full_name}
-                              onSelect={() => {
-                                setSelectedName(n.id)
-                                setNameComboboxOpen(false)
-                              }}
+                              value={`name-${n.full_name}`}
+                              onSelect={() => handleFilterSelect('name', n.id)}
                             >
                               <Check
                                 className={cn(
                                   'mr-2 h-4 w-4',
-                                  selectedName === n.id ? 'opacity-100' : 'opacity-0'
+                                  selectedFilter.type === 'name' && selectedFilter.id === n.id
+                                    ? 'opacity-100'
+                                    : 'opacity-0'
                                 )}
                               />
                               <div className="flex flex-col">
@@ -445,12 +398,12 @@ export default function AlertsPage() {
                             </CommandItem>
                           ))}
                         </CommandGroup>
-                      </CommandList>
-                    </Command>
-                  </PopoverContent>
-                </Popover>
-              </div>
-            )}
+                      )}
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
+            </div>
 
             {/* Date From */}
             <div className="space-y-2">
@@ -538,17 +491,18 @@ export default function AlertsPage() {
               <p className="text-lg font-medium mb-2">No hay alertas</p>
               <p className="text-muted-foreground mb-4">
                 {alerts.length === 0
-                  ? alertType === 'cases'
-                    ? 'Las alertas aparecerán aquí cuando sus casos sean encontrados en los boletines'
-                    : 'Las alertas aparecerán aquí cuando los nombres monitoreados sean encontrados en los boletines'
+                  ? 'Las alertas aparecerán aquí cuando sus casos o nombres monitoreados sean encontrados'
                   : 'No se encontraron alertas con los filtros seleccionados'}
               </p>
               {alerts.length === 0 && (
-                <Link href={alertType === 'cases' ? '/dashboard' : '/dashboard/nombres'}>
-                  <Button>
-                    {alertType === 'cases' ? 'Agregar un caso' : 'Agregar un nombre'}
-                  </Button>
-                </Link>
+                <div className="flex gap-2 justify-center">
+                  <Link href="/dashboard">
+                    <Button variant="outline">Agregar caso</Button>
+                  </Link>
+                  <Link href="/dashboard/nombres">
+                    <Button>Agregar nombre</Button>
+                  </Link>
+                </div>
               )}
             </CardContent>
           </Card>

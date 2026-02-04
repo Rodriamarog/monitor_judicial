@@ -140,9 +140,7 @@ export function AlertsTable({ alerts }: AlertsTableProps) {
           <TableHeader className="sticky top-0 bg-background z-10">
             <TableRow>
               <TableHead>Fecha de Alerta</TableHead>
-              <TableHead>
-                {alerts.length > 0 && alerts[0].matched_on === 'name' ? 'Nombre / Expediente' : 'Expediente'}
-              </TableHead>
+              <TableHead>Nombre / Expediente</TableHead>
               <TableHead className="hidden md:table-cell">Juzgado</TableHead>
               <TableHead className="hidden sm:table-cell">Boletín</TableHead>
               <TableHead className="text-right">Detalles</TableHead>
@@ -180,15 +178,30 @@ export function AlertsTable({ alerts }: AlertsTableProps) {
                         </TableCell>
                         <TableCell className="text-sm">
                           {alert.matched_on === 'name' ? (
+                            // NAME ALERTS: Show name prominently with badge, case as subtitle
                             <div>
-                              <div className="font-medium">
-                                {alert.monitored_names?.full_name}
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <div className="font-medium">
+                                  {alert.monitored_names?.full_name}
+                                </div>
+                                {alert.case_files ? (
+                                  <Badge variant="secondary" className="text-xs bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300">
+                                    Tribunal Electrónico
+                                  </Badge>
+                                ) : (
+                                  <Badge variant="outline" className="text-xs">
+                                    Boletín Judicial
+                                  </Badge>
+                                )}
                               </div>
                               <div className="text-xs text-muted-foreground mt-1">
-                                Encontrado en: {alert.bulletin_entries?.case_number}
+                                Encontrado en: {alert.bulletin_entries?.case_number ||
+                                                alert.case_files?.tribunal_descripcion ||
+                                                'Sin expediente'}
                               </div>
                             </div>
                           ) : (
+                            // CASE ALERTS: Show case prominently with badge, name as subtitle (original layout)
                             <div className="flex items-center gap-2 flex-wrap">
                               <div className="font-mono">
                                 {alert.monitored_cases?.case_number}
