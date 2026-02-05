@@ -5,14 +5,15 @@ Implements agentic search with LLM-driven iteration control
 
 import os
 import json
-from typing import TypedDict, List, Annotated, Literal
+from typing import TypedDict, List, Annotated, Literal, Optional, Set
 from dotenv import load_dotenv
 from langchain_openai import ChatOpenAI
 from langgraph.graph import StateGraph, END
 from mcp_tools import (
     search_and_rerank,
     TesisResult,
-    get_tesis_full
+    get_tesis_full,
+    merge_sources
 )
 
 # Load environment variables
@@ -62,6 +63,14 @@ class AgentState(TypedDict):
 
     # Final output
     final_response: str
+
+    # NEW: Conversation memory fields
+    conversation_id: Optional[str]        # Supabase conversation UUID
+    user_id: Optional[str]                # Supabase user UUID
+    conversation_history: List[dict]      # Last 16 messages
+    discussed_tesis: Set[int]             # IDs already discussed
+    historical_sources: List[dict]        # Sources from history
+    should_reuse_sources: bool            # Intent: reuse vs new search
 
 
 # ============================================================================
@@ -122,14 +131,143 @@ Resultado {i}:
 # Agent Nodes
 # ============================================================================
 
+def load_context_node(state: AgentState) -> AgentState:
+    """Load conversation history and context before search"""
+    from conversation import ConversationManager, classify_intent_with_llm_fallback
+
+    conv_manager = ConversationManager()
+
+    if state["conversation_id"]:
+        print(f"📚 Loading conversation history: {state['conversation_id']}")
+
+        # Load history from Supabase
+        history = conv_manager.load_conversation_history(state["conversation_id"])
+        state["conversation_history"] = history
+        print(f"   Loaded {len(history)} messages")
+
+        # Extract discussed tesis
+        state["discussed_tesis"] = conv_manager.extract_discussed_tesis(history)
+        print(f"   Found {len(state['discussed_tesis'])} discussed tesis")
+
+        # Extract historical sources for potential reuse
+        state["historical_sources"] = conv_manager.extract_historical_sources(history)
+        print(f"   Extracted {len(state['historical_sources'])} unique sources")
+
+        # Classify intent with LLM fallback
+        state["should_reuse_sources"] = classify_intent_with_llm_fallback(
+            state["user_query"],
+            history
+        )
+        intent = "REUSE" if state["should_reuse_sources"] else "NEW_SEARCH"
+        print(f"   Intent classified as: {intent}")
+    else:
+        # New conversation
+        print("📝 Starting new conversation")
+        state["conversation_history"] = []
+        state["discussed_tesis"] = set()
+        state["historical_sources"] = []
+        state["should_reuse_sources"] = False
+
+    return state
+
+
+def rewrite_query_node(state: AgentState) -> AgentState:
+    """Rewrite ambiguous queries with conversation context"""
+
+    # Skip if query is self-contained (>100 chars) or no history
+    if len(state["user_query"]) > 100 or not state["conversation_history"]:
+        state["current_query"] = state["user_query"]
+        return state
+
+    # Get last 6 messages (3 pairs) for context
+    recent = state["conversation_history"][-6:]
+    context = "\n".join([
+        f"{m['role'].title()}: {m['content'][:150]}"
+        for m in recent
+    ])
+
+    prompt = f"""Reescribe esta consulta legal agregando contexto de la conversación.
+
+CONSULTA ORIGINAL: "{state['user_query']}"
+
+CONTEXTO RECIENTE:
+{context}
+
+REGLAS:
+- Si la consulta es clara y específica, responde: ORIGINAL
+- Si es ambigua o hace referencia a mensajes anteriores, reescríbela como pregunta autónoma
+- Incluye términos legales específicos mencionados antes
+- Mantén concisa (max 150 caracteres)
+- Incluye materia/área legal si está implícita
+
+CONSULTA REESCRITA (o "ORIGINAL"):"""
+
+    try:
+        response = llm.invoke([{"role": "user", "content": prompt}])
+        rewritten = response.content.strip()
+
+        if rewritten != "ORIGINAL" and len(rewritten) > 10:
+            print(f"🔄 Query rewriting:")
+            print(f"   Original: {state['user_query']}")
+            print(f"   Rewritten: {rewritten}")
+            state["current_query"] = rewritten
+            state = update_cost(state, llm_calls=1)
+        else:
+            state["current_query"] = state["user_query"]
+    except Exception as e:
+        print(f"⚠️  Query rewriting failed: {e}, using original")
+        state["current_query"] = state["user_query"]
+
+    return state
+
+
 def search_node(state: AgentState) -> AgentState:
-    """Ejecutar búsqueda semántica con reranking"""
+    """Execute search with optional source merging"""
     print(f"\n{'='*70}")
     print(f"🔍 Iteración {state['iteration']}: Buscando '{state['current_query']}'")
     print(f"{'='*70}")
 
-    # Realizar búsqueda
+    # Hybrid approach: merge new + historical sources
+    if state["should_reuse_sources"] and state["historical_sources"] and state["iteration"] == 1:
+        print(f"🔄 Hybrid search: combining new + historical sources")
+
+        # Small fresh search (5 results)
+        new_results = search_and_rerank(
+            query=state["current_query"],
+            limit=5
+        )
+
+        # Merge with historical sources (up to 10 total)
+        merged = merge_sources(
+            new_sources=new_results,
+            historical_sources=state["historical_sources"],
+            max_sources=10
+        )
+
+        state["current_results"] = merged
+        state["all_results_history"].append(merged)
+        state["query_history"].append(state["current_query"])
+
+        # Still did 1 embedding call for new search
+        state = update_cost(state, embedding_calls=1)
+
+        print(f"   Merged: {len(new_results)} new + {len(state['historical_sources'])} historical = {len(merged)} total")
+        if merged:
+            print(f"   Mejor resultado: [{merged[0].tipo_tesis}] {merged[0].rubro[:80]}...")
+
+        return state
+
+    # Full new search
+    print(f"🔍 Full semantic search...")
     results = search_and_rerank(state["current_query"], limit=10)
+
+    # Filter out already-discussed tesis for diversity
+    if state["discussed_tesis"]:
+        filtered = [r for r in results if r.id_tesis not in state["discussed_tesis"]]
+        removed = len(results) - len(filtered)
+        if removed > 0:
+            print(f"   Filtered out {removed} already-discussed tesis")
+        results = filtered
 
     # Actualizar estado
     state["current_results"] = results
@@ -268,7 +406,7 @@ Registro: {r.tesis or 'N/A'}
 Localización: {r.localizacion or 'N/A'}
 
 Texto:
-{r.texto[:1000]}{'...' if len(r.texto) > 1000 else ''}
+{r.texto}
 
 Precedentes:
 {full_tesis.get('precedentes', 'N/A') if full_tesis else 'N/A'}
@@ -277,30 +415,32 @@ Precedentes:
 
     tesis_context = "\n".join(tesis_details)
 
-    prompt = f"""Eres un experto en derecho mexicano. El usuario ha consultado:
+    prompt = f"""Eres un asistente legal AI experto en derecho mexicano. Responde directamente al usuario.
 
-CONSULTA: "{state['user_query']}"
+CONSULTA DEL USUARIO: "{state['user_query']}"
 
 Se encontraron las siguientes tesis jurisprudenciales relevantes:
 
 {tesis_context}
 
 INSTRUCCIONES:
-1. Responde la consulta del usuario de manera clara y profesional
-2. Cita las tesis específicas (menciona el Rubro y Registro cuando sea posible)
-3. Explica los principios jurídicos relevantes
-4. Indica la jerarquía de las fuentes (Jurisprudencia > Tesis Aislada)
-5. Menciona si hay criterios de la 11ª Época (más recientes y vinculantes)
-6. Si hay múltiples tesis, explica cómo se relacionan o complementan
-7. Sé conciso pero completo (máximo 500 palabras)
+1. Responde DIRECTAMENTE al usuario (no generes emails ni documentos formales)
+2. NO uses saludos formales como "Estimado usuario" ni despedidas como "Atentamente"
+3. NO incluyas campos de firma o información de contacto
+4. Eres un AI asistente, no pretendas ser un abogado humano
+5. Cita las tesis específicas (menciona el Rubro y Registro cuando sea posible)
+6. Explica los principios jurídicos relevantes
+7. Indica la jerarquía de las fuentes (Jurisprudencia > Tesis Aislada)
+8. Menciona si hay criterios de la 11ª Época (más recientes y vinculantes)
+9. Si hay múltiples tesis, explica cómo se relacionan o complementan
+10. Sé claro, conciso y directo (máximo 500 palabras)
 
-IMPORTANTE:
+TONO:
+- Profesional pero conversacional
 - Usa lenguaje jurídico pero accesible
-- Prioriza Jurisprudencia sobre Tesis Aisladas
-- Menciona el año y la instancia para dar contexto
-- Si hay contradicciones, explícalas
+- Responde como un asistente AI útil, no como un abogado escribiendo documentos
 
-Genera una respuesta profesional que un abogado pueda usar."""
+Responde la consulta del usuario ahora."""
 
     response = llm.invoke([{"role": "user", "content": prompt}])
     state["final_response"] = response.content
@@ -309,6 +449,49 @@ Genera una respuesta profesional que un abogado pueda usar."""
     state = update_cost(state, llm_calls=1)
 
     print(f"   ✓ Respuesta generada ({len(state['final_response'])} caracteres)")
+
+    return state
+
+
+def save_context_node(state: AgentState) -> AgentState:
+    """Save conversation to Supabase after generating response"""
+    from conversation import ConversationManager
+
+    conv_manager = ConversationManager()
+
+    # Create conversation if this is first message
+    if not state["conversation_id"] and state["user_id"]:
+        print("💾 Creating new conversation...")
+        title = state["user_query"][:100]
+        state["conversation_id"] = conv_manager.create_conversation(
+            user_id=state["user_id"],
+            title=title
+        )
+        print(f"   Created: {state['conversation_id']}")
+
+    # Save messages only if we have a conversation_id
+    if state["conversation_id"]:
+        print("💾 Saving messages to Supabase...")
+        # Save user message
+        conv_manager.save_message(
+            conversation_id=state["conversation_id"],
+            role="user",
+            content=state["user_query"]
+        )
+
+        # Save assistant message with sources
+        conv_manager.save_message(
+            conversation_id=state["conversation_id"],
+            role="assistant",
+            content=state["final_response"],
+            sources=state["current_results"][:5]  # Top 5 sources
+        )
+
+        # Update conversation timestamp
+        conv_manager.update_conversation_timestamp(state["conversation_id"])
+        print("   ✓ Saved")
+    else:
+        print("⚠️  No conversation_id or user_id, skipping save")
 
     return state
 
@@ -366,13 +549,18 @@ def create_agent_graph():
     workflow = StateGraph(AgentState)
 
     # Agregar nodos
+    workflow.add_node("load_context", load_context_node)
+    workflow.add_node("rewrite_query", rewrite_query_node)    # NEW
     workflow.add_node("search", search_node)
     workflow.add_node("evaluate", evaluate_node)
     workflow.add_node("prepare_next", prepare_next_iteration)
     workflow.add_node("generate_response", generate_response_node)
+    workflow.add_node("save_context", save_context_node)
 
     # Definir flujo
-    workflow.set_entry_point("search")
+    workflow.set_entry_point("load_context")
+    workflow.add_edge("load_context", "rewrite_query")        # NEW
+    workflow.add_edge("rewrite_query", "search")              # CHANGED
     workflow.add_edge("search", "evaluate")
     workflow.add_conditional_edges(
         "evaluate",
@@ -383,7 +571,8 @@ def create_agent_graph():
         }
     )
     workflow.add_edge("prepare_next", "search")
-    workflow.add_edge("generate_response", END)
+    workflow.add_edge("generate_response", "save_context")
+    workflow.add_edge("save_context", END)
 
     return workflow.compile()
 
@@ -392,22 +581,31 @@ def create_agent_graph():
 # Main Agent Interface
 # ============================================================================
 
-def run_agent(user_query: str, max_iterations: int = 5) -> dict:
+def run_agent(
+    user_query: str,
+    max_iterations: int = 5,
+    conversation_id: Optional[str] = None,
+    user_id: Optional[str] = None
+) -> dict:
     """
-    Ejecutar el agente de búsqueda legal
+    Run agentic RAG with conversation memory support
 
     Args:
-        user_query: Consulta del usuario en lenguaje natural
-        max_iterations: Máximo de iteraciones permitidas
+        user_query: User's question
+        max_iterations: Max search iterations (default: 5)
+        conversation_id: Resume existing conversation (None = new)
+        user_id: Supabase user ID for RLS
 
     Returns:
-        dict con resultados y metadatos
+        dict with query, results, response, conversation_id, metadata
     """
     print(f"\n{'#'*70}")
     print(f"🤖 AGENTE DE BÚSQUEDA LEGAL RAG")
     print(f"{'#'*70}")
     print(f"Consulta: {user_query}")
     print(f"Máximo de iteraciones: {max_iterations}")
+    if conversation_id:
+        print(f"Conversation ID: {conversation_id}")
 
     # Estado inicial
     initial_state: AgentState = {
@@ -427,7 +625,15 @@ def run_agent(user_query: str, max_iterations: int = 5) -> dict:
         "embedding_calls": 0,
         "llm_calls": 0,
         "exit_reason": "",
-        "final_response": ""
+        "final_response": "",
+
+        # NEW: Conversation fields
+        "conversation_id": conversation_id,
+        "user_id": user_id,
+        "conversation_history": [],
+        "discussed_tesis": set(),
+        "historical_sources": [],
+        "should_reuse_sources": False
     }
 
     # Crear y ejecutar grafo
@@ -444,6 +650,8 @@ def run_agent(user_query: str, max_iterations: int = 5) -> dict:
     print(f"Llamadas a embeddings: {final_state['embedding_calls']}")
     print(f"Llamadas a LLM: {final_state['llm_calls']}")
     print(f"Resultados finales: {len(final_state['current_results'])}")
+    if final_state.get('conversation_id'):
+        print(f"Conversation ID: {final_state['conversation_id']}")
 
     print(f"\n{'='*70}")
     print(f"💬 RESPUESTA FINAL")
@@ -453,13 +661,21 @@ def run_agent(user_query: str, max_iterations: int = 5) -> dict:
 
     return {
         "query": user_query,
+        "conversation_id": final_state["conversation_id"],  # NEW
         "results": final_state["current_results"],
         "final_response": final_state["final_response"],
+        "sources_used": [r.id_tesis for r in final_state["current_results"][:5]],  # NEW
+        "metadata": {  # NEW
+            "reused_sources": final_state["should_reuse_sources"],
+            "discussed_tesis_count": len(final_state["discussed_tesis"]),
+            "total_messages": len(final_state["conversation_history"])
+        },
         "iterations": final_state["iteration"],
         "exit_reason": final_state["exit_reason"],
         "llm_reasoning": final_state["razonamiento"],
-        "cost": final_state["total_cost"],
-        "query_history": final_state["query_history"]
+        "total_cost": final_state["total_cost"],
+        "embedding_calls": final_state["embedding_calls"],
+        "llm_calls": final_state["llm_calls"]
     }
 
 

@@ -345,6 +345,60 @@ def get_tesis_full(id_tesis: int) -> Optional[Dict[str, Any]]:
 
 
 # ============================================================================
+# HELPER: Source Merging
+# ============================================================================
+
+def merge_sources(
+    new_sources: List[TesisResult],
+    historical_sources: List[Dict],
+    max_sources: int = 10
+) -> List[TesisResult]:
+    """
+    Merge new search results with historical sources, deduplicate by id_tesis.
+
+    Args:
+        new_sources: Fresh search results
+        historical_sources: Sources from conversation history (as dicts)
+        max_sources: Maximum number of sources to return
+
+    Returns:
+        Merged and deduplicated list of TesisResult objects
+    """
+    # Convert historical dicts to TesisResult objects
+    historical_tesis = []
+    for hist in historical_sources:
+        full_data = get_tesis_full(hist['id_tesis'])
+        if full_data:
+            historical_tesis.append(TesisResult(
+                id_tesis=full_data['id_tesis'],
+                rubro=full_data['rubro'],
+                texto=full_data['texto'],
+                epoca=full_data['epoca'],
+                tipo_tesis=full_data['tipo_tesis'],
+                instancia=full_data['instancia'],
+                anio=full_data['anio'],
+                tesis=full_data['tesis'],
+                localizacion=full_data['localizacion'],
+                distance=hist.get('distance'),
+                rank_score=hist.get('rank_score')
+            ))
+
+    # Combine: new sources first (prioritize fresh results)
+    combined = new_sources + historical_tesis
+
+    # Deduplicate by id_tesis (preserve order, keep first occurrence)
+    seen = set()
+    unique = []
+    for source in combined:
+        if source.id_tesis not in seen:
+            seen.add(source.id_tesis)
+            unique.append(source)
+
+    # Return up to max_sources
+    return unique[:max_sources]
+
+
+# ============================================================================
 # HELPER: Combined Search + Rerank
 # ============================================================================
 
