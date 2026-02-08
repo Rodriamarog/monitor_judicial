@@ -36,7 +36,7 @@ const navItems = [
   { href: '/dashboard/proyectos', label: 'Proyectos', icon: Kanban },
   { href: '/dashboard/machotes', label: 'Machotes', icon: FileText },
   { href: '/dashboard/tesis', label: 'Buscador de Tesis', icon: BookOpen },
-  { href: '/dashboard/ai-assistant', label: 'Asistente Legal IA', icon: Sparkles, disabled: true, badge: 'Próximamente' },
+  { href: '/dashboard/ai-assistant', label: 'Asistente Legal IA', icon: Sparkles },
   { href: '/dashboard/settings', label: 'Configuración', icon: Settings },
 ]
 

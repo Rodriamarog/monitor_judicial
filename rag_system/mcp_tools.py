@@ -245,7 +245,7 @@ def search_tesis_metadata(
 def rerank_tesis(results: List[TesisResult]) -> List[TesisResult]:
     """
     Rerank search results according to legal hierarchy rules:
-    1. 11th Época > 10th Época (newer law supersedes)
+    1. 12th Época > 11th Época > 10th Época (newer law supersedes)
     2. Jurisprudencia > Aislada (mandatory vs persuasive)
     3. SCJN > Plenos Regionales > Tribunales Colegiados
     4. More recent year > older year
@@ -261,7 +261,9 @@ def rerank_tesis(results: List[TesisResult]) -> List[TesisResult]:
         score = 0.0
 
         # Época weight (most important)
-        if tesis.epoca == "Undécima Época":
+        if tesis.epoca == "Duodécima Época":
+            score += 1100
+        elif tesis.epoca == "Undécima Época":
             score += 1000
         elif tesis.epoca == "Décima Época":
             score += 900

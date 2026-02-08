@@ -1,15 +1,21 @@
 import { memo, useMemo } from 'react'
-import ReactMarkdown from 'react-markdown'
-import rehypeHighlight from 'rehype-highlight'
+import { Streamdown } from 'streamdown'
 
 interface MarkdownMessageProps {
   content: string
   role: 'user' | 'assistant'
   onTesisClick?: (tesisId: number) => void
   lazy?: boolean // For lazy loading with virtual scrolling
+  isStreaming?: boolean // Whether this message is currently being streamed
 }
 
-export const MarkdownMessage = memo(function MarkdownMessage({ content, role, onTesisClick, lazy = false }: MarkdownMessageProps) {
+export const MarkdownMessage = memo(function MarkdownMessage({
+  content,
+  role,
+  onTesisClick,
+  lazy = false,
+  isStreaming = false
+}: MarkdownMessageProps) {
   if (role === 'user') {
     return <div className="whitespace-pre-wrap">{content}</div>
   }
@@ -29,9 +35,8 @@ export const MarkdownMessage = memo(function MarkdownMessage({ content, role, on
   )
 
   return (
-    <ReactMarkdown
+    <Streamdown
       className="prose prose-sm dark:prose-invert max-w-none"
-      rehypePlugins={[rehypeHighlight]}
       components={{
         p: ({ children }) => <p className="mb-2 last:mb-0">{children}</p>,
         ul: ({ children }) => <ul className="mb-2 ml-4 list-disc">{children}</ul>,
@@ -57,15 +62,15 @@ export const MarkdownMessage = memo(function MarkdownMessage({ content, role, on
           // Regular links
           return <a href={href} className="text-primary hover:underline">{children}</a>
         },
-        code: ({ inline, children }) =>
-          inline ? (
-            <code className="bg-muted px-1 py-0.5 rounded text-sm">{children}</code>
+        code: ({ node, ...props }: any) =>
+          props.inline ? (
+            <code className="bg-muted px-1 py-0.5 rounded text-sm">{props.children}</code>
           ) : (
-            <code className="block bg-muted p-2 rounded text-sm overflow-x-auto">{children}</code>
+            <code className="block bg-muted p-2 rounded text-sm overflow-x-auto">{props.children}</code>
           ),
       }}
     >
       {processedContent}
-    </ReactMarkdown>
+    </Streamdown>
   )
 })

@@ -1,0 +1,165 @@
+import { createClient } from '@/lib/supabase/server'
+import { NextRequest, NextResponse } from 'next/server'
+
+/**
+ * Python RAG Proxy - Simplified Non-Streaming Version
+ *
+ * Buffers the full Python response and returns it as a complete message
+ * This avoids streaming format compatibility issues
+ */
+
+const PYTHON_API_URL = process.env.PYTHON_API_URL || 'http://localhost:8000'
+const PYTHON_API_KEY = process.env.HETZNER_API_KEY || 'dev-secret-key'
+
+interface PythonEvent {
+  type: 'start' | 'token' | 'sources' | 'metadata' | 'done'
+  conversation_id?: string
+  content?: string
+  sources?: any[]
+  data?: any
+}
+
+export async function POST(req: NextRequest) {
+  try {
+    const supabase = await createClient()
+
+    // 1. Authenticate user
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser()
+
+    if (authError || !user) {
+      return new Response('Unauthorized', { status: 401 })
+    }
+
+    // 2. Parse request body
+    const body = await req.json()
+    console.log('[Python Proxy] Request received:', {
+      userId: user.id,
+      conversationId: body.conversationId || 'NEW',
+    })
+
+    const { messages, conversationId } = body
+
+    // Get last user message (AI SDK v5 format)
+    const lastUserMessage = messages[messages.length - 1]
+    const userMessageText = lastUserMessage.parts?.[0]?.text || lastUserMessage.content || ''
+
+    // 3. Call Python FastAPI server
+    console.log(`[Python Proxy] Calling Python API: ${PYTHON_API_URL}/api/chat`)
+
+    const pythonResponse = await fetch(`${PYTHON_API_URL}/api/chat`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-API-Key': PYTHON_API_KEY,
+      },
+      body: JSON.stringify({
+        user_id: user.id,
+        query: userMessageText,
+        conversation_id: conversationId || null,
+        max_iterations: 5,
+      }),
+    })
+
+    if (!pythonResponse.ok) {
+      const errorText = await pythonResponse.text()
+      console.error('[Python Proxy] Python API error:', {
+        status: pythonResponse.status,
+        error: errorText,
+      })
+      throw new Error(`Python API error: ${pythonResponse.statusText}`)
+    }
+
+    // 4. Buffer full response from Python
+    console.log('[Python Proxy] Buffering Python stream...')
+
+    const reader = pythonResponse.body?.getReader()
+    if (!reader) {
+      throw new Error('No response body')
+    }
+
+    const decoder = new TextDecoder()
+    let buffer = ''
+    let fullText = ''
+    let conversationIdFromPython: string | null = null
+    let sources: any[] = []
+    let metadata: any = {}
+
+    // Parse Python SSE stream
+    while (true) {
+      const { done, value } = await reader.read()
+      if (done) break
+
+      buffer += decoder.decode(value, { stream: true })
+      const lines = buffer.split('\n')
+      buffer = lines.pop() || ''
+
+      for (const line of lines) {
+        if (!line.trim() || !line.startsWith('data: ')) continue
+
+        try {
+          const jsonStr = line.substring(6)
+          const event: PythonEvent = JSON.parse(jsonStr)
+
+          switch (event.type) {
+            case 'start':
+              if (event.conversation_id) {
+                conversationIdFromPython = event.conversation_id
+              }
+              break
+            case 'token':
+              if (event.content) {
+                fullText += event.content
+              }
+              break
+            case 'sources':
+              sources = event.sources || []
+              break
+            case 'metadata':
+              metadata = event.data || {}
+              break
+          }
+        } catch (parseError) {
+          console.error('[Python Proxy] Error parsing SSE:', parseError)
+        }
+      }
+    }
+
+    console.log('[Python Proxy] Complete:', {
+      textLength: fullText.length,
+      sourcesCount: sources.length,
+      conversationId: conversationIdFromPython,
+    })
+
+    // 5. Return complete response
+    return NextResponse.json({
+      message: {
+        role: 'assistant',
+        content: fullText,
+        parts: [{ type: 'text', text: fullText }],
+      },
+      sources,
+      conversationId: conversationIdFromPython,
+      ragExecuted: !metadata.reused_sources,
+      iterations: metadata.iterations || 1,
+      totalCost: metadata.total_cost || 0,
+    }, {
+      headers: {
+        'X-Conversation-Id': conversationIdFromPython || '',
+        'X-RAG-Executed': (!metadata.reused_sources).toString(),
+      },
+    })
+
+  } catch (error) {
+    console.error('[Python Proxy] Error:', error)
+    return NextResponse.json(
+      {
+        error: 'Internal Server Error',
+        message: error instanceof Error ? error.message : 'Unknown error'
+      },
+      { status: 500 }
+    )
+  }
+}

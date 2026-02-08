@@ -221,7 +221,7 @@ export async function runTribunalScraper(
 
     // Find DOCUMENTOS link
     console.log('[Scraper] Looking for DOCUMENTOS link...');
-    await randomDelay(500, 1000);
+    await randomDelay(1500, 2000); // Extra delay to prevent timing issues
 
     const links = await page.evaluate(() => {
       const allLinks = Array.from(document.querySelectorAll('a[href]'));

@@ -77,7 +77,7 @@ const navigation: NavSection[] = [
     title: "TESIS",
     items: [
       { href: '/dashboard/tesis', label: 'Buscador de Tesis', icon: BookOpen },
-      { href: '/dashboard/ai-assistant', label: 'Asistente Legal IA', icon: Sparkles, disabled: true, badge: 'Próximamente' },
+      { href: '/dashboard/ai-assistant', label: 'Asistente Legal IA', icon: Sparkles },
     ],
   },
   {

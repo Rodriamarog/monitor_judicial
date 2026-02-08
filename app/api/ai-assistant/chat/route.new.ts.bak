@@ -1,0 +1,223 @@
+import { createClient } from '@/lib/supabase/server'
+import { NextRequest } from 'next/server'
+import { streamText, LanguageModelV1 } from 'ai'
+
+/**
+ * Python RAG Proxy with Vercel AI SDK Integration
+ *
+ * Uses a custom language model that wraps Python FastAPI responses
+ * This ensures perfect format compatibility with Vercel AI SDK's useChat hook
+ */
+
+const PYTHON_API_URL = process.env.PYTHON_API_URL || 'http://localhost:8000'
+const PYTHON_API_KEY = process.env.HETZNER_API_KEY || 'dev-secret-key'
+
+interface PythonEvent {
+  type: 'start' | 'token' | 'sources' | 'metadata' | 'done'
+  conversation_id?: string
+  content?: string
+  sources?: any[]
+  data?: any
+}
+
+/**
+ * Custom language model that wraps Python RAG system
+ * Implements LanguageModelV1 interface for Vercel AI SDK compatibility
+ */
+class PythonRAGModel implements LanguageModelV1 {
+  readonly specificationVersion = 'v1' as const
+  readonly provider = 'python-rag'
+  readonly modelId = 'rag-agent'
+  readonly defaultObjectGenerationMode = 'json' as const
+
+  async doGenerate(options: any): Promise<any> {
+    throw new Error('Not implemented - use doStream instead')
+  }
+
+  async doStream(options: any): Promise<any> {
+    const { prompt, userId, conversationId } = options.inputFormat === 'prompt'
+      ? options.prompt
+      : { prompt: '', userId: '', conversationId: null }
+
+    // Get last user message from prompt
+    const messages = Array.isArray(prompt) ? prompt : [prompt]
+    const lastMessage = messages[messages.length - 1]
+    const userMessageText = typeof lastMessage === 'string'
+      ? lastMessage
+      : lastMessage.content || ''
+
+    console.log('[Python RAG Model] Calling Python API:', {
+      userId,
+      conversationId: conversationId || 'NEW',
+      messageLength: userMessageText.length
+    })
+
+    // Call Python FastAPI server
+    const pythonResponse = await fetch(`${PYTHON_API_URL}/api/chat`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-API-Key': PYTHON_API_KEY,
+      },
+      body: JSON.stringify({
+        user_id: userId,
+        query: userMessageText,
+        conversation_id: conversationId || null,
+        max_iterations: 5,
+      }),
+    })
+
+    if (!pythonResponse.ok) {
+      const errorText = await pythonResponse.text()
+      throw new Error(`Python API error: ${pythonResponse.statusText} - ${errorText}`)
+    }
+
+    // Parse SSE stream from Python
+    const reader = pythonResponse.body?.getReader()
+    if (!reader) {
+      throw new Error('No response body from Python API')
+    }
+
+    const decoder = new TextDecoder()
+    let buffer = ''
+    let conversationIdFromPython: string | null = null
+    let sources: any[] = []
+    let metadata: any = {}
+    let fullText = ''
+
+    // Collect all events from Python stream
+    while (true) {
+      const { done, value } = await reader.read()
+      if (done) break
+
+      buffer += decoder.decode(value, { stream: true })
+      const lines = buffer.split('\n')
+      buffer = lines.pop() || ''
+
+      for (const line of lines) {
+        if (!line.trim() || !line.startsWith('data: ')) continue
+
+        try {
+          const jsonStr = line.substring(6)
+          const event: PythonEvent = JSON.parse(jsonStr)
+
+          switch (event.type) {
+            case 'start':
+              if (event.conversation_id) {
+                conversationIdFromPython = event.conversation_id
+              }
+              break
+            case 'token':
+              if (event.content) {
+                fullText += event.content
+              }
+              break
+            case 'sources':
+              sources = event.sources || []
+              break
+            case 'metadata':
+              metadata = event.data || {}
+              break
+          }
+        } catch (parseError) {
+          console.error('[Python RAG Model] Error parsing SSE event:', parseError)
+        }
+      }
+    }
+
+    // Return in LanguageModelV1 format
+    // Since this is doStream, we need to return an async generator
+    const self = this
+    async function* generateStream() {
+      // Yield the full text as chunks (simulate streaming)
+      const chunkSize = 50
+      for (let i = 0; i < fullText.length; i += chunkSize) {
+        const chunk = fullText.substring(i, i + chunkSize)
+        yield {
+          type: 'text-delta' as const,
+          textDelta: chunk,
+        }
+      }
+
+      // Yield finish with metadata
+      yield {
+        type: 'finish' as const,
+        finishReason: 'stop' as const,
+        usage: {
+          promptTokens: metadata.embedding_calls || 0,
+          completionTokens: metadata.llm_calls || 0,
+        },
+        providerMetadata: {
+          conversationId: conversationIdFromPython,
+          sources,
+          ragExecuted: !metadata.reused_sources,
+          iterations: metadata.iterations || 1,
+          totalCost: metadata.total_cost || 0,
+        },
+      }
+    }
+
+    return {
+      stream: generateStream(),
+      rawCall: { rawPrompt: null, rawSettings: {} },
+    }
+  }
+}
+
+export async function POST(req: NextRequest) {
+  try {
+    const supabase = await createClient()
+
+    // 1. Authenticate user
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser()
+
+    if (authError || !user) {
+      return new Response('Unauthorized', { status: 401 })
+    }
+
+    // 2. Parse request body
+    const body = await req.json()
+    const { messages, conversationId } = body
+
+    // Get last user message (AI SDK v5 format)
+    const lastUserMessage = messages[messages.length - 1]
+    const userMessageText = lastUserMessage.parts?.[0]?.text || lastUserMessage.content || ''
+
+    console.log('[Python Proxy] Using Vercel AI SDK streamText with custom model')
+
+    // 3. Use streamText with custom Python RAG model
+    const result = await streamText({
+      model: new PythonRAGModel() as any,
+      prompt: {
+        prompt: userMessageText,
+        userId: user.id,
+        conversationId,
+      },
+    })
+
+    // 4. Return proper Vercel AI SDK streaming response
+    return result.toDataStreamResponse({
+      headers: {
+        'Content-Type': 'text/plain; charset=utf-8',
+        'Cache-Control': 'no-cache',
+        'Connection': 'keep-alive',
+      },
+    })
+
+  } catch (error) {
+    console.error('[Python Proxy] Error:', error)
+    return new Response(
+      JSON.stringify({
+        error: 'Internal Server Error',
+        message: error instanceof Error ? error.message : 'Unknown error'
+      }),
+      {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' },
+      }
+    )
+  }
+}

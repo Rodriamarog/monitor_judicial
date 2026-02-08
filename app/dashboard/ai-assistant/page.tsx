@@ -60,14 +60,17 @@ const ChatMessage = memo(({
   onRefSet: (index: number, el: HTMLDivElement | null) => void
   onTesisClick?: (tesisId: number) => void
 }) => {
+  const isAnimating = animatingIndex === index
+  const isUser = message.role === 'user'
+
   return (
     <div
       ref={(el) => onRefSet(index, el)}
       className={`flex gap-3 ${
-        message.role === 'user' ? 'justify-end' : 'justify-start'
+        isUser ? 'justify-end' : 'justify-start'
       } ${
-        animatingIndex === index
-          ? message.role === 'user'
+        isAnimating
+          ? isUser
             ? 'animate-in fade-in slide-in-from-right-2 duration-500'
             : 'animate-in fade-in slide-in-from-bottom-2 duration-500'
           : ''
@@ -75,7 +78,7 @@ const ChatMessage = memo(({
     >
       <div
         className={`max-w-[80%] rounded-lg p-4 ${
-          message.role === 'user'
+          isUser
             ? 'bg-primary text-primary-foreground'
             : 'bg-muted'
         }`}
@@ -124,14 +127,15 @@ export default function AIAssistantPage() {
   const latestConversationIdRef = useRef<string | null>(null)
   const prevSourcesLengthRef = useRef(0)
 
+  // Optimized UTF-8 decoder (reuse TextDecoder instance)
+  const textDecoder = useRef(new TextDecoder('utf-8'))
+
   // Refs for smart scroll behavior
   const scrollPendingRef = useRef(false)
   const messageRefsMap = useRef<Map<number, HTMLDivElement>>(new Map())
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const shouldAutoScrollRef = useRef(true) // Track if we should auto-scroll
 
-  // Refs for smart source animation
-  const prevRagExecutedRef = useRef(false)
   const prevMessageCountRef = useRef(0)
 
   // RAF-throttled scroll function for performance
@@ -174,6 +178,7 @@ export default function AIAssistantPage() {
   }, [])
 
   const { messages, sendMessage, status, setMessages } = useChat({
+    experimental_throttle: 100, // Batch updates every 100ms for smoother streaming
     transport: new DefaultChatTransport({
       api: '/api/ai-assistant/chat',
       async fetch(input, init) {
@@ -182,9 +187,38 @@ export default function AIAssistantPage() {
         // Extract headers
         const conversationId = response.headers.get('X-Conversation-Id')
         const ragExecuted = response.headers.get('X-RAG-Executed') === 'true'
+        const sourcesHeader = response.headers.get('X-Sources-Data')
 
         console.log('[DEBUG] RAG executed:', ragExecuted)
         setIsRagExecuting(ragExecuted)
+
+        // Decode and set sources from header immediately
+        if (sourcesHeader) {
+          try {
+            // Optimized UTF-8 decoding from base64
+            const binaryString = atob(sourcesHeader)
+            const bytes = new Uint8Array(binaryString.length)
+            for (let i = 0; i < binaryString.length; i++) {
+              bytes[i] = binaryString.charCodeAt(i)
+            }
+            const decodedString = textDecoder.current.decode(bytes)
+            const decoded = JSON.parse(decodedString)
+
+            console.log('[DEBUG] Sources from header:', decoded.sources?.length || 0)
+            if (decoded.sources) {
+              setSources(decoded.sources)
+            }
+            if (decoded.conversationId) {
+              latestConversationIdRef.current = decoded.conversationId
+              if (!currentConversationId) {
+                setCurrentConversationId(decoded.conversationId)
+                queryClient.invalidateQueries({ queryKey: ['conversations'] })
+              }
+            }
+          } catch (error) {
+            console.error('[DEBUG] Error decoding sources:', error)
+          }
+        }
 
         if (conversationId) {
           console.log('[DEBUG] Conversation ID from headers:', conversationId)
@@ -202,38 +236,15 @@ export default function AIAssistantPage() {
         return response
       },
     }),
-    onFinish: async ({ message }) => {
-      console.log('[DEBUG] onFinish triggered')
+    onFinish: async ({ message, finishReason }) => {
+      console.log('[DEBUG] onFinish triggered', { finishReason })
 
-      // Use the latest conversation ID from ref (not stale state)
-      const conversationId = latestConversationIdRef.current || currentConversationId
-      console.log('[DEBUG] Conversation ID to use:', conversationId)
+      // Note: In AI SDK v5, sources and metadata are handled via response headers
+      // not through the onFinish callback. See fetch overrides above.
+      console.log('[DEBUG] Message completed:', message)
 
-      // Fetch sources from database after streaming completes
-      if (conversationId) {
-        console.log('[DEBUG] Fetching sources from Supabase for conversation:', conversationId)
-
-        // Small delay to ensure the message was saved
-        await new Promise(resolve => setTimeout(resolve, 300))
-
-        const { data: messagesData, error } = await supabase
-          .from('messages')
-          .select('sources')
-          .eq('conversation_id', conversationId)
-          .eq('role', 'assistant')
-          .order('created_at', { ascending: false })
-          .limit(1)
-
-        console.log('[DEBUG] Supabase response:', { messagesData, error })
-
-        if (messagesData?.[0]?.sources) {
-          console.log('[DEBUG] Setting sources:', messagesData[0].sources)
-          setSources(messagesData[0].sources)
-        } else {
-          console.log('[DEBUG] No sources found in database')
-        }
-
-        // Invalidate cache to refetch and reorder conversations
+      // Invalidate cache to refetch and reorder conversations
+      if (currentConversationId) {
         queryClient.invalidateQueries({ queryKey: ['conversations'] })
       }
     },
@@ -249,8 +260,8 @@ export default function AIAssistantPage() {
       // Get the Radix ScrollArea viewport element
       return scrollRef.current?.querySelector('[data-radix-scroll-area-viewport]') as HTMLElement || null
     },
-    estimateSize: () => 150, // Estimated message height in pixels
-    overscan: 5, // Render 5 extra messages above/below viewport for smooth scrolling
+    estimateSize: () => 200, // Increased estimate to reduce recalculations
+    overscan: 5, // Keep higher overscan for smooth streaming
   })
 
   // Conversations are now automatically loaded and cached via React Query
@@ -283,17 +294,14 @@ export default function AIAssistantPage() {
     }
   }, [handleUserScroll])
 
-  // Auto-scroll to bottom when messages change (debounced for performance)
+  // Auto-scroll to bottom when messages change (immediate, no debounce)
   useEffect(() => {
     if (!shouldAutoScrollRef.current) return
 
-    // Debounce - only scroll after 50ms of no updates
-    const timer = setTimeout(() => {
-      // Always use instant scroll to avoid animation lag
+    // Use RAF for smooth, immediate scrolling without debounce lag
+    requestAnimationFrame(() => {
       messagesEndRef.current?.scrollIntoView({ behavior: 'auto' })
-    }, 50)
-
-    return () => clearTimeout(timer)
+    })
   }, [messages])
 
   // Load more messages when scrolling to top
@@ -317,25 +325,20 @@ export default function AIAssistantPage() {
   useEffect(() => {
     const prevCount = prevSourcesLengthRef.current
     const currCount = sources.length
-    const ragExecuted = isRagExecuting
 
-    // Only animate if RAG executed AND sources increased
-    const shouldAnimate = ragExecuted && currCount > prevCount
-
-    if (shouldAnimate) {
+    // Only animate if sources increased (simplified check)
+    if (currCount > prevCount && currCount > 0) {
       setSourcesAnimating(true)
       const timer = setTimeout(() => {
         setSourcesAnimating(false)
       }, 400)
 
       prevSourcesLengthRef.current = currCount
-      prevRagExecutedRef.current = ragExecuted
       return () => clearTimeout(timer)
     }
 
     prevSourcesLengthRef.current = currCount
-    prevRagExecutedRef.current = ragExecuted
-  }, [sources, isRagExecuting])
+  }, [sources.length]) // Only depend on length, not entire array
 
   // Scroll to user message when it appears in the messages array
   useEffect(() => {
@@ -344,13 +347,13 @@ export default function AIAssistantPage() {
       const lastMessage = messages[messages.length - 1]
 
       // Only scroll for user messages
-      if (lastMessage.role === 'user') {
+      if (lastMessage?.role === 'user') {
         const userMessageIndex = messages.length - 1
 
-        // Small delay to ensure DOM has updated
-        setTimeout(() => {
+        // Use RAF instead of setTimeout for better performance
+        requestAnimationFrame(() => {
           scrollToMessage(userMessageIndex)
-        }, 100)
+        })
       }
 
       // Update previous count
@@ -492,7 +495,6 @@ export default function AIAssistantPage() {
     setIsRagExecuting(true) // First message always searches for tesis
 
     // Reset refs
-    prevRagExecutedRef.current = false
     prevSourcesLengthRef.current = 0
     prevMessageCountRef.current = 0
     shouldAutoScrollRef.current = true
@@ -849,6 +851,7 @@ export default function AIAssistantPage() {
                         <h4 className="font-medium text-sm mb-2 line-clamp-2">
                           {source.rubro}
                         </h4>
+                        {/* DEBUG: If you see a "0" below, it's NOT from this code */}
                         <div className="flex items-center gap-2 text-xs text-muted-foreground flex-wrap">
                           <Badge variant="outline" className="text-xs">
                             {source.tipo_tesis}

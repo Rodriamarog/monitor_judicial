@@ -5,16 +5,18 @@ import { NextRequest } from 'next/server'
 import OpenAI from 'openai'
 
 // AI Flow utilities
-import { classifyIntent } from '@/lib/ai/intent-classifier'
+// import { classifyIntent } from '@/lib/ai/intent-classifier' // Unused - agent decides instead
 import { rewriteQueryWithContext } from '@/lib/ai/query-rewriter'
 import { getQueryRewritingWindow, getLLMGenerationWindow } from '@/lib/ai/sliding-window'
 import { extractSourcesFromHistory, mergeSources } from '@/lib/ai/source-manager'
 import { createTimer, estimateTokens } from '@/lib/ai/utils'
 
-// Supabase client for RAG (Supabase tesis database)
-// Use RPC to bypass connection pooler for vector search performance
-// Pooler breaks HNSW index optimization, causing 117s+ timeouts
-import { supabaseTesis } from '@/lib/supabase/tesis-client'
+// Agentic RAG
+import { AgentController } from '@/lib/ai/agent-controller'
+import type { TesisSource as AgentTesisSource } from '@/lib/ai/agent-state'
+
+// Local PostgreSQL database for tesis embeddings
+import { queryLocalTesis } from '@/lib/db/local-tesis-client'
 
 interface TesisSource {
   id_tesis: number
@@ -51,6 +53,11 @@ function deduplicateSourcesByIdTesis(sources: TesisSource[]): TesisSource[] {
   return Array.from(bestByTesis.values()).sort((a, b) => b.final_score - a.final_score)
 }
 
+// Reuse OpenAI client to avoid creating new instances on every request
+const openaiClient = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
+})
+
 async function retrieveTesis(
   query: string,
   filters?: {
@@ -61,15 +68,11 @@ async function retrieveTesis(
   }
 ): Promise<TesisSource[]> {
   try {
-    // Generate embedding for query
-    const openaiClient = new OpenAI({
-      apiKey: process.env.OPENAI_API_KEY,
-    })
-
+    // Generate embedding for query using reused client
     const embeddingResponse = await openaiClient.embeddings.create({
       model: 'text-embedding-3-small',
       input: query,
-      dimensions: 256, // Reduced dimensions for memory efficiency (halfvec)
+      dimensions: 1536, // Match database embedding dimensions
     })
 
     // Normalize query embedding to unit length (MRL truncation best practice)
@@ -77,27 +80,61 @@ async function retrieveTesis(
     const magnitude = Math.sqrt(rawEmbedding.reduce((sum, val) => sum + val * val, 0))
     const queryEmbedding = rawEmbedding.map(val => val / magnitude)
 
-    // Execute vector search via RPC (bypasses pooler for HNSW index optimization)
-    console.log('[TESIS DB] Calling RPC: search_similar_tesis_fast')
-    const startRPC = Date.now()
+    // Execute vector search on local database
+    console.log('[LOCAL TESIS DB] Executing vector similarity search')
+    const startQuery = Date.now()
 
-    const { data, error } = await supabaseTesis.rpc('search_similar_tesis_fast', {
-      query_embedding: queryEmbedding,
-      match_count: 100, // Increased from 50 to get more candidates for recency filtering
-      filter_materias: filters?.materias || null,
-      filter_tipo_tesis: filters?.tipo_tesis || null,
-      filter_anio_min: filters?.year_min || 2000, // Hard cutoff: exclude pre-2000 tesis
-      filter_anio_max: filters?.year_max || null,
-    })
+    // Build SQL query with filters
+    // Note: Using texto_embedding for semantic search (could also use rubro_embedding)
+    let sql = `
+      SELECT
+        id_tesis,
+        texto as chunk_text,
+        'full_text' as chunk_type,
+        0 as chunk_index,
+        1 - (texto_embedding <=> $1::vector) as similarity,
+        rubro,
+        texto,
+        tipo_tesis,
+        epoca,
+        instancia,
+        anio,
+        materias
+      FROM tesis_embeddings
+      WHERE anio >= $2
+    `
 
-    console.log(`[TESIS DB] RPC completed in ${Date.now() - startRPC}ms`)
+    const params: any[] = [
+      `[${queryEmbedding.join(',')}]`, // $1: query embedding
+      filters?.year_min || 2000,        // $2: min year
+    ]
 
-    if (error) {
-      console.error('[TESIS DB] RPC error:', error)
-      throw new Error(`RPC call failed: ${error.message}`)
+    let paramIndex = 3
+
+    // Add year_max filter if provided
+    if (filters?.year_max) {
+      sql += ` AND anio <= $${paramIndex}`
+      params.push(filters.year_max)
+      paramIndex++
     }
 
-    const candidates = data as Array<{
+    // Add tipo_tesis filter if provided
+    if (filters?.tipo_tesis) {
+      sql += ` AND tipo_tesis = $${paramIndex}`
+      params.push(filters.tipo_tesis)
+      paramIndex++
+    }
+
+    // Add materias filter if provided (array overlap)
+    if (filters?.materias && filters.materias.length > 0) {
+      sql += ` AND materias && $${paramIndex}::text[]`
+      params.push(filters.materias)
+      paramIndex++
+    }
+
+    sql += ` ORDER BY texto_embedding <=> $1::vector LIMIT 100`
+
+    const candidates = await queryLocalTesis<{
       id_tesis: number
       chunk_text: string
       chunk_type: string
@@ -110,12 +147,13 @@ async function retrieveTesis(
       instancia: string
       anio: number
       materias: string[]
-    }>
+    }>(sql, params)
 
-    console.log(`[TESIS DB] RPC returned ${candidates.length} candidates`)
+    console.log(`[LOCAL TESIS DB] Query completed in ${Date.now() - startQuery}ms`)
+    console.log(`[LOCAL TESIS DB] Returned ${candidates.length} candidates`)
 
     if (candidates.length > 0) {
-      console.log('[TESIS DB] Sample result:', {
+      console.log('[LOCAL TESIS DB] Sample result:', {
         id_tesis: candidates[0].id_tesis,
         similarity: candidates[0].similarity,
         epoca: candidates[0].epoca,
@@ -191,7 +229,7 @@ async function retrieveTesis(
 
     return finalSources
   } catch (error) {
-    console.error('[TESIS DB] Error in retrieveTesis:', {
+    console.error('[LOCAL TESIS DB] Error in retrieveTesis:', {
       error,
       message: error instanceof Error ? error.message : 'Unknown error',
       stack: error instanceof Error ? error.stack : undefined,
@@ -398,12 +436,14 @@ export async function POST(req: NextRequest) {
     // Start performance timer
     const timer = createTimer()
 
-    // Step 1: Classify intent (NUEVA vs REUSAR)
-    const classification = await classifyIntent(userMessageText, queryContext)
-    console.log(`[AI Flow] Intent: ${classification.intent} (${classification.method}, ${classification.confidence})`)
-    console.log(`[AI Flow] Reasoning: ${classification.reasoning}`)
+    // Simplified: Skip intent classification, let agent decide
+    // Agent will evaluate if historical sources are sufficient or if it needs to search
+    console.log('[AI Flow] Agent-first mode: letting agent decide if search is needed')
 
     let sources: TesisSource[] = []
+    let agentIterations = 0
+    let agentExitReason = ''
+    let agentCost = 0
 
     // RAG: Retrieve relevant tesis
     // Expand filters for materias with outdated/limited tesis to include broader related categories
@@ -428,10 +468,12 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // Step 2: Conditional RAG execution based on intent
-    if (classification.intent === 'NUEVA') {
-      // Step 2a: Rewrite query with context
-      const rewriteResult = await rewriteQueryWithContext(userMessageText, queryContext)
+    // Feature flag for agentic RAG
+    const USE_AGENTIC_RAG = process.env.USE_AGENTIC_RAG === 'true'
+
+    // Step 2: Always execute RAG - agent decides if search is needed
+    // Step 2a: Rewrite query with context
+    const rewriteResult = await rewriteQueryWithContext(userMessageText, queryContext)
 
       if (rewriteResult.usedContext) {
         console.log(`[AI Flow] Original: "${rewriteResult.originalQuery}"`)
@@ -440,24 +482,103 @@ export async function POST(req: NextRequest) {
 
       timer.log('Intent + Rewrite')
 
-      // Step 2b: Execute RAG with rewritten query
-      const newSources = await retrieveTesis(
-        rewriteResult.rewrittenQuery,
-        expandedFilters
-      )
+      // Step 2b: Execute RAG (agentic or single-shot)
+      if (USE_AGENTIC_RAG) {
+        // === AGENTIC RAG MODE ===
+        console.log('[AI Flow] Using agentic RAG mode')
 
-      timer.log('RAG Search')
+        // Prepare discussed tesis set from conversation history
+        const discussedTesisIds = new Set<number>(
+          dbMessages.flatMap(m => m.sources || []).map((s: any) => s.id_tesis)
+        )
 
-      // Step 2c: Merge with historical sources
-      sources = mergeSources(newSources, historicalSources, 15)
-      console.log(`[AI Flow] Sources: ${newSources.length} new, ${historicalSources.length} historical, ${sources.length} final`)
+        // Convert historical sources to agent format
+        const agentHistoricalSources: AgentTesisSource[] = historicalSources.map(s => ({
+          id_tesis: s.id_tesis,
+          titulo: s.rubro,
+          texto: s.chunk_text || s.texto,
+          epoca: s.epoca,
+          tipo: s.tipo_tesis,
+          year: s.anio,
+          similarity: s.similarity,
+          organismo: (s as any).organismo, // Add organismo if available
+        }))
 
-    } else {
-      // Reuse historical sources
-      sources = historicalSources
-      console.log(`[AI Flow] Reusing ${sources.length} historical sources (no RAG search)`)
-      timer.log('Intent Classification (skip RAG)')
-    }
+        // Initialize agent controller
+        const agent = new AgentController({
+          userQuery: userMessageText,
+          currentQuery: rewriteResult.rewrittenQuery,
+          maxIterations: 5,
+          discussedTesis: discussedTesisIds,
+          historicalSources: agentHistoricalSources,
+        })
+
+        // Run agent loop (agent uses tools internally now)
+        const finalState = await agent.runLoop()
+
+        // Convert agent results back to TesisSource format
+        const agentSources: TesisSource[] = finalState.currentResults.map(s => ({
+          id_tesis: s.id_tesis,
+          chunk_text: s.texto,
+          chunk_type: 'full_text',
+          similarity: s.similarity || 0,
+          recency_score: 0, // Agent uses legal hierarchy instead
+          epoca_score: 0,
+          final_score: s.similarity || 0,
+          rubro: s.titulo,
+          texto: s.texto,
+          tipo_tesis: s.tipo || '',
+          epoca: s.epoca || '',
+          anio: s.year || 0,
+          materias: [],
+        }))
+
+        // Store agent metadata first
+        agentIterations = finalState.iteration
+        agentExitReason = finalState.exitReason || ''
+        agentCost = finalState.totalCost
+
+        console.log(`[AI Flow] Agent completed: ${agentIterations} iterations, exit: ${agentExitReason}`)
+        console.log(`[AI Flow] Agent cost: $${agentCost.toFixed(4)}`)
+        console.log(`[AI Flow] Agent found ${agentSources.length} new sources`)
+
+        // Check if agent found ANY new sources
+        if (agentSources.length === 0) {
+          // Agent found no new tesis - be honest with user
+          console.log('[AI Flow] No new sources found - using historical sources only')
+          sources = historicalSources
+
+          // Add a flag to tell the LLM to be honest
+          ;(sources as any).noNewResults = true
+        } else {
+          // Merge new sources with historical
+          sources = mergeSources(agentSources, historicalSources, 15)
+          console.log(`[AI Flow] Sources: ${agentSources.length} new, ${historicalSources.length} historical, ${sources.length} final`)
+        }
+
+        console.log('[DEBUG] ===== AGENT SOURCES SAMPLE =====')
+        if (sources.length > 0) {
+          console.log('[DEBUG] First source:', JSON.stringify(sources[0], null, 2))
+        } else {
+          console.log('[DEBUG] NO SOURCES!')
+        }
+        console.log('[DEBUG] =====================================')
+
+        timer.log('Agentic RAG')
+
+      } else {
+        // === SINGLE-SHOT RAG MODE (original) ===
+        const newSources = await retrieveTesis(
+          rewriteResult.rewrittenQuery,
+          expandedFilters
+        )
+
+        timer.log('RAG Search')
+
+        // Merge with historical sources
+        sources = mergeSources(newSources, historicalSources, 15)
+        console.log(`[AI Flow] Sources: ${newSources.length} new, ${historicalSources.length} historical, ${sources.length} final`)
+      }
 
     // Build context from sources
     const context = sources
@@ -475,21 +596,34 @@ ${source.chunk_text || source.texto || 'Sin texto disponible'}
       )
       .join('\n\n')
 
+    // Check if no new results were found
+    const noNewResults = (sources as any).noNewResults === true
+
     // System prompt
     const systemPrompt = `Eres un asistente legal experto en jurisprudencia mexicana. Tu función es ayudar a usuarios a entender y aplicar tesis jurisprudenciales del derecho mexicano.
 
-INSTRUCCIONES GENERALES:
+${noNewResults ? `⚠️ IMPORTANTE: No se encontraron tesis NUEVAS/DIFERENTES en la búsqueda. Las fuentes que tienes son las MISMAS que ya discutimos previamente. DEBES ser honesto y decirle al usuario: "No encontré tesis adicionales diferentes a las que ya hemos discutido. Las únicas tesis relevantes sobre este tema son las que ya te presenté anteriormente." NO inventes ni menciones tesis que no estén en las fuentes proporcionadas.
+
+` : ''}INSTRUCCIONES GENERALES:
 1. Responde en español formal y preciso
-2. Cita las fuentes usando el formato [ID: XXXX]
-3. Cuando menciones una tesis, incluye su ID, Época y Año
+2. Cita las fuentes usando el formato [ID: XXXX] - SOLO el número dentro de los corchetes
+3. Menciona la Época y Año FUERA de los corchetes, ejemplo: [ID: XXXX] de la Novena Época (2004)
 4. Sé conciso pero completo
 5. Si no estás seguro, indícalo claramente
+6. **CRÍTICO**: SOLO menciona tesis que aparecen en las fuentes proporcionadas. NUNCA inventes IDs, rubros o contenido de tesis.
 
 IMPORTANTE - ACCESO A BASE DE DATOS:
 - TIENES acceso a una base de datos con 310,000+ tesis jurisprudenciales mexicanas
 - Cuando el usuario pide "más tesis" o "busca más", el sistema automáticamente buscará nuevas tesis relevantes
 - NUNCA digas "no tengo acceso a bases de datos externas" - SÍ TIENES ACCESO
 - Si el usuario pide más resultados, reconoce la solicitud y utiliza las nuevas fuentes que se proporcionarán
+
+CUANDO NO ENCUENTRAS EL TIPO ESPECÍFICO DE FUENTE SOLICITADA:
+- Si el usuario pidió tesis de la SCJN pero solo tienes de Tribunales Colegiados, SÉ CLARO:
+  ✅ CORRECTO: "Los resultados de búsqueda no incluyen tesis de la SCJN sobre este tema. Las tesis encontradas provienen de Tribunales Colegiados..."
+  ❌ INCORRECTO: "No tengo acceso a tesis de la SCJN" (esto es FALSO - SÍ tienes acceso, solo no aparecieron en esta búsqueda)
+- Explica qué tipo de fuentes SÍ encontraste (Tribunales, Primera Sala, etc.)
+- Si es relevante, menciona que las tesis de Tribunales también tienen valor jurisprudencial
 
 CRITERIOS DE PRIORIZACIÓN (MUY IMPORTANTE):
 1. **PRIORIZA TESIS RECIENTES**: Cuando tengas múltiples tesis sobre el mismo tema:
@@ -549,6 +683,23 @@ IMPORTANTE:
     // Stream response
     let fullResponse = ''
 
+    // Prepare sources metadata for streaming
+    const sourcesMetadata = sources.map((s) => ({
+      id_tesis: s.id_tesis,
+      rubro: s.rubro,
+      similarity: s.similarity,
+      final_score: s.final_score,
+      tipo_tesis: s.tipo_tesis,
+      epoca: s.epoca,
+      anio: s.anio,
+    }))
+
+    console.log('[DEBUG] ===== SOURCES METADATA =====')
+    console.log('[DEBUG] Total sources to send:', sourcesMetadata.length)
+    console.log('[DEBUG] Sources metadata:', JSON.stringify(sourcesMetadata, null, 2))
+    console.log('[DEBUG] Conversation ID:', conversation.id)
+    console.log('[DEBUG] ===========================')
+
     const result = await streamText({
       model: openai('gpt-4o-mini'),
       messages: allMessages,
@@ -600,15 +751,25 @@ IMPORTANTE:
         // Log optimization metrics
         console.log(`[AI Flow] Total time: ${timer.elapsed()}ms`)
         console.log(`[AI Flow] Estimated tokens: ${estimateTokens(JSON.stringify(dbMessages))}`)
-        console.log(`[AI Flow] RAG executed: ${classification.intent === 'NUEVA' ? 'YES' : 'NO'}`)
+        console.log('[AI Flow] RAG executed: YES (agent-first mode)')
       },
     })
+
+    // Encode sources as JSON in a custom header
+    const sourcesHeader = Buffer.from(JSON.stringify({
+      sources: sourcesMetadata,
+      conversationId: conversation.id,
+    })).toString('base64')
 
     return result.toUIMessageStreamResponse({
       headers: {
         'X-Conversation-Id': conversation.id,
         'X-Sources-Count': sources.length.toString(),
-        'X-RAG-Executed': classification.intent === 'NUEVA' ? 'true' : 'false',
+        'X-Sources-Data': sourcesHeader,
+        'X-RAG-Executed': 'true', // Always true now - agent decides if search is needed
+        'X-Agent-Iterations': agentIterations.toString(),
+        'X-Agent-Exit-Reason': agentExitReason,
+        'X-Agent-Cost': agentCost.toFixed(4),
       },
     })
   } catch (error) {

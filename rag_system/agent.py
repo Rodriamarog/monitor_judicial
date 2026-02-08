@@ -302,12 +302,12 @@ Evalúa estos resultados y decide si son suficientes para responder la consulta 
 
 CRITERIOS DE EVALUACIÓN:
 1. **Relevancia**: ¿Las tesis están relacionadas con la consulta?
-2. **Autoridad**: ¿Tenemos Jurisprudencia de la 11ª Época? (es lo más autoritativo)
+2. **Autoridad**: ¿Tenemos Jurisprudencia de la 12ª Época? (es lo más reciente y autoritativo)
 3. **Cantidad**: ¿Tenemos al menos 3-5 tesis de calidad?
 4. **Completitud**: ¿Podemos responder la pregunta del usuario con estos resultados?
 
 JERARQUÍA LEGAL (recuerda siempre):
-- 11ª Época > 10ª Época (más reciente prevalece)
+- 12ª Época > 11ª Época > 10ª Época (más reciente prevalece)
 - Jurisprudencia > Tesis Aislada (obligatoria vs orientadora)
 - SCJN > Plenos Regionales > Tribunales Colegiados
 
@@ -431,7 +431,7 @@ INSTRUCCIONES:
 5. Cita las tesis específicas (menciona el Rubro y Registro cuando sea posible)
 6. Explica los principios jurídicos relevantes
 7. Indica la jerarquía de las fuentes (Jurisprudencia > Tesis Aislada)
-8. Menciona si hay criterios de la 11ª Época (más recientes y vinculantes)
+8. Menciona si hay criterios de la 12ª Época (más recientes y vinculantes)
 9. Si hay múltiples tesis, explica cómo se relacionan o complementan
 10. Sé claro, conciso y directo (máximo 500 palabras)
 

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Generate embeddings for tesis from Supabase and store in local Postgres.
-Phase 3: Start with 1,000 documents from 11th Época for testing.
+Processes tesis from 9th, 10th, 11th, and 12th Épocas.
 """
 
 import os
@@ -182,7 +182,7 @@ def main():
     # Configuration
     LIMIT = None  # No limit - get all documents
     BATCH_SIZE = 10  # Process 10 at a time to see progress
-    EPOCAS = ["Décima Época", "Undécima Época"]  # Both 10th and 11th
+    EPOCAS = ["Novena Época", "Décima Época", "Undécima Época", "Duodécima Época"]  # 9th, 10th, 11th, and 12th
 
     print("=" * 60)
     print("TESIS EMBEDDING GENERATOR - FULL DATASET (32k docs)")

@@ -17,6 +17,13 @@
 /tesis_api/venv
 /venv
 
+# Python
+venv/
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+
 # database backups and migration data (large files)
 /backups
 /migration_data

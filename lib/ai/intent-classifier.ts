@@ -26,7 +26,8 @@ const NEW_SEARCH_PATTERNS = {
   legal_sources: /\b(ley|código|reglamento|decreto|norma|artículo|constitución)\b/i,
   search_verbs: /^(busca|encuentra|consulta|muestra|dame tesis|hay alguna|existe|localiza)/i,
   topic_change: /^(ahora|cambiando de tema|otra pregunta sobre|también quiero saber sobre)/i,
-  more_results: /\b(más tesis|mas tesis|busca más|busca mas|busques más|busques mas|quiero más|necesito más|necesito que busques)\b/i,
+  more_results: /\b(más tesis|mas tesis|otras tesis|tesis diferentes|tesis distintas|diferentes tesis|distintas tesis|busca más|busca mas|busques más|busques mas|quiero más|necesito más|necesito que busques|dame más|dame mas)\b/i,
+  explicit_new: /\b(diferente|distinto|otro|nueva búsqueda|busca otro|busca otra|busca diferente)\b/i,
 }
 
 /**
@@ -125,6 +126,10 @@ Ejemplos:
 - "necesito que busques más tesis" → NUEVA|solicita más resultados
 - "busca mas" → NUEVA|solicita más resultados
 - "quiero ver más tesis" → NUEVA|solicita más resultados
+- "dame mas informacion" → REUSAR|pide expansión sobre existentes
+- "pero buscame tesis diferentes" → NUEVA|pide resultados distintos
+- "otras tesis" → NUEVA|pide resultados distintos
+- "tesis diferentes" → NUEVA|pide resultados distintos
 
 Contexto de conversación:
 ${contextStr}

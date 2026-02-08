@@ -78,7 +78,7 @@ export async function syncTribunalForUser(
     syncLogId = syncLog.id;
 
     // Fetch user's tracked expedientes
-    logger.info('Fetching user tracked expedientes', syncLogId);
+    logger.info('Fetching user tracked expedientes');
 
     const { data: monitoredCases, error: casesError } = await supabase
       .from('monitored_cases')
@@ -89,19 +89,18 @@ export async function syncTribunalForUser(
       throw new Error(`Error fetching monitored cases: ${casesError?.message}`);
     }
 
-    // Create map: normalized expediente + juzgado → case_id
-    // Key includes juzgado because same case number can exist in different courts
+    // Create map: normalized expediente → case_id
+    // Simplified to expediente-only matching for better compatibility
     const expedienteMap = new Map<string, string>();
     monitoredCases.forEach(case_ => {
       const normalized = normalizeExpediente(case_.case_number);
-      const key = `${normalized}|${case_.juzgado}`;
-      expedienteMap.set(key, case_.id);
+      expedienteMap.set(normalized, case_.id);
     });
 
-    logger.info(`User tracking ${monitoredCases.length} expedientes`, syncLogId);
+    logger.info(`User tracking ${monitoredCases.length} expedientes`);
 
     // Retrieve credentials from Vault using RPC wrapper
-    logger.info('Retrieving credentials from Vault', syncLogId);
+    logger.info('Retrieving credentials from Vault');
 
     const { data: password, error: passwordError } = await supabase
       .rpc('vault_get_secret', { secret_id: vaultPasswordId });
@@ -120,10 +119,10 @@ export async function syncTribunalForUser(
       throw new Error('Credenciales incompletas en Vault');
     }
 
-    logger.info('Credentials retrieved successfully', syncLogId);
+    logger.info('Credentials retrieved successfully');
 
     // Run scraper
-    logger.info('Running scraper...', syncLogId);
+    logger.info('Running scraper...');
     const scraperResult = await runTribunalScraper({
       email,
       password,
@@ -138,7 +137,7 @@ export async function syncTribunalForUser(
 
       if (newRetryCount >= maxRetries) {
         // Mark credentials as failed after 3 attempts
-        logger.error(`User ${userId} failed after ${newRetryCount} attempts, marking as failed`, syncLogId);
+        logger.error(`User ${userId} failed after ${newRetryCount} attempts, marking as failed`);
         await supabase
           .from('tribunal_credentials')
           .update({
@@ -150,7 +149,7 @@ export async function syncTribunalForUser(
           .eq('user_id', userId);
       } else {
         // Mark for retry
-        logger.info(`User ${userId} failed (attempt ${newRetryCount}/${maxRetries}), will retry next sync`, syncLogId);
+        logger.info(`User ${userId} failed (attempt ${newRetryCount}/${maxRetries}), will retry next sync`);
         await supabase
           .from('tribunal_credentials')
           .update({
@@ -166,18 +165,16 @@ export async function syncTribunalForUser(
     }
 
     const allDocuments = scraperResult.documents;
-    logger.info(`Scraper found ${allDocuments.length} total documents`, syncLogId);
+    logger.info(`Scraper found ${allDocuments.length} total documents`);
 
     // Filter - Only process documents for tracked expedientes
     const relevantDocuments = allDocuments.filter(doc => {
       const normalized = normalizeExpediente(doc.expediente);
-      const key = `${normalized}|${doc.juzgado}`;
-      return expedienteMap.has(key);
+      return expedienteMap.has(normalized);
     });
 
     logger.info(
-      `${relevantDocuments.length} documents match tracked expedientes (filtered from ${allDocuments.length})`,
-      syncLogId
+      `${relevantDocuments.length} documents match tracked expedientes (filtered from ${allDocuments.length})`
     );
 
     // Use the browser and page from the scraper (already logged in!)
@@ -187,7 +184,7 @@ export async function syncTribunalForUser(
 
     browser = scraperResult.browser;
     const page = scraperResult.page;
-    logger.info('Using authenticated browser session from scraper', syncLogId);
+    logger.info('Using authenticated browser session from scraper');
 
     let documentsProcessed = 0;
     let documentsFailed = 0;
@@ -196,15 +193,14 @@ export async function syncTribunalForUser(
     // Process only relevant documents
     for (const doc of relevantDocuments) {
       const normalizedExpediente = normalizeExpediente(doc.expediente);
-      const key = `${normalizedExpediente}|${doc.juzgado}`;
-      const caseId = expedienteMap.get(key);
+      const caseId = expedienteMap.get(normalizedExpediente);
 
       if (!caseId) {
-        logger.warn(`No case_id found for ${doc.expediente} (should not happen)`, syncLogId);
+        logger.warn(`No case_id found for ${doc.expediente} (should not happen)`);
         continue;
       }
 
-      logger.info(`Processing ${doc.expediente}: ${doc.descripcion}`, syncLogId);
+      logger.info(`Processing ${doc.expediente}: ${doc.descripcion}`);
 
       try {
         // Parse fecha from fechaPublicacion (format: DD/MM/YYYY)
@@ -228,7 +224,7 @@ export async function syncTribunalForUser(
           .maybeSingle();
 
         if (existingFile) {
-          logger.info(`Document already processed, skipping`, syncLogId);
+          logger.info(`Document already processed, skipping`);
           continue; // Already downloaded, summarized, and alerted
         }
 
@@ -244,7 +240,7 @@ export async function syncTribunalForUser(
           .maybeSingle();
 
         if (inBaseline) {
-          logger.info(`Document in baseline (historical), skipping alert`, syncLogId);
+          logger.info(`Document in baseline (historical), skipping alert`);
           // Create stub entry in case_files to mark as seen (without download/summarize/alert)
           const dateStr = fecha ? fecha.replace(/-/g, '') : 'sin-fecha';
           const fileName = `${normalizedExpediente} - ${doc.descripcion.substring(0, 50)} - ${dateStr}.pdf`;
@@ -268,14 +264,14 @@ export async function syncTribunalForUser(
         }
 
         // New document found (not in case_files, not in baseline) - process it fully
-        logger.info(`✨ New document found (not in baseline), processing...`, syncLogId);
+        logger.info(`✨ New document found (not in baseline), processing...`);
 
         // NEW document found - process it
         newDocumentsFound++;
-        logger.info(`✨ New document found, processing...`, syncLogId);
+        logger.info(`✨ New document found, processing...`);
 
         // Download PDF and upload to storage
-        logger.info(`Downloading PDF`, syncLogId);
+        logger.info(`Downloading PDF`);
         const pdfResult = await downloadTribunalPDF({
           document: doc,
           page,
@@ -285,15 +281,15 @@ export async function syncTribunalForUser(
         });
 
         if (!pdfResult.success) {
-          logger.error(`PDF download failed: ${pdfResult.error}`, syncLogId);
+          logger.error(`PDF download failed: ${pdfResult.error}`);
           documentsFailed++;
           continue;
         }
 
-        logger.info(`✓ PDF downloaded: ${pdfResult.pdfPath}`, syncLogId);
+        logger.info(`✓ PDF downloaded: ${pdfResult.pdfPath}`);
 
         // Generate AI summary with rate limiting
-        logger.info(`Generating AI summary`, syncLogId);
+        logger.info(`Generating AI summary`);
         const summaryResult = await generateDocumentSummary({
           pdfPath: pdfResult.pdfPath!,
           supabase,
@@ -305,9 +301,9 @@ export async function syncTribunalForUser(
         const aiSummary = summaryResult.success ? summaryResult.summary : null;
 
         if (summaryResult.success) {
-          logger.info(`✓ AI summary generated`, syncLogId);
+          logger.info(`✓ AI summary generated`);
         } else {
-          logger.warn(`⚠ AI summary failed: ${summaryResult.error}`, syncLogId);
+          logger.warn(`⚠ AI summary failed: ${summaryResult.error}`);
         }
 
         // Rate limiting: 2 second delay before next AI call
@@ -338,20 +334,20 @@ export async function syncTribunalForUser(
         if (fileError) {
           // Check if unique constraint violation (race condition)
           if (fileError.code === '23505') {
-            logger.info(`Document already exists (race condition), skipping`, syncLogId);
+            logger.info(`Document already exists (race condition), skipping`);
             continue;
           }
-          logger.error(`Failed to create case_file: ${fileError.message}`, syncLogId);
+          logger.error(`Failed to create case_file: ${fileError.message}`);
           documentsFailed++;
           continue;
         }
 
-        logger.info(`✓ Case file created: ${caseFile.id}`, syncLogId);
+        logger.info(`✓ Case file created: ${caseFile.id}`);
 
         // Create alert for Tribunal Electrónico document
-        logger.info(`Creating alert for Tribunal Electrónico document`, syncLogId);
+        logger.info(`Creating alert for Tribunal Electrónico document`);
 
-        const { error: alertError } = await supabase
+        const { data: newAlert, error: alertError } = await supabase
           .from('alerts')
           .insert({
             user_id: userId,
@@ -359,17 +355,20 @@ export async function syncTribunalForUser(
             case_file_id: caseFile.id,
             matched_on: 'case_number',
             matched_value: normalizedExpediente
-          });
+          })
+          .select()
+          .single();
 
-        if (alertError) {
-          logger.error(`Failed to create alert: ${alertError.message}`, syncLogId);
+        if (alertError || !newAlert) {
+          logger.error(`Failed to create alert: ${alertError?.message}`);
           // Don't fail the whole process if alert creation fails
         } else {
-          logger.info(`✓ Alert created for Tribunal document`, syncLogId);
+          logger.info(`✓ Alert created for Tribunal document`, newAlert.id);
         }
 
         // Send WhatsApp notification
-        logger.info(`Sending WhatsApp alert...`, syncLogId);
+        const alertId = newAlert?.id;
+        logger.info(`Sending WhatsApp alert...`, alertId);
         const notifyResult = await sendTribunalWhatsAppAlert({
           userId,
           expediente: doc.expediente,
@@ -381,24 +380,24 @@ export async function syncTribunalForUser(
         });
 
         if (notifyResult.success) {
-          logger.info(`✓ WhatsApp alert sent`, syncLogId);
+          logger.info(`✓ WhatsApp alert sent`, alertId);
         } else {
-          logger.warn(`⚠ WhatsApp alert failed: ${notifyResult.error}`, syncLogId);
+          logger.warn(`⚠ WhatsApp alert failed: ${notifyResult.error}`, alertId);
         }
 
         documentsProcessed++;
-        logger.info(`✅ Document processed successfully`, syncLogId);
+        logger.info(`✅ Document processed successfully`, alertId);
 
       } catch (error) {
         documentsFailed++;
         const errorMsg = error instanceof Error ? error.message : 'Unknown error';
-        logger.error(`Failed to process document ${doc.expediente}: ${errorMsg}`, syncLogId);
+        logger.error(`Failed to process document ${doc.expediente}: ${errorMsg}`);
         // Continue with next document
       }
     }
 
     // Update credentials status and reset retry count on success
-    logger.info(`Sync completed: ${newDocumentsFound} new, ${documentsProcessed} processed, ${documentsFailed} failed`, syncLogId);
+    logger.info(`Sync completed: ${newDocumentsFound} new, ${documentsProcessed} processed, ${documentsFailed} failed`);
     await supabase
       .from('tribunal_credentials')
       .update({
@@ -423,7 +422,7 @@ export async function syncTribunalForUser(
       })
       .eq('id', syncLogId);
 
-    logger.info(`Sync completed successfully`, syncLogId);
+    logger.info(`Sync completed successfully`);
 
     return {
       success: true,
@@ -434,7 +433,7 @@ export async function syncTribunalForUser(
 
   } catch (error) {
     const errorMsg = error instanceof Error ? error.message : 'Unknown error';
-    logger.error(`Sync failed for user ${userId}: ${errorMsg}`, syncLogId || undefined);
+    logger.error(`Sync failed for user ${userId}: ${errorMsg}`);
 
     // Update sync log as failed
     if (syncLogId) {
