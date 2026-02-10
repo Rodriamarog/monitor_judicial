@@ -7,6 +7,8 @@
     "build": "NODE_OPTIONS='--max-old-space-size=4096' next build",
     "start": "next start",
     "lint": "eslint",
+    "test": "vitest",
+    "test:logging": "vitest hetzner/lib/tribunal/__tests__/logging.test.ts",
     "test:matcher": "tsx scripts/test-matcher.ts",
     "test:whatsapp": "tsx scripts/test-whatsapp.ts",
     "test:historical": "tsx scripts/test-historical.ts",
@@ -80,6 +82,8 @@
     "next-themes": "^0.4.6",
     "openai": "^6.16.0",
     "pg": "^8.16.3",
+    "puppeteer-extra": "^3.3.6",
+    "puppeteer-extra-plugin-stealth": "^2.11.2",
     "react": "19.2.0",
     "react-big-calendar": "^1.19.4",
     "react-dom": "19.2.0",
@@ -110,6 +114,7 @@
     "shadcn": "^3.4.2",
     "tailwindcss": "^4.1.16",
     "tsx": "^4.21.0",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "vitest": "^4.0.18"
   }
 }

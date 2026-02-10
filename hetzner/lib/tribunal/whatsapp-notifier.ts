@@ -111,7 +111,14 @@ export async function sendTribunalWhatsAppAlert(
     }
 
   } catch (error) {
-    console.error('[WhatsApp] Error sending notification:', error);
+    console.error('[WhatsApp] Error:', {
+      message: error instanceof Error ? error.message : 'Unknown',
+      userId,
+      expediente,
+      juzgado,
+      step: 'send_whatsapp',
+      stack: error instanceof Error ? error.stack : undefined
+    });
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Error desconocido',

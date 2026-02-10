@@ -71,7 +71,7 @@ export async function runTribunalScraper(
     // Launch browser
     console.log('[Scraper] Launching browser...');
     browser = await puppeteer.launch({
-      headless: false, // Show browser window for debugging
+      headless: true, // Headless mode for production
       defaultViewport: {
         width: 1920,
         height: 1080
@@ -81,7 +81,7 @@ export async function runTribunalScraper(
         '--disable-setuid-sandbox',
         '--disable-blink-features=AutomationControlled',
         '--disable-dev-shm-usage',
-        '--start-maximized'
+        '--disable-gpu'
       ]
     });
 
@@ -114,8 +114,11 @@ export async function runTribunalScraper(
         await page.click(selector);
         await page.type(selector, email, { delay: 50 });
         emailFilled = true;
+        console.log(`[Scraper] Email selector '${selector}' succeeded`);
         break;
       } catch (e) {
+        const errorMsg = e instanceof Error ? e.message : 'Unknown';
+        console.warn(`[Scraper] Email selector '${selector}' failed: ${errorMsg}`);
         continue;
       }
     }
@@ -193,7 +196,10 @@ export async function runTribunalScraper(
       await randomDelay(300, 500);
       await page.click('#MainContent_Button2');
       tribunalButtonClicked = true;
+      console.log('[Scraper] Tribunal button found by ID selector');
     } catch (e) {
+      const errorMsg = e instanceof Error ? e.message : 'Unknown';
+      console.warn(`[Scraper] Tribunal button ID selector failed: ${errorMsg}, trying fallback...`);
       // Fallback to finding by value
       tribunalButtonClicked = await page.evaluate(() => {
         const button = document.querySelector('input[type="submit"][value="Tribunal Electrónico 2.0"]');
@@ -203,6 +209,9 @@ export async function runTribunalScraper(
         }
         return false;
       });
+      if (tribunalButtonClicked) {
+        console.log('[Scraper] Tribunal button found by value fallback');
+      }
     }
 
     if (!tribunalButtonClicked) {
@@ -214,7 +223,10 @@ export async function runTribunalScraper(
     await Promise.race([
       page.waitForNavigation({ waitUntil: 'networkidle2', timeout: 10000 }),
       randomDelay(5000) // Fallback timeout
-    ]).catch(() => console.log('[Scraper] Navigation timeout, continuing...'));
+    ]).catch((error) => {
+      const errorMsg = error instanceof Error ? error.message : 'Unknown';
+      console.warn(`[Scraper] Navigation timeout (${errorMsg}), continuing anyway...`);
+    });
 
     await randomDelay(1500, 2500); // Extra wait for page to fully render
     console.log('[Scraper] Navigated to Tribunal 2.0 page');
@@ -252,8 +264,9 @@ export async function runTribunalScraper(
 
     // Wait for documents to load
     await randomDelay(1000, 1500);
-    await page.waitForSelector('table, .list-group, [class*="documento"], div.row.p-10', { timeout: 10000 }).catch(() => {
-      console.log('[Scraper] Could not find document container, continuing anyway...');
+    await page.waitForSelector('table, .list-group, [class*="documento"], div.row.p-10', { timeout: 10000 }).catch((error) => {
+      const errorMsg = error instanceof Error ? error.message : 'Unknown';
+      console.warn(`[Scraper] Document selector timeout (${errorMsg}), continuing anyway...`);
     });
     await randomDelay(500, 1000);
 
@@ -271,11 +284,33 @@ export async function runTribunalScraper(
     };
 
   } catch (error) {
-    console.error('[Scraper] Error:', error);
+    // Take screenshot on error
+    let screenshotPath: string | null = null;
+    if (page) {
+      try {
+        screenshotPath = `/tmp/scraper-error-${email.replace('@', '-')}-${Date.now()}.png`;
+        await page.screenshot({ path: screenshotPath, fullPage: true });
+        console.log(`[Scraper] Screenshot saved: ${screenshotPath}`);
+      } catch (err) {
+        const errMsg = err instanceof Error ? err.message : 'Unknown';
+        console.warn(`[Scraper] Screenshot failed: ${errMsg}`);
+      }
+    }
 
-    // Close browser on error
+    console.error('[Scraper] Fatal Error:', {
+      message: error instanceof Error ? error.message : 'Unknown',
+      email,
+      url: page ? page.url() : 'unknown',
+      screenshot: screenshotPath || 'not available',
+      stack: error instanceof Error ? error.stack : undefined
+    });
+
+    // Close browser on error with logging
     if (browser) {
-      await browser.close().catch(() => {});
+      await browser.close().catch((err) => {
+        const errMsg = err instanceof Error ? err.message : 'Unknown';
+        console.warn(`[Scraper] Browser close failed: ${errMsg}`);
+      });
     }
 
     return {

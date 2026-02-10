@@ -110,7 +110,15 @@ Mal ejemplo (demasiado detalle):
     };
 
   } catch (error) {
-    console.error('[AI Summary] Error:', error);
+    console.error('[AI Summary] Error:', {
+      message: error instanceof Error ? error.message : 'Unknown',
+      expediente,
+      juzgado,
+      descripcion,
+      pdfPath,
+      step: 'generate_summary',
+      stack: error instanceof Error ? error.stack : undefined
+    });
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Error desconocido al generar resumen'

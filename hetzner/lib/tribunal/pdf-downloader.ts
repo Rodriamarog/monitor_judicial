@@ -103,7 +103,14 @@ export async function downloadTribunalPDF(
     };
 
   } catch (error) {
-    console.error(`[PDF Download] Error downloading PDF for doc ${doc.numero}:`, error);
+    console.error('[PDF Download] Error:', {
+      message: error instanceof Error ? error.message : 'Unknown',
+      userId,
+      expediente: doc.expediente,
+      numero: doc.numero,
+      juzgado: doc.juzgado,
+      stack: error instanceof Error ? error.stack : undefined
+    });
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Error desconocido'
@@ -257,7 +264,12 @@ async function fetchPDF(page: Page, processId: string): Promise<Buffer | null> {
     return pdfBuffer;
 
   } catch (error) {
-    console.error('[PDF Fetch] Error:', error);
+    console.error('[PDF Fetch] Error:', {
+      message: error instanceof Error ? error.message : 'Unknown',
+      process_id: processId,
+      stage: 'fetch_pdf_from_url',
+      stack: error instanceof Error ? error.stack : undefined
+    });
     return null;
   }
 }

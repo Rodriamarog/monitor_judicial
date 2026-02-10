@@ -19,6 +19,22 @@ import StealthPlugin from 'puppeteer-extra-plugin-stealth';
 
 puppeteer.use(StealthPlugin());
 
+enum SyncStep {
+  INIT = 'init',
+  CREATE_SYNC_LOG = 'create_sync_log',
+  FETCH_CASES = 'fetch_cases',
+  FETCH_CREDENTIALS = 'fetch_credentials',
+  RUN_SCRAPER = 'run_scraper',
+  FILTER_DOCUMENTS = 'filter_documents',
+  PROCESS_DOCUMENT = 'process_document',
+  DOWNLOAD_PDF = 'download_pdf',
+  GENERATE_SUMMARY = 'generate_summary',
+  CREATE_ALERT = 'create_alert',
+  SEND_WHATSAPP = 'send_whatsapp',
+  UPDATE_CREDENTIALS = 'update_credentials',
+  COMPLETE = 'complete'
+}
+
 export interface SyncUserParams {
   userId: string;
   vaultPasswordId: string;
@@ -60,7 +76,7 @@ export async function syncTribunalForUser(
 
   try {
     // Create sync log entry
-    logger.info(`Starting sync for user ${userId}`);
+    logger.info('Starting sync for user', undefined, { userId, email, step: SyncStep.INIT });
     const { data: syncLog, error: syncLogError } = await supabase
       .from('tribunal_sync_log')
       .insert({
@@ -78,7 +94,7 @@ export async function syncTribunalForUser(
     syncLogId = syncLog.id;
 
     // Fetch user's tracked expedientes
-    logger.info('Fetching user tracked expedientes');
+    logger.info('Fetching user tracked expedientes', undefined, { userId, step: SyncStep.FETCH_CASES });
 
     const { data: monitoredCases, error: casesError } = await supabase
       .from('monitored_cases')
@@ -97,10 +113,10 @@ export async function syncTribunalForUser(
       expedienteMap.set(normalized, case_.id);
     });
 
-    logger.info(`User tracking ${monitoredCases.length} expedientes`);
+    logger.info('User tracking expedientes', undefined, { userId, count: monitoredCases.length, step: SyncStep.FETCH_CASES });
 
     // Retrieve credentials from Vault using RPC wrapper
-    logger.info('Retrieving credentials from Vault');
+    logger.info('Retrieving credentials from Vault', undefined, { userId, step: SyncStep.FETCH_CREDENTIALS });
 
     const { data: password, error: passwordError } = await supabase
       .rpc('vault_get_secret', { secret_id: vaultPasswordId });
@@ -119,10 +135,10 @@ export async function syncTribunalForUser(
       throw new Error('Credenciales incompletas en Vault');
     }
 
-    logger.info('Credentials retrieved successfully');
+    logger.info('Credentials retrieved successfully', undefined, { userId, step: SyncStep.FETCH_CREDENTIALS });
 
     // Run scraper
-    logger.info('Running scraper...');
+    logger.info('Running scraper', undefined, { userId, email, step: SyncStep.RUN_SCRAPER });
     const scraperResult = await runTribunalScraper({
       email,
       password,
@@ -390,8 +406,16 @@ export async function syncTribunalForUser(
 
       } catch (error) {
         documentsFailed++;
-        const errorMsg = error instanceof Error ? error.message : 'Unknown error';
-        logger.error(`Failed to process document ${doc.expediente}: ${errorMsg}`);
+        logger.error('Failed to process document', undefined, {
+          userId,
+          expediente: doc.expediente,
+          caseId,
+          error: error instanceof Error ? error.message : 'Unknown',
+          step: SyncStep.PROCESS_DOCUMENT,
+          documentsProcessedSoFar: documentsProcessed,
+          documentsFailed,
+          stack: error instanceof Error ? error.stack : undefined
+        });
         // Continue with next document
       }
     }
@@ -433,7 +457,13 @@ export async function syncTribunalForUser(
 
   } catch (error) {
     const errorMsg = error instanceof Error ? error.message : 'Unknown error';
-    logger.error(`Sync failed for user ${userId}: ${errorMsg}`);
+    logger.error('Sync failed', undefined, {
+      userId,
+      email,
+      error: errorMsg,
+      partialProgress: { documentsProcessed, documentsFailed, newDocumentsFound },
+      stack: error instanceof Error ? error.stack : undefined
+    });
 
     // Update sync log as failed
     if (syncLogId) {
@@ -456,7 +486,10 @@ export async function syncTribunalForUser(
     };
   } finally {
     if (browser) {
-      await browser.close().catch(() => {});
+      await browser.close().catch((err) => {
+        const errMsg = err instanceof Error ? err.message : 'Unknown';
+        logger.warn('Browser close failed in cleanup', undefined, { userId, error: errMsg });
+      });
     }
   }
 }

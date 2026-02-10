@@ -93,11 +93,37 @@ export class NotificationLogger {
 
       if (error) {
         console.error('Failed to write notification logs to database:', error);
+
+        // Fallback: prevent log loss
+        try {
+          const fs = require('fs');
+          const fallbackPath = '/tmp/notification-logs-fallback.jsonl';
+          fs.appendFileSync(fallbackPath,
+            this.batchLogs.map(JSON.stringify).join('\n') + '\n'
+          );
+          console.log(`✓ Wrote ${this.batchLogs.length} logs to fallback: ${fallbackPath}`);
+        } catch (fileErr) {
+          console.error('CRITICAL: Fallback failed:', fileErr);
+          console.error('Lost logs:', JSON.stringify(this.batchLogs, null, 2));
+        }
       } else {
         console.log(`✓ Flushed ${this.batchLogs.length} notification logs to database`);
       }
     } catch (err) {
-      console.error('Error flushing notification logs:', err);
+      console.error('Failed to write to Supabase:', err);
+
+      // Fallback: prevent log loss (for thrown errors)
+      try {
+        const fs = require('fs');
+        const fallbackPath = '/tmp/notification-logs-fallback.jsonl';
+        fs.appendFileSync(fallbackPath,
+          this.batchLogs.map(JSON.stringify).join('\n') + '\n'
+        );
+        console.log(`✓ Wrote ${this.batchLogs.length} logs to fallback: ${fallbackPath}`);
+      } catch (fileErr) {
+        console.error('CRITICAL: Fallback failed:', fileErr);
+        console.error('Lost logs:', JSON.stringify(this.batchLogs, null, 2));
+      }
     } finally {
       // Clear batch regardless of success/failure
       this.batchLogs = [];

@@ -163,7 +163,10 @@ export async function testTribunalConnection(
   } finally {
     // Cleanup
     if (browser) {
-      await browser.close().catch(() => {});
+      await browser.close().catch((err) => {
+        const errMsg = err instanceof Error ? err.message : 'Unknown';
+        console.warn(`[Connection Test] Browser close failed: ${errMsg}`);
+      });
     }
     if (keyPath && fs.existsSync(keyPath)) {
       fs.unlinkSync(keyPath);
