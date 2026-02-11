@@ -172,32 +172,33 @@ async function importEmbeddings(targetClient, manifest) {
 }
 
 async function createVectorIndexes(client) {
-  log('info', 'Creating vector indexes (this may take several minutes)...');
+  log('info', 'Creating HNSW vector indexes (this may take several minutes)...');
 
-  // IVFFlat indexes for fast approximate search
-  // lists = sqrt(row_count) is a good rule of thumb
   const rowCount = await getRowCount(client, 'tesis_embeddings');
-  const lists = Math.ceil(Math.sqrt(rowCount));
 
-  log('info', `Creating IVFFlat index with ${lists} lists for ${rowCount.toLocaleString()} rows`);
+  // HNSW parameters:
+  // m = 16 (connections per layer, higher = better recall but more memory)
+  // ef_construction = 64 (build quality, higher = better index but slower build)
+  log('info', `Creating HNSW indexes for ${rowCount.toLocaleString()} rows`);
+  log('info', 'Parameters: m=16, ef_construction=64 (optimized for recall)');
 
   await client.query(`
     CREATE INDEX IF NOT EXISTS idx_tesis_rubro_embedding
     ON tesis_embeddings
-    USING ivfflat (rubro_embedding vector_cosine_ops)
-    WITH (lists = ${lists})
+    USING hnsw (rubro_embedding vector_cosine_ops)
+    WITH (m = 16, ef_construction = 64)
   `);
-  log('success', 'rubro_embedding index created');
+  log('success', 'rubro_embedding HNSW index created');
 
   await client.query(`
     CREATE INDEX IF NOT EXISTS idx_tesis_texto_embedding
     ON tesis_embeddings
-    USING ivfflat (texto_embedding vector_cosine_ops)
-    WITH (lists = ${lists})
+    USING hnsw (texto_embedding vector_cosine_ops)
+    WITH (m = 16, ef_construction = 64)
   `);
-  log('success', 'texto_embedding index created');
+  log('success', 'texto_embedding HNSW index created');
 
-  log('success', 'All vector indexes created!');
+  log('success', 'All HNSW indexes created!');
 }
 
 async function validateMigration(sourceClient, targetClient) {

@@ -18,6 +18,17 @@ services:
     ports:
       - "5433:5432"
 
+    # Resource limits (increase for HNSW indexes)
+    deploy:
+      resources:
+        limits:
+          memory: 8G
+        reservations:
+          memory: 2G
+
+    # Shared memory for large operations (index building)
+    shm_size: 4gb
+
     # Environment variables
     environment:
       POSTGRES_DB: legal_rag
@@ -40,7 +51,7 @@ services:
 
     # Health check
     healthcheck:
-      test: ["CMD-BASH", "pg_isready -U postgres -d legal_rag"]
+      test: ["CMD-SHELL", "pg_isready -U postgres -d legal_rag"]
       interval: 10s
       timeout: 5s
       retries: 5
