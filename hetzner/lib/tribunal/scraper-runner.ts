@@ -30,6 +30,34 @@ export interface ScraperResult {
   error?: string;
 }
 
+// Helper function to log with timestamp
+function log(message: string, data?: any) {
+  const timestamp = new Date().toISOString().substring(11, 23); // HH:MM:SS.mmm
+  if (data) {
+    console.log(`[${timestamp}] ${message}`, data);
+  } else {
+    console.log(`[${timestamp}] ${message}`);
+  }
+}
+
+function warn(message: string, data?: any) {
+  const timestamp = new Date().toISOString().substring(11, 23);
+  if (data) {
+    console.warn(`[${timestamp}] ${message}`, data);
+  } else {
+    console.warn(`[${timestamp}] ${message}`);
+  }
+}
+
+function error(message: string, data?: any) {
+  const timestamp = new Date().toISOString().substring(11, 23);
+  if (data) {
+    console.error(`[${timestamp}] ${message}`, data);
+  } else {
+    console.error(`[${timestamp}] ${message}`);
+  }
+}
+
 // Helper function to add random human-like delays
 function randomDelay(min: number = 100, max: number = 500): Promise<void> {
   const delay = Math.floor(Math.random() * (max - min + 1)) + min;
@@ -46,19 +74,26 @@ export async function runTribunalScraper(
   const { email, password, keyFileBase64, cerFileBase64 } = params;
 
   let browser: Browser | null = null;
+  let page: Page | null = null;
   let keyPath: string | null = null;
   let cerPath: string | null = null;
 
   try {
+    log(`[Scraper] Starting scraper for user: ${email}`);
+
     // Create temporary files
     const tempDir = os.tmpdir();
     const timestamp = Date.now();
     keyPath = path.join(tempDir, `tribunal_scraper_${timestamp}.key`);
     cerPath = path.join(tempDir, `tribunal_scraper_${timestamp}.cer`);
 
+    log(`[Scraper] Creating temp certificate files in ${tempDir}`);
+
     // Write base64 files to temp location
     fs.writeFileSync(keyPath, Buffer.from(keyFileBase64, 'base64'));
     fs.writeFileSync(cerPath, Buffer.from(cerFileBase64, 'base64'));
+
+    log(`[Scraper] Temp files created: .key (${fs.statSync(keyPath).size} bytes), .cer (${fs.statSync(cerPath).size} bytes)`);
 
     // Verify files exist
     if (!fs.existsSync(keyPath)) {
@@ -69,7 +104,7 @@ export async function runTribunalScraper(
     }
 
     // Launch browser
-    console.log('[Scraper] Launching browser...');
+    log('[Scraper] Launching browser (headless mode)...');
     browser = await puppeteer.launch({
       headless: true, // Headless mode for production
       defaultViewport: {
@@ -85,7 +120,10 @@ export async function runTribunalScraper(
       ]
     });
 
-    const page = await browser.newPage();
+    log('[Scraper] Browser launched successfully');
+
+    page = await browser.newPage();
+    log('[Scraper] New page created');
 
     // Set realistic user agent
     await page.setUserAgent(
@@ -93,13 +131,14 @@ export async function runTribunalScraper(
     );
 
     // Login flow
-    console.log('[Scraper] Navigating to login page...');
+    log('[Scraper] Navigating to login page...');
     const loginUrl = 'https://sjpo.pjbc.gob.mx/TribunalElectronico/login.aspx?ReturnUrl=%2ftribunalelectronico%2fdefault.aspx%3fver%3d1.2.4&ver=1.2.4';
     await page.goto(loginUrl, { waitUntil: 'networkidle2', timeout: 30000 });
+    log(`[Scraper] Login page loaded: ${page.url()}`);
     await randomDelay(1000, 2000);
 
     // Fill email
-    console.log('[Scraper] Entering email...');
+    log('[Scraper] Entering email...');
     const emailInputSelectors = [
       'input[placeholder="Correo Electrónico"]',
       'input[type="text"]',
@@ -118,7 +157,7 @@ export async function runTribunalScraper(
         break;
       } catch (e) {
         const errorMsg = e instanceof Error ? e.message : 'Unknown';
-        console.warn(`[Scraper] Email selector '${selector}' failed: ${errorMsg}`);
+        warn(`[Scraper] Email selector '${selector}' failed: ${errorMsg}`);
         continue;
       }
     }
@@ -128,25 +167,29 @@ export async function runTribunalScraper(
     }
 
     // Fill password
-    console.log('[Scraper] Entering password...');
+    log('[Scraper] Entering password...');
     const passwordSelector = 'input[type="password"]';
     await page.waitForSelector(passwordSelector, { visible: true });
     await page.type(passwordSelector, password, { delay: 50 });
 
     // Upload files
-    console.log('[Scraper] Uploading certificate files...');
+    log('[Scraper] Uploading certificate files...');
     const fileInputs = await page.$$('input[type="file"]');
+    log(`[Scraper] Found ${fileInputs.length} file input(s)`);
     if (fileInputs.length >= 2) {
+      log(`[Scraper] Uploading .key file: ${keyPath}`);
       await fileInputs[0].uploadFile(keyPath);
       await randomDelay(2000, 3000);
+      log(`[Scraper] Uploading .cer file: ${cerPath}`);
       await fileInputs[1].uploadFile(cerPath);
       await randomDelay(1000, 1500);
+      log('[Scraper] Certificate files uploaded successfully');
     } else {
       throw new Error('No se encontraron los campos para subir archivos');
     }
 
     // Click login button
-    console.log('[Scraper] Clicking login button...');
+    log('[Scraper] Clicking login button...');
     const loginButtonFound = await page.evaluate(() => {
       const buttons = Array.from(document.querySelectorAll('button, a, input[type="submit"]'));
       const accederButton = buttons.find((btn: any) => btn.textContent?.includes('Acceder'));
@@ -162,6 +205,7 @@ export async function runTribunalScraper(
     }
 
     // Wait for navigation
+    log('[Scraper] Waiting for post-login navigation...');
     await Promise.race([
       page.waitForNavigation({ waitUntil: 'networkidle2', timeout: 15000 }),
       page.waitForSelector('.error, .alert-danger, .mensaje-error', { timeout: 15000 }).catch(() => null)
@@ -179,15 +223,16 @@ export async function runTribunalScraper(
 
     // Verify login successful
     const currentUrl = page.url();
+    log(`[Scraper] Current URL after login: ${currentUrl}`);
     if (!currentUrl.includes('default.aspx') && !currentUrl.includes('home') &&
         !currentUrl.includes('dashboard') && !currentUrl.includes('bienvenida')) {
       throw new Error('No se pudo verificar el inicio de sesión');
     }
 
-    console.log('[Scraper] Login successful!');
+    log('[Scraper] Login successful!');
 
     // Navigate to Tribunal Electrónico 2.0
-    console.log('[Scraper] Looking for Tribunal Electrónico 2.0 button...');
+    log('[Scraper] Looking for Tribunal Electrónico 2.0 button...');
     await randomDelay(500, 800);
 
     let tribunalButtonClicked = false;
@@ -196,10 +241,10 @@ export async function runTribunalScraper(
       await randomDelay(300, 500);
       await page.click('#MainContent_Button2');
       tribunalButtonClicked = true;
-      console.log('[Scraper] Tribunal button found by ID selector');
+      log('[Scraper] Tribunal button found by ID selector');
     } catch (e) {
       const errorMsg = e instanceof Error ? e.message : 'Unknown';
-      console.warn(`[Scraper] Tribunal button ID selector failed: ${errorMsg}, trying fallback...`);
+      warn(`[Scraper] Tribunal button ID selector failed: ${errorMsg}, trying fallback...`);
       // Fallback to finding by value
       tribunalButtonClicked = await page.evaluate(() => {
         const button = document.querySelector('input[type="submit"][value="Tribunal Electrónico 2.0"]');
@@ -210,7 +255,7 @@ export async function runTribunalScraper(
         return false;
       });
       if (tribunalButtonClicked) {
-        console.log('[Scraper] Tribunal button found by value fallback');
+        log('[Scraper] Tribunal button found by value fallback');
       }
     }
 
@@ -219,20 +264,20 @@ export async function runTribunalScraper(
     }
 
     // Wait for navigation to Tribunal 2.0 page
-    console.log('[Scraper] Waiting for Tribunal 2.0 page to load...');
+    log('[Scraper] Waiting for Tribunal 2.0 page to load...');
     await Promise.race([
       page.waitForNavigation({ waitUntil: 'networkidle2', timeout: 10000 }),
       randomDelay(5000) // Fallback timeout
     ]).catch((error) => {
       const errorMsg = error instanceof Error ? error.message : 'Unknown';
-      console.warn(`[Scraper] Navigation timeout (${errorMsg}), continuing anyway...`);
+      warn(`[Scraper] Navigation timeout (${errorMsg}), continuing anyway...`);
     });
 
     await randomDelay(1500, 2500); // Extra wait for page to fully render
-    console.log('[Scraper] Navigated to Tribunal 2.0 page');
+    log('[Scraper] Navigated to Tribunal 2.0 page');
 
     // Find DOCUMENTOS link
-    console.log('[Scraper] Looking for DOCUMENTOS link...');
+    log('[Scraper] Looking for DOCUMENTOS link...');
     await randomDelay(1500, 2000); // Extra delay to prevent timing issues
 
     const links = await page.evaluate(() => {
@@ -249,33 +294,40 @@ export async function runTribunalScraper(
         }));
     });
 
+    log(`[Scraper] Found ${links.length} potential document link(s)`);
+
     const documentosLink = links.find(link =>
       (link.href.includes('/Documentos/ObtenerDocumentos') && !link.href.includes('Notificacion')) ||
       (link.text?.toUpperCase() === 'DOCUMENTOS' && !link.href.includes('Notificacion'))
     );
 
     if (documentosLink) {
-      console.log('[Scraper] Navigating to Documentos page...');
+      log(`[Scraper] Navigating to Documentos page: ${documentosLink.href}`);
       await page.goto(documentosLink.href, { waitUntil: 'networkidle2' });
     } else {
-      console.log('[Scraper] Using default Documentos URL...');
+      log('[Scraper] Using default Documentos URL...');
       await page.goto('https://tribunalelectronico.pjbc.gob.mx/Documentos/ObtenerDocumentos/', { waitUntil: 'networkidle2' });
     }
+    log(`[Scraper] Documentos page loaded: ${page.url()}`);
 
     // Wait for documents to load
     await randomDelay(1000, 1500);
     await page.waitForSelector('table, .list-group, [class*="documento"], div.row.p-10', { timeout: 10000 }).catch((error) => {
       const errorMsg = error instanceof Error ? error.message : 'Unknown';
-      console.warn(`[Scraper] Document selector timeout (${errorMsg}), continuing anyway...`);
+      warn(`[Scraper] Document selector timeout (${errorMsg}), continuing anyway...`);
     });
     await randomDelay(500, 1000);
 
     // Scrape documents
-    console.log('[Scraper] Scraping documents...');
+    log('[Scraper] Scraping documents from page...');
     const documents = await scrapeDocumentos(page);
 
-    console.log(`[Scraper] Found ${documents.length} documents`);
+    log(`[Scraper] Successfully scraped ${documents.length} document(s)`);
+    if (documents.length > 0) {
+      log(`[Scraper] Sample: ${documents[0].expediente} - ${documents[0].juzgado}`);
+    }
 
+    log('[Scraper] Scraper completed successfully, returning results');
     return {
       success: true,
       documents,
@@ -283,40 +335,40 @@ export async function runTribunalScraper(
       page
     };
 
-  } catch (error) {
+  } catch (err) {
     // Take screenshot on error
     let screenshotPath: string | null = null;
     if (page) {
       try {
         screenshotPath = `/tmp/scraper-error-${email.replace('@', '-')}-${Date.now()}.png`;
         await page.screenshot({ path: screenshotPath, fullPage: true });
-        console.log(`[Scraper] Screenshot saved: ${screenshotPath}`);
-      } catch (err) {
-        const errMsg = err instanceof Error ? err.message : 'Unknown';
-        console.warn(`[Scraper] Screenshot failed: ${errMsg}`);
+        log(`[Scraper] Screenshot saved: ${screenshotPath}`);
+      } catch (screenshotErr) {
+        const errMsg = screenshotErr instanceof Error ? screenshotErr.message : 'Unknown';
+        warn(`[Scraper] Screenshot failed: ${errMsg}`);
       }
     }
 
-    console.error('[Scraper] Fatal Error:', {
-      message: error instanceof Error ? error.message : 'Unknown',
+    error('[Scraper] Fatal Error:', {
+      message: err instanceof Error ? err.message : 'Unknown',
       email,
       url: page ? page.url() : 'unknown',
       screenshot: screenshotPath || 'not available',
-      stack: error instanceof Error ? error.stack : undefined
+      stack: err instanceof Error ? err.stack : undefined
     });
 
     // Close browser on error with logging
     if (browser) {
-      await browser.close().catch((err) => {
-        const errMsg = err instanceof Error ? err.message : 'Unknown';
-        console.warn(`[Scraper] Browser close failed: ${errMsg}`);
+      await browser.close().catch((closeErr) => {
+        const errMsg = closeErr instanceof Error ? closeErr.message : 'Unknown';
+        warn(`[Scraper] Browser close failed: ${errMsg}`);
       });
     }
 
     return {
       success: false,
       documents: [],
-      error: error instanceof Error ? error.message : 'Error desconocido'
+      error: err instanceof Error ? err.message : 'Error desconocido'
     };
   } finally {
     // Cleanup temp files (but keep browser open on success!)

@@ -27,6 +27,10 @@ __pycache__/
 # database backups and migration data (large files)
 /backups
 /migration_data
+postgres/export/
+postgres/backups/
+*.sql
+*.tar.gz
 
 
 # testing

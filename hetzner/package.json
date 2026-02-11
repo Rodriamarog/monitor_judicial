@@ -6,7 +6,11 @@
   "scripts": {
     "dev": "npx tsx server.js",
     "start": "npx tsx server.js",
-    "sync": "npx tsx tribunal-sync.js"
+    "sync": "npx tsx tribunal-sync.js",
+    "test": "vitest run --exclude '**/*.e2e.test.ts'",
+    "test:watch": "vitest --exclude '**/*.e2e.test.ts'",
+    "test:coverage": "vitest run --coverage --exclude '**/*.e2e.test.ts'",
+    "test:e2e": "vitest run scraper-runner.e2e.test.ts --test-timeout=60000"
   },
   "dependencies": {
     "@google/generative-ai": "^0.21.0",
@@ -23,5 +27,8 @@
   "overrides": {
     "rimraf": "^4.0.0",
     "glob": "^10.0.0"
+  },
+  "devDependencies": {
+    "vitest": "^4.0.18"
   }
 }

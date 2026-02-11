@@ -1,0 +1,13 @@
+# Exclude from Docker image
+
+node_modules/
+logs/
+*.log
+.env
+.env.*
+.git/
+.gitignore
+*.md
+*.pid
+.DS_Store
+.vscode/

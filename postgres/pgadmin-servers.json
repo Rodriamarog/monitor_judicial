@@ -1,0 +1,14 @@
+{
+  "Servers": {
+    "1": {
+      "Name": "Legal RAG - Local",
+      "Group": "Servers",
+      "Host": "postgres",
+      "Port": 5432,
+      "MaintenanceDB": "legal_rag",
+      "Username": "postgres",
+      "SSLMode": "prefer",
+      "Comment": "Local development database for Legal RAG embeddings"
+    }
+  }
+}

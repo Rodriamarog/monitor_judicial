@@ -73,6 +73,9 @@ export async function syncTribunalForUser(
 
   let syncLogId: string | null = null;
   let browser: Browser | null = null;
+  let documentsProcessed = 0;
+  let documentsFailed = 0;
+  let newDocumentsFound = 0;
 
   try {
     // Create sync log entry
@@ -201,10 +204,6 @@ export async function syncTribunalForUser(
     browser = scraperResult.browser;
     const page = scraperResult.page;
     logger.info('Using authenticated browser session from scraper');
-
-    let documentsProcessed = 0;
-    let documentsFailed = 0;
-    let newDocumentsFound = 0;
 
     // Process only relevant documents
     for (const doc of relevantDocuments) {

@@ -33,6 +33,41 @@ process.on('unhandledRejection', (reason, promise) => {
   }
 });
 
+// Cleanup old puppeteer temp directories (7+ days old)
+function cleanupOldTempDirs() {
+  const fs = require('fs');
+  const path = require('path');
+  const tmpDir = '/tmp';
+
+  try {
+    const files = fs.readdirSync(tmpDir);
+    const puppeteerDirs = files.filter(f => f.startsWith('puppeteer_dev_profile-'));
+
+    let cleaned = 0;
+    const now = Date.now();
+    const sevenDaysAgo = now - (7 * 24 * 60 * 60 * 1000);
+
+    for (const dir of puppeteerDirs) {
+      const fullPath = path.join(tmpDir, dir);
+      try {
+        const stats = fs.statSync(fullPath);
+        if (stats.mtimeMs < sevenDaysAgo) {
+          fs.rmSync(fullPath, { recursive: true, force: true });
+          cleaned++;
+        }
+      } catch (err) {
+        // Ignore errors - directory might be in use
+      }
+    }
+
+    if (cleaned > 0) {
+      console.log(`[Sync] Cleaned ${cleaned} old puppeteer temp director(ies)`);
+    }
+  } catch (err) {
+    // Ignore cleanup errors
+  }
+}
+
 async function main() {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -47,6 +82,9 @@ async function main() {
   const logger = createNotificationLogger(supabaseUrl, supabaseKey);
 
   try {
+    // Clean up old temp directories before starting
+    cleanupOldTempDirs();
+
     logger.info('Starting Tribunal Electrónico sync job');
     console.log('[Tribunal Sync] Starting sync job...');
 

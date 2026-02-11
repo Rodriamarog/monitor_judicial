@@ -1,0 +1,83 @@
+# Local Development - Postgres Database for RAG System
+#
+# Usage:
+#   docker compose -f docker-compose.local.yml up -d
+#   docker compose -f docker-compose.local.yml logs -f postgres
+#   docker compose -f docker-compose.local.yml down
+#
+# This file is for LOCAL DEVELOPMENT ONLY
+# For Hetzner deployment, see hetzner/docker-compose.yml
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: legal-rag-postgres
+    restart: unless-stopped
+
+    # Port mapping (accessible at localhost:5433 to avoid conflicts)
+    ports:
+      - "5433:5432"
+
+    # Environment variables
+    environment:
+      POSTGRES_DB: legal_rag
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${LOCAL_POSTGRES_PASSWORD:-postgres}
+      # Postgres performance tuning
+      POSTGRES_INITDB_ARGS: "-E UTF8 --locale=C"
+      # Logging configuration
+      POSTGRES_LOG_STATEMENT: mod  # Log all DDL statements
+      POSTGRES_LOG_MIN_DURATION_STATEMENT: 1000  # Log queries slower than 1s
+
+    # Mount initialization scripts and data
+    volumes:
+      # Init scripts run in alphabetical order on first startup
+      - ./postgres/init:/docker-entrypoint-initdb.d
+      # Persistent data volume
+      - postgres-local-data:/var/lib/postgresql/data
+      # Custom postgres config (optional)
+      - ./postgres/postgresql.conf:/etc/postgresql/postgresql.conf:ro
+
+    # Health check
+    healthcheck:
+      test: ["CMD-BASH", "pg_isready -U postgres -d legal_rag"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+    # Logging
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+        labels: "service=postgres,env=local"
+
+  # Optional: pgAdmin for database management
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: legal-rag-pgadmin
+    restart: unless-stopped
+
+    ports:
+      - "5050:80"
+
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@local.dev
+      PGADMIN_DEFAULT_PASSWORD: admin
+      PGADMIN_CONFIG_SERVER_MODE: 'False'
+
+    depends_on:
+      - postgres
+
+    # Pre-configure postgres server in pgAdmin
+    volumes:
+      - pgadmin-data:/var/lib/pgadmin
+      - ./postgres/pgadmin-servers.json:/pgadmin4/servers.json
+
+volumes:
+  postgres-local-data:
+    name: legal-rag-postgres-data
+  pgadmin-data:
+    name: legal-rag-pgadmin-data

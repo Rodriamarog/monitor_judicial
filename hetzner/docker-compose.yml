@@ -1,0 +1,45 @@
+# Tribunal Electrónico Scraper - Docker Compose Configuration
+
+services:
+  scraper:
+    build:
+      context: ..  # Build from parent directory to access tribunal_electronico
+      dockerfile: hetzner/Dockerfile
+    container_name: tribunal-scraper
+    restart: unless-stopped
+
+    # Port mapping: access at http://localhost:3001
+    ports:
+      - "3001:3001"
+
+    # Load environment variables from .env file
+    env_file:
+      - .env
+
+    # Set Puppeteer environment variables
+    environment:
+      - PUPPETEER_EXECUTABLE_PATH=/usr/bin/google-chrome
+      - PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
+      - DISPLAY=${DISPLAY:-:0}
+
+    # Mount X11 socket to show browser window (development only)
+    volumes:
+      - /tmp/.X11-unix:/tmp/.X11-unix:rw
+
+    # Shared memory for Chromium (prevents crashes)
+    shm_size: 2gb
+
+    # Health check
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+    # Logging
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
