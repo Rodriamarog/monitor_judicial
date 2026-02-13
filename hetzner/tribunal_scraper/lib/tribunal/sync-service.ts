@@ -12,6 +12,7 @@ import { runTribunalScraper } from './scraper-runner';
 import { downloadTribunalPDF } from './pdf-downloader';
 import { generateDocumentSummary } from './ai-summarizer';
 import { sendTribunalWhatsAppAlert } from './whatsapp-notifier';
+import { sendTribunalEmailAlert } from './email-notifier';
 import { normalizeExpediente } from './normalize-expediente';
 import { Browser } from 'puppeteer';
 import puppeteer from 'puppeteer-extra';
@@ -384,7 +385,7 @@ export async function syncTribunalForUser(
         // Send WhatsApp notification
         const alertId = newAlert?.id;
         logger.info(`Sending WhatsApp alert...`, alertId);
-        const notifyResult = await sendTribunalWhatsAppAlert({
+        const whatsappResult = await sendTribunalWhatsAppAlert({
           userId,
           expediente: doc.expediente,
           juzgado: doc.juzgado,
@@ -394,10 +395,41 @@ export async function syncTribunalForUser(
           supabase
         });
 
-        if (notifyResult.success) {
+        if (whatsappResult.success) {
           logger.info(`✓ WhatsApp alert sent`, alertId);
         } else {
-          logger.warn(`⚠ WhatsApp alert failed: ${notifyResult.error}`, alertId);
+          logger.warn(`⚠ WhatsApp alert failed: ${whatsappResult.error}`, alertId);
+        }
+
+        // Send Email notification
+        logger.info(`Sending email alert...`, alertId);
+        const emailResult = await sendTribunalEmailAlert({
+          userId,
+          expediente: doc.expediente,
+          juzgado: doc.juzgado,
+          descripcion: doc.descripcion,
+          fecha: fecha || new Date().toISOString().split('T')[0],
+          aiSummary: aiSummary || undefined,
+          supabase
+        });
+
+        if (emailResult.success) {
+          logger.info(`✓ Email alert sent`, alertId);
+        } else {
+          logger.warn(`⚠ Email alert failed: ${emailResult.error}`, alertId);
+        }
+
+        // Update alert with notification status (both WhatsApp and Email)
+        if (newAlert) {
+          await supabase
+            .from('alerts')
+            .update({
+              whatsapp_sent: whatsappResult.success,
+              whatsapp_error: whatsappResult.error || null,
+              email_sent: emailResult.success,
+              email_error: emailResult.error || null,
+            })
+            .eq('id', newAlert.id);
         }
 
         documentsProcessed++;

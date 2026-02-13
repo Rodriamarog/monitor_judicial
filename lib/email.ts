@@ -128,7 +128,7 @@ export async function sendAlertEmail(data: AlertEmailData): Promise<{ success: b
 </head>
 <body>
   <div class="header">
-    <h1>⚖️ Nueva Actualización en Boletín Judicial</h1>
+    <h1>Nueva Actualización en Boletín Judicial</h1>
   </div>
 
   <div class="content">
@@ -166,7 +166,7 @@ export async function sendAlertEmail(data: AlertEmailData): Promise<{ success: b
 
     <p style="margin-top: 30px;">
       <small>
-        <strong>💡 Consejo:</strong> Guarda este correo para tus registros.
+        <strong>Nota:</strong> Guarda este correo para tus registros.
         También puedes ver todas tus alertas en tu panel de control.
       </small>
     </p>
@@ -204,7 +204,7 @@ Monitor Judicial PJBC
     const result = await resend.emails.send({
       from: 'Monitor Judicial <noreply@monitorjudicial.com.mx>',
       to: userEmail,
-      subject: `⚖️ Actualización: Caso ${caseNumber} - ${juzgado}`,
+      subject: `Actualización: Caso ${caseNumber} - ${juzgado}`,
       html: emailHtml,
       text: emailText,
     });
@@ -356,7 +356,7 @@ export async function sendBatchAlertEmail(data: BatchAlertEmailData): Promise<{ 
     ${alerts.map((alert, index) => `
     <div class="alert-box">
       <div class="case-header">
-        ${alert.matchedOn === 'name' ? '👤 Coincidencia por Nombre' : '📋 Actualización de Caso'} ${index + 1} de ${alertCount}
+        ${alert.matchedOn === 'name' ? 'Coincidencia por Nombre' : 'Actualización de Caso'} ${index + 1} de ${alertCount}
       </div>
       ${alert.matchedOn === 'name' ? `
       <div class="detail-row">

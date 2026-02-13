@@ -83,12 +83,12 @@ export async function sendWhatsAppAlert(
       // Single case - simple format
       const alert = data.alerts[0];
       casesText = `caso ${alert.caseNumber}`;
-      juzgadosText = alert.juzgado;
+      juzgadosText = 'BOLETIN JUDICIAL'; // Simplified - no individual juzgado list
       locationsText = extractLocation(alert.juzgado);
     } else {
-      // Multiple cases - concatenate with separators (no newlines - template doesn't support them)
+      // Multiple cases - use "BOLETIN JUDICIAL" instead of listing all juzgados
       casesText = `${alertCount} casos: ` + data.alerts.map(a => a.caseNumber).join(', ');
-      juzgadosText = data.alerts.map(a => a.juzgado).join(' | ');
+      juzgadosText = 'BOLETIN JUDICIAL'; // Simplified - avoids messy juzgado lists
 
       // Get unique locations
       const locations = [...new Set(data.alerts.map(a => extractLocation(a.juzgado)))];

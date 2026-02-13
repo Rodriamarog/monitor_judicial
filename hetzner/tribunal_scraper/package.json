@@ -21,6 +21,7 @@
     "puppeteer": "^24.0.0",
     "puppeteer-extra": "^3.3.6",
     "puppeteer-extra-plugin-stealth": "^2.11.2",
+    "resend": "^4.0.0",
     "tsx": "^4.19.2",
     "twilio": "^5.3.7"
   },
