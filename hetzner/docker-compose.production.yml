@@ -1,0 +1,192 @@
+# Monitor Judicial - Hetzner Production Deployment
+# All services for production deployment on Hetzner server
+#
+# Services:
+#   1. PostgreSQL + pgvector (legal_rag database - 91k+ tesis)
+#   2. pgAdmin (database management UI)
+#   3. Tribunal Scraper (Puppeteer-based scraper)
+#   4. RAG API Server (TypeScript API for legal research)
+#
+# Usage:
+#   docker compose -f docker-compose.production.yml up -d
+#   docker compose -f docker-compose.production.yml logs -f
+#   docker compose -f docker-compose.production.yml down
+
+services:
+  # ============================================================================
+  # PostgreSQL + pgvector - Legal RAG Database
+  # ============================================================================
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: legal-rag-postgres
+    restart: unless-stopped
+
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"  # Auto-selects 5432 or 5433 via start.sh
+
+    environment:
+      POSTGRES_DB: legal_rag
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_INITDB_ARGS: "-E UTF8 --locale=C"
+
+    volumes:
+      # Initialization scripts (run on first startup)
+      - ./postgres/init:/docker-entrypoint-initdb.d
+      # Persistent data volume
+      - postgres-data:/var/lib/postgresql/data
+      # Custom config (optional)
+      - ./postgres/postgresql.conf:/etc/postgresql/postgresql.conf:ro
+
+    # Resource limits for Hetzner
+    deploy:
+      resources:
+        limits:
+          memory: 8G
+        reservations:
+          memory: 2G
+
+    shm_size: 4gb
+
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d legal_rag"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+    networks:
+      - monitor-network
+
+  # ============================================================================
+  # pgAdmin - Database Management UI (Optional)
+  # ============================================================================
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: legal-rag-pgadmin
+    restart: unless-stopped
+
+    ports:
+      - "5050:80"
+
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_EMAIL:-admin@local.dev}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD:-admin}
+      PGADMIN_CONFIG_SERVER_MODE: 'False'
+
+    volumes:
+      - pgadmin-data:/var/lib/pgadmin
+
+    depends_on:
+      - postgres
+
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+    networks:
+      - monitor-network
+
+  # ============================================================================
+  # Tribunal Scraper - Puppeteer-based web scraper
+  # ============================================================================
+  tribunal-scraper:
+    build:
+      context: ..
+      dockerfile: hetzner/tribunal_scraper/Dockerfile
+    container_name: tribunal-scraper
+    restart: unless-stopped
+
+    ports:
+      - "3001:3001"
+
+    env_file:
+      - tribunal_scraper/.env
+
+    environment:
+      - PUPPETEER_EXECUTABLE_PATH=/usr/bin/google-chrome
+      - PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
+
+    shm_size: 2gb
+
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+    networks:
+      - monitor-network
+
+  # ============================================================================
+  # RAG API Server - TypeScript API for legal research
+  # ============================================================================
+  rag-api:
+    build:
+      context: ./rag_api_server
+      dockerfile: Dockerfile
+    container_name: rag-api-server
+    restart: unless-stopped
+
+    ports:
+      - "3002:3002"
+
+    env_file:
+      - rag_api_server/.env
+
+    environment:
+      - NODE_ENV=production
+      - PORT=3002
+
+    depends_on:
+      - postgres
+
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3002/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1); }).on('error', () => process.exit(1));"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+    networks:
+      - monitor-network
+
+# ============================================================================
+# Networks
+# ============================================================================
+networks:
+  monitor-network:
+    external: true
+    name: monitor_judicial_default
+
+# ============================================================================
+# Volumes
+# ============================================================================
+volumes:
+  postgres-data:
+    external: true
+    name: legal-rag-postgres-data
+  pgadmin-data:
+    external: true
+    name: legal-rag-pgadmin-data
