@@ -17,6 +17,14 @@ COPY lib/ /app/lib/
 COPY hetzner/tribunal_scraper/package*.json ./
 RUN npm ci --only=production --legacy-peer-deps
 
+# Install dependencies at parent level too (for lib/ imports)
+COPY hetzner/tribunal_scraper/package*.json /app/
+WORKDIR /app
+RUN npm ci --only=production --legacy-peer-deps
+
+# Go back to hetzner directory
+WORKDIR /app/hetzner
+
 COPY hetzner/tribunal_scraper/ ./
 
 # Change ownership
