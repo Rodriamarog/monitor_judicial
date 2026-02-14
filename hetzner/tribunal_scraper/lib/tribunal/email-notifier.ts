@@ -185,8 +185,6 @@ export async function sendTribunalEmailAlert(
   </div>
 
   <div class="content">
-    <p>Hola${profile.full_name ? ' ' + profile.full_name : ''},</p>
-
     <p>Se ha encontrado un nuevo documento en <strong>Tribunal Electrónico PJBC</strong> para uno de tus casos monitoreados:</p>
 
     <div class="alert-box">
@@ -235,8 +233,6 @@ export async function sendTribunalEmailAlert(
     // Build plain text version
     const emailText = `
 Monitor Judicial PJBC - Nuevo Documento en Tribunal Electrónico
-
-Hola${profile.full_name ? ' ' + profile.full_name : ''},
 
 Se ha encontrado un nuevo documento en Tribunal Electrónico PJBC para uno de tus casos monitoreados:
 
