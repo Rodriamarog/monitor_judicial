@@ -10,6 +10,8 @@ import { Button } from '@/components/ui/button'
 import { AlertsTable } from '@/components/alerts-table'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { ReadOnlyBanner } from '@/components/read-only-banner'
+import { useUserRole } from '@/lib/hooks/use-user-role'
 import {
   Command,
   CommandEmpty,
@@ -76,6 +78,7 @@ export default function AlertsPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const supabase = createClient()
+  const { isCollaborator } = useUserRole()
 
   const [alerts, setAlerts] = useState<Alert[]>([])
   const [cases, setCases] = useState<MonitoredCase[]>([])
@@ -284,6 +287,9 @@ export default function AlertsPage() {
 
   return (
     <div className="flex flex-col h-full gap-4 overflow-hidden">
+      {/* Collaborator Read-Only Banner */}
+      {isCollaborator && <ReadOnlyBanner />}
+
       {/* Header & Filters - Fixed height */}
       <div className="flex-shrink-0 space-y-4">
         {/* Header */}

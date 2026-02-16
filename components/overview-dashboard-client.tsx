@@ -6,6 +6,8 @@ import { NotificationRateChart } from "@/components/charts/notification-rate-cha
 import { JuzgadosChart } from "@/components/charts/juzgados-chart"
 import { TaskDistributionChart } from "@/components/charts/task-distribution-chart"
 import { TopCasesByAlertsChart } from "@/components/charts/top-cases-by-alerts-chart"
+import { ReadOnlyBanner } from "@/components/read-only-banner"
+import { useUserRole } from "@/lib/hooks/use-user-role"
 import { Bell, CheckCircle, Send, FileText, Briefcase, Calendar, ListTodo, AlertCircle, TrendingUp, Clock, Users, MessageSquare, Search, Database } from "lucide-react"
 
 interface OverviewDashboardClientProps {
@@ -67,6 +69,8 @@ export function OverviewDashboardClient({
   daysToLimit,
   topCasesByAlerts,
 }: OverviewDashboardClientProps) {
+  const { isCollaborator } = useUserRole()
+
   const totalNotifications =
     notificationStats.whatsappSent +
     notificationStats.emailSent +
@@ -80,6 +84,9 @@ export function OverviewDashboardClient({
 
   return (
     <div className="space-y-6">
+      {/* Collaborator Read-Only Banner */}
+      {isCollaborator && <ReadOnlyBanner />}
+
       {/* Header */}
       <div>
         <h1 className="text-3xl font-bold">Dashboard</h1>

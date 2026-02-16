@@ -746,3 +746,265 @@ ${baseUrl}
     };
   }
 }
+
+/**
+ * Collaborator Credentials Email Data
+ */
+export interface CollaboratorCredentialsData {
+  collaboratorEmail: string;
+  temporaryPassword: string;
+  loginUrl: string;
+}
+
+/**
+ * Send login credentials to a new collaborator account
+ */
+export async function sendCollaboratorCredentials(
+  data: CollaboratorCredentialsData
+): Promise<{ success: boolean; error?: string }> {
+  if (!resend) {
+    return {
+      success: false,
+      error: 'Resend API key not configured'
+    };
+  }
+
+  try {
+    const { collaboratorEmail, temporaryPassword, loginUrl } = data;
+
+    const emailHtml = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      line-height: 1.6;
+      color: #333;
+      max-width: 600px;
+      margin: 0 auto;
+      padding: 20px;
+      background-color: #f5f5f5;
+    }
+    .container {
+      background: white;
+      border-radius: 10px;
+      overflow: hidden;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+    .header {
+      background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+      color: white;
+      padding: 40px 30px;
+      text-align: center;
+    }
+    .header h1 {
+      margin: 0;
+      font-size: 28px;
+      font-weight: 600;
+    }
+    .header p {
+      margin: 10px 0 0;
+      opacity: 0.9;
+      font-size: 16px;
+    }
+    .content {
+      padding: 40px 30px;
+    }
+    .credentials-box {
+      background: #f0f7ff;
+      border-left: 4px solid #10b981;
+      padding: 25px;
+      margin: 25px 0;
+      border-radius: 4px;
+    }
+    .credentials-box p {
+      margin: 12px 0;
+      font-size: 15px;
+    }
+    .credentials-label {
+      font-weight: 600;
+      color: #059669;
+      display: block;
+      margin-bottom: 5px;
+    }
+    .credentials-value {
+      background: white;
+      padding: 12px 15px;
+      border-radius: 4px;
+      font-family: 'Courier New', monospace;
+      font-size: 16px;
+      font-weight: 600;
+      color: #1f2937;
+      border: 1px solid #d1d5db;
+    }
+    .button-container {
+      text-align: center;
+      margin: 35px 0;
+    }
+    .button {
+      display: inline-block;
+      padding: 16px 40px;
+      background: #10b981;
+      color: white;
+      text-decoration: none;
+      border-radius: 6px;
+      font-weight: 600;
+      font-size: 16px;
+      box-shadow: 0 2px 4px rgba(16, 185, 129, 0.2);
+    }
+    .button:hover {
+      background: #059669;
+    }
+    .warning-box {
+      background: #fff3cd;
+      border-left: 4px solid #ffc107;
+      padding: 20px;
+      margin: 25px 0;
+      border-radius: 4px;
+    }
+    .warning-box h3 {
+      margin-top: 0;
+      color: #997404;
+      font-size: 16px;
+    }
+    .warning-box ul {
+      margin: 10px 0;
+      padding-left: 20px;
+    }
+    .warning-box li {
+      margin: 8px 0;
+      color: #856404;
+    }
+    .info-section {
+      background: #f9fafb;
+      border-radius: 6px;
+      padding: 20px;
+      margin: 25px 0;
+    }
+    .info-section h3 {
+      margin-top: 0;
+      color: #059669;
+      font-size: 18px;
+    }
+    .footer {
+      background: #f9f9f9;
+      padding: 30px;
+      text-align: center;
+      font-size: 14px;
+      color: #666;
+      border-top: 1px solid #e0e0e0;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>¡Bienvenido a Monitor Judicial!</h1>
+      <p>Tus credenciales de acceso</p>
+    </div>
+
+    <div class="content">
+      <p>Hola,</p>
+
+      <p>Tu cuenta de colaborador ha sido creada exitosamente. A continuación encontrarás tus credenciales de acceso:</p>
+
+      <div class="credentials-box">
+        <p>
+          <span class="credentials-label">Email de acceso:</span>
+          <div class="credentials-value">${collaboratorEmail}</div>
+        </p>
+        <p>
+          <span class="credentials-label">Contraseña temporal:</span>
+          <div class="credentials-value">${temporaryPassword}</div>
+        </p>
+      </div>
+
+      <div class="button-container">
+        <a href="${loginUrl}" class="button">Iniciar Sesión Ahora</a>
+      </div>
+
+      <div class="warning-box">
+        <h3>⚠️ Importante - Seguridad de tu cuenta</h3>
+        <ul>
+          <li><strong>Cambia tu contraseña</strong> inmediatamente después de tu primer inicio de sesión</li>
+          <li>Guarda estas credenciales en un lugar seguro</li>
+          <li>No compartas tu contraseña con nadie</li>
+          <li>Esta es una contraseña temporal generada automáticamente</li>
+        </ul>
+      </div>
+
+      <div class="info-section">
+        <h3>Acceso de Colaborador</h3>
+        <p>Como colaborador, tendrás acceso de solo lectura a los casos que te sean asignados. Podrás:</p>
+        <ul>
+          <li>Ver casos asignados y sus actualizaciones</li>
+          <li>Recibir alertas por email</li>
+          <li>Acceder al historial de cada caso</li>
+          <li>Usar las herramientas de búsqueda y asistente legal</li>
+        </ul>
+        <p><strong>Nota:</strong> No podrás crear, editar o eliminar casos. Solo podrás consultar información.</p>
+      </div>
+
+      <p style="margin-top: 30px; font-size: 14px; color: #666;">
+        Si tienes alguna pregunta o problema para acceder, contacta al administrador de la cuenta que te invitó.
+      </p>
+    </div>
+
+    <div class="footer">
+      <p>Monitor Judicial - Poder Judicial de Baja California</p>
+      <p style="margin-top: 15px; font-size: 12px; color: #999;">
+        Este es un correo automático. Por favor no respondas a este mensaje.
+      </p>
+    </div>
+  </div>
+</body>
+</html>
+    `;
+
+    const emailText = `
+¡Bienvenido a Monitor Judicial!
+
+Tu cuenta de colaborador ha sido creada exitosamente.
+
+CREDENCIALES DE ACCESO:
+
+Email: ${collaboratorEmail}
+Contraseña temporal: ${temporaryPassword}
+
+Iniciar sesión:
+${loginUrl}
+
+IMPORTANTE - SEGURIDAD:
+- Cambia tu contraseña inmediatamente después de tu primer inicio de sesión
+- Guarda estas credenciales en un lugar seguro
+- No compartas tu contraseña con nadie
+
+ACCESO DE COLABORADOR:
+Como colaborador, tendrás acceso de solo lectura a los casos asignados. Podrás ver casos, recibir alertas y acceder al historial, pero no podrás crear, editar o eliminar casos.
+
+Si tienes alguna pregunta, contacta al administrador de la cuenta que te invitó.
+
+---
+Monitor Judicial
+    `;
+
+    const result = await resend.emails.send({
+      from: 'Monitor Judicial <noreply@monitorjudicial.com.mx>',
+      to: collaboratorEmail,
+      subject: 'Bienvenido a Monitor Judicial - Credenciales de Acceso',
+      html: emailHtml,
+      text: emailText,
+    });
+
+    console.log(`[Email] Collaborator credentials sent to ${collaboratorEmail}:`, result);
+    return { success: true };
+  } catch (error) {
+    console.error('Error sending collaborator credentials:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error'
+    };
+  }
+}

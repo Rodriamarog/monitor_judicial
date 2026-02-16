@@ -37,9 +37,10 @@ interface CasesTableProps {
   cases: Case[]
   onDelete: (caseId: string) => void
   onUpdate?: (caseId: string, updates: { case_number?: string; juzgado?: string; nombre?: string | null; telefono?: string | null; total_amount_charged?: number; currency?: string }) => Promise<void>
+  readOnly?: boolean
 }
 
-export function CasesTable({ cases, onDelete, onUpdate }: CasesTableProps) {
+export function CasesTable({ cases, onDelete, onUpdate, readOnly = false }: CasesTableProps) {
   const router = useRouter()
   const [searchQuery, setSearchQuery] = useState('')
   const [sortOrder, setSortOrder] = useState<'alerts' | 'asc' | 'desc'>('desc')
@@ -254,13 +255,13 @@ export function CasesTable({ cases, onDelete, onUpdate }: CasesTableProps) {
                   )}
                 </Button>
               </TableHead>
-              <TableHead className="text-center w-20">Acciones</TableHead>
+              {!readOnly && <TableHead className="text-center w-20">Acciones</TableHead>}
             </TableRow>
           </TableHeader>
           <TableBody>
             {sortedCases.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+                <TableCell colSpan={readOnly ? 7 : 8} className="text-center py-8 text-muted-foreground">
                   {searchQuery ? 'No se encontraron casos' : 'No tiene casos registrados'}
                 </TableCell>
               </TableRow>
@@ -268,7 +269,7 @@ export function CasesTable({ cases, onDelete, onUpdate }: CasesTableProps) {
               <>
                 {/* Spacer for virtual scrolling - creates space above visible rows */}
                 <TableRow style={{ height: `${rowVirtualizer.getVirtualItems()[0]?.start ?? 0}px` }}>
-                  <TableCell colSpan={8} style={{ padding: 0, border: 'none' }} />
+                  <TableCell colSpan={readOnly ? 7 : 8} style={{ padding: 0, border: 'none' }} />
                 </TableRow>
 
                 {/* Only render visible rows */}
@@ -328,33 +329,35 @@ export function CasesTable({ cases, onDelete, onUpdate }: CasesTableProps) {
                     )}
                   </TableCell>
                   <TableCell className="whitespace-nowrap">{formatTijuanaDate(case_.created_at)}</TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex justify-center gap-1" data-action="true">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-8 w-8 p-0 cursor-pointer"
-                        onClick={(e) => handleEditClick(case_, e)}
-                        title="Editar"
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-8 w-8 p-0 text-destructive hover:text-destructive cursor-pointer"
-                        onClick={() => handleDelete(case_.id)}
-                        disabled={deletingCaseId === case_.id}
-                        title="Eliminar"
-                      >
-                        {deletingCaseId === case_.id ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : (
-                          <Trash2 className="h-4 w-4" />
-                        )}
-                      </Button>
-                    </div>
-                  </TableCell>
+                  {!readOnly && (
+                    <TableCell className="text-right">
+                      <div className="flex justify-center gap-1" data-action="true">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 w-8 p-0 cursor-pointer"
+                          onClick={(e) => handleEditClick(case_, e)}
+                          title="Editar"
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 w-8 p-0 text-destructive hover:text-destructive cursor-pointer"
+                          onClick={() => handleDelete(case_.id)}
+                          disabled={deletingCaseId === case_.id}
+                          title="Eliminar"
+                        >
+                          {deletingCaseId === case_.id ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Trash2 className="h-4 w-4" />
+                          )}
+                        </Button>
+                      </div>
+                    </TableCell>
+                  )}
                 </TableRow>
                   )
                 })}
@@ -368,7 +371,7 @@ export function CasesTable({ cases, onDelete, onUpdate }: CasesTableProps) {
                     }px`,
                   }}
                 >
-                  <TableCell colSpan={8} style={{ padding: 0, border: 'none' }} />
+                  <TableCell colSpan={readOnly ? 7 : 8} style={{ padding: 0, border: 'none' }} />
                 </TableRow>
               </>
             )}

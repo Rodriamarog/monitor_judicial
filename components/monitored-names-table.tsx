@@ -29,7 +29,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 export function MonitoredNamesTable({
   names,
   onDelete,
-  onUpdate
+  onUpdate,
+  readOnly = false
 }: {
   names: Array<{
     id: string;
@@ -42,6 +43,7 @@ export function MonitoredNamesTable({
   }>;
   onDelete: (id: string) => Promise<void>;
   onUpdate?: (id: string, updates: { full_name?: string; search_mode?: string; notes?: string | null }) => Promise<void>;
+  readOnly?: boolean;
 }) {
   const router = useRouter();
   const [deleting, setDeleting] = useState<string | null>(null);
@@ -172,13 +174,13 @@ export function MonitoredNamesTable({
                 <TableHead className="min-w-[200px]">Nombre</TableHead>
                 <TableHead className="min-w-0">Notas</TableHead>
                 <TableHead className="w-32">Precisión</TableHead>
-                <TableHead className="w-28 text-center">Acciones</TableHead>
+                {!readOnly && <TableHead className="w-28 text-center">Acciones</TableHead>}
               </TableRow>
             </TableHeader>
             <TableBody>
               {filteredNames.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
+                  <TableCell colSpan={readOnly ? 4 : 5} className="text-center py-8 text-muted-foreground">
                     {searchQuery ? 'No se encontraron nombres' : 'No hay nombres monitoreados'}
                   </TableCell>
                 </TableRow>
@@ -224,33 +226,35 @@ export function MonitoredNamesTable({
                       </span>
                     )}
                   </TableCell>
-                  <TableCell className="text-center">
-                    <div className="flex justify-center gap-1" data-action="true">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-8 w-8 p-0 cursor-pointer"
-                        onClick={(e) => handleEditClick(name, e)}
-                        title="Editar"
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-8 w-8 p-0 text-destructive hover:text-destructive cursor-pointer"
-                        onClick={() => handleDelete(name.id, name.full_name)}
-                        disabled={deleting === name.id}
-                        title="Eliminar"
-                      >
-                        {deleting === name.id ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : (
-                          <Trash2 className="h-4 w-4" />
-                        )}
-                      </Button>
-                    </div>
-                  </TableCell>
+                  {!readOnly && (
+                    <TableCell className="text-center">
+                      <div className="flex justify-center gap-1" data-action="true">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 w-8 p-0 cursor-pointer"
+                          onClick={(e) => handleEditClick(name, e)}
+                          title="Editar"
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 w-8 p-0 text-destructive hover:text-destructive cursor-pointer"
+                          onClick={() => handleDelete(name.id, name.full_name)}
+                          disabled={deleting === name.id}
+                          title="Eliminar"
+                        >
+                          {deleting === name.id ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Trash2 className="h-4 w-4" />
+                          )}
+                        </Button>
+                      </div>
+                    </TableCell>
+                  )}
                 </TableRow>
               );
             })
