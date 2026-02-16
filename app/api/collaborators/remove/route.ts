@@ -33,6 +33,19 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
+    // Update invitation status to 'cancelled' (so it doesn't show in UI anymore)
+    const { error: updateInvitationError } = await serviceSupabase
+      .from('collaborator_invitations')
+      .update({ status: 'cancelled' })
+      .eq('owner_id', user.id)
+      .eq('collaborator_email', email)
+      .eq('status', 'accepted');
+
+    if (updateInvitationError) {
+      console.error('[API] Error updating invitation status:', updateInvitationError);
+      // Don't fail the entire operation
+    }
+
     // Delete from collaborators table (requires service role because of cascading operations)
     const { error: deleteCollabError } = await serviceSupabase
       .from('collaborators')
