@@ -542,164 +542,137 @@ export async function sendCollaboratorInvitation(
       max-width: 600px;
       margin: 0 auto;
       padding: 20px;
-      background-color: #f5f5f5;
-    }
-    .container {
-      background: white;
-      border-radius: 10px;
-      overflow: hidden;
-      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
     }
     .header {
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      background: linear-gradient(135deg, #10b981 0%, #059669 100%);
       color: white;
-      padding: 40px 30px;
+      padding: 30px;
+      border-radius: 10px 10px 0 0;
       text-align: center;
     }
     .header h1 {
       margin: 0;
-      font-size: 28px;
-      font-weight: 600;
-    }
-    .header p {
-      margin: 10px 0 0;
-      opacity: 0.9;
-      font-size: 16px;
+      font-size: 24px;
     }
     .content {
-      padding: 40px 30px;
+      background: #f9f9f9;
+      padding: 30px;
+      border-radius: 0 0 10px 10px;
     }
     .invitation-box {
-      background: #f9f9f9;
-      border-left: 4px solid #667eea;
+      background: white;
+      border-left: 4px solid #10b981;
       padding: 20px;
-      margin: 25px 0;
+      margin: 20px 0;
       border-radius: 4px;
-    }
-    .invitation-box p {
-      margin: 10px 0;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
     }
     .owner-name {
-      font-weight: 600;
-      color: #667eea;
+      font-weight: bold;
+      color: #10b981;
     }
     .button-container {
       text-align: center;
-      margin: 30px 0;
+      margin: 25px 0;
     }
     .button {
       display: inline-block;
-      padding: 14px 32px;
-      margin: 10px;
+      padding: 12px 30px;
+      margin: 5px;
       text-decoration: none;
-      border-radius: 6px;
-      font-weight: 600;
-      font-size: 16px;
-      transition: all 0.3s;
+      border-radius: 5px;
     }
     .button-accept {
-      background: #667eea;
+      background: #10b981;
       color: white;
     }
-    .button-accept:hover {
-      background: #5568d3;
-    }
     .button-reject {
-      background: #e0e0e0;
-      color: #666;
-    }
-    .button-reject:hover {
-      background: #d0d0d0;
+      background: #e5e7eb;
+      color: #6b7280;
     }
     .info-section {
-      background: #f0f7ff;
-      border-radius: 6px;
-      padding: 20px;
-      margin: 25px 0;
+      background: #ecfdf5;
+      border-left: 4px solid #10b981;
+      border-radius: 4px;
+      padding: 15px;
+      margin: 20px 0;
+      font-size: 14px;
     }
     .info-section h3 {
       margin-top: 0;
-      color: #667eea;
-      font-size: 18px;
+      color: #059669;
+      font-size: 16px;
     }
     .info-section ul {
       margin: 10px 0;
       padding-left: 20px;
     }
     .info-section li {
-      margin: 8px 0;
+      margin: 6px 0;
     }
     .expiration {
-      background: #fff3cd;
-      border-left: 4px solid #ffc107;
+      background: #fef3c7;
+      border-left: 4px solid #f59e0b;
       padding: 15px;
       margin: 20px 0;
       border-radius: 4px;
       font-size: 14px;
+      color: #92400e;
     }
     .footer {
-      background: #f9f9f9;
-      padding: 30px;
       text-align: center;
-      font-size: 14px;
-      color: #666;
-      border-top: 1px solid #e0e0e0;
-    }
-    .footer a {
-      color: #667eea;
-      text-decoration: none;
+      margin-top: 30px;
+      padding-top: 20px;
+      border-top: 1px solid #ddd;
+      color: #999;
+      font-size: 12px;
     }
   </style>
 </head>
 <body>
-  <div class="container">
-    <div class="header">
-      <h1>🤝 Invitación de Colaboración</h1>
-      <p>Monitor Judicial</p>
+  <div class="header">
+    <h1>Invitación de Colaboración</h1>
+  </div>
+
+  <div class="content">
+    <p>Se te ha invitado a colaborar en una cuenta de Monitor Judicial.</p>
+
+    <div class="invitation-box">
+      <div style="margin: 10px 0;">
+        <span class="owner-name">${ownerDisplay}</span> te ha invitado a colaborar en su cuenta de Monitor Judicial.
+      </div>
     </div>
 
-    <div class="content">
-      <p>Estimado usuario,</p>
+    <p>Como colaborador, recibirás notificaciones por email cuando se detecten actualizaciones en los casos judiciales que ${ownerDisplay} te asigne específicamente.</p>
 
-      <div class="invitation-box">
-        <p><span class="owner-name">${ownerDisplay}</span> te ha invitado a colaborar en su cuenta de Monitor Judicial.</p>
-      </div>
-
-      <p>Como colaborador, recibirás notificaciones por email cuando se detecten actualizaciones en los casos judiciales que <strong>${ownerDisplay}</strong> te asigne específicamente.</p>
-
-      <div class="button-container">
-        <a href="${acceptUrl}" class="button button-accept">✓ Aceptar Invitación</a>
-        <a href="${rejectUrl}" class="button button-reject">✗ Rechazar Invitación</a>
-      </div>
-
-      <div class="expiration">
-        ⏰ Esta invitación expirará el <strong>${formattedDate}</strong>
-      </div>
-
-      <div class="info-section">
-        <h3>¿Qué es Monitor Judicial?</h3>
-        <p>Monitor Judicial es un sistema automatizado que rastrea boletines judiciales del Poder Judicial de Baja California y notifica cuando aparecen casos específicos.</p>
-
-        <h3>Como colaborador podrás:</h3>
-        <ul>
-          <li>Recibir alertas por email de casos asignados</li>
-          <li>Acceder al historial de actualizaciones</li>
-          <li>Colaborar con ${ownerDisplay} en el seguimiento de casos</li>
-        </ul>
-      </div>
-
-      <p style="margin-top: 30px; font-size: 14px; color: #666;">
-        Si no reconoces a <strong>${ownerDisplay}</strong> o no deseas colaborar, simplemente ignora este correo o haz clic en "Rechazar Invitación".
-      </p>
+    <div class="button-container">
+      <a href="${acceptUrl}" class="button button-accept">Aceptar Invitación</a>
+      <a href="${rejectUrl}" class="button button-reject">Rechazar Invitación</a>
     </div>
 
-    <div class="footer">
-      <p>Monitor Judicial - Poder Judicial de Baja California</p>
-      <p><a href="${baseUrl}">https://monitorjudicial.com.mx</a></p>
-      <p style="margin-top: 15px; font-size: 12px; color: #999;">
-        Este es un correo automático. Por favor no respondas a este mensaje.
-      </p>
+    <div class="expiration">
+      Esta invitación expirará el <strong>${formattedDate}</strong>
     </div>
+
+    <div class="info-section">
+      <h3>Como colaborador podrás:</h3>
+      <ul>
+        <li>Recibir alertas por email de casos asignados</li>
+        <li>Acceder al historial de actualizaciones</li>
+        <li>Colaborar con ${ownerDisplay} en el seguimiento de casos</li>
+      </ul>
+    </div>
+
+    <p style="margin-top: 25px; font-size: 14px; color: #666;">
+      Si no reconoces a ${ownerDisplay} o no deseas colaborar, simplemente ignora este correo.
+    </p>
+  </div>
+
+  <div class="footer">
+    <p>
+      Este es un correo automático del sistema Monitor Judicial PJBC.<br>
+      No respondas a este correo.
+    </p>
   </div>
 </body>
 </html>
@@ -785,88 +758,74 @@ export async function sendCollaboratorCredentials(
       max-width: 600px;
       margin: 0 auto;
       padding: 20px;
-      background-color: #f5f5f5;
-    }
-    .container {
-      background: white;
-      border-radius: 10px;
-      overflow: hidden;
-      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
     }
     .header {
       background: linear-gradient(135deg, #10b981 0%, #059669 100%);
       color: white;
-      padding: 40px 30px;
+      padding: 30px;
+      border-radius: 10px 10px 0 0;
       text-align: center;
     }
     .header h1 {
       margin: 0;
-      font-size: 28px;
-      font-weight: 600;
-    }
-    .header p {
-      margin: 10px 0 0;
-      opacity: 0.9;
-      font-size: 16px;
+      font-size: 24px;
     }
     .content {
-      padding: 40px 30px;
+      background: #f9f9f9;
+      padding: 30px;
+      border-radius: 0 0 10px 10px;
     }
     .credentials-box {
-      background: #f0f7ff;
+      background: white;
       border-left: 4px solid #10b981;
-      padding: 25px;
-      margin: 25px 0;
+      padding: 20px;
+      margin: 20px 0;
       border-radius: 4px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
     }
     .credentials-box p {
       margin: 12px 0;
-      font-size: 15px;
+      font-size: 14px;
     }
     .credentials-label {
-      font-weight: 600;
-      color: #059669;
+      font-weight: bold;
+      color: #10b981;
       display: block;
       margin-bottom: 5px;
     }
     .credentials-value {
-      background: white;
-      padding: 12px 15px;
+      background: #f0f0f0;
+      padding: 10px 15px;
       border-radius: 4px;
       font-family: 'Courier New', monospace;
-      font-size: 16px;
+      font-size: 15px;
       font-weight: 600;
       color: #1f2937;
-      border: 1px solid #d1d5db;
     }
     .button-container {
       text-align: center;
-      margin: 35px 0;
+      margin: 25px 0;
     }
     .button {
       display: inline-block;
-      padding: 16px 40px;
+      padding: 12px 30px;
       background: #10b981;
       color: white;
       text-decoration: none;
-      border-radius: 6px;
-      font-weight: 600;
-      font-size: 16px;
-      box-shadow: 0 2px 4px rgba(16, 185, 129, 0.2);
-    }
-    .button:hover {
-      background: #059669;
+      border-radius: 5px;
     }
     .warning-box {
-      background: #fff3cd;
-      border-left: 4px solid #ffc107;
-      padding: 20px;
-      margin: 25px 0;
+      background: #fef3c7;
+      border-left: 4px solid #f59e0b;
+      padding: 15px;
+      margin: 20px 0;
       border-radius: 4px;
+      font-size: 14px;
+      color: #92400e;
     }
     .warning-box h3 {
       margin-top: 0;
-      color: #997404;
+      color: #92400e;
       font-size: 16px;
     }
     .warning-box ul {
@@ -874,90 +833,92 @@ export async function sendCollaboratorCredentials(
       padding-left: 20px;
     }
     .warning-box li {
-      margin: 8px 0;
-      color: #856404;
+      margin: 6px 0;
+      color: #78350f;
     }
     .info-section {
-      background: #f9fafb;
-      border-radius: 6px;
-      padding: 20px;
-      margin: 25px 0;
+      background: #ecfdf5;
+      border-left: 4px solid #10b981;
+      border-radius: 4px;
+      padding: 15px;
+      margin: 20px 0;
+      font-size: 14px;
     }
     .info-section h3 {
       margin-top: 0;
       color: #059669;
-      font-size: 18px;
+      font-size: 16px;
+    }
+    .info-section ul {
+      margin: 10px 0;
+      padding-left: 20px;
+    }
+    .info-section li {
+      margin: 6px 0;
     }
     .footer {
-      background: #f9f9f9;
-      padding: 30px;
       text-align: center;
-      font-size: 14px;
-      color: #666;
-      border-top: 1px solid #e0e0e0;
+      margin-top: 30px;
+      padding-top: 20px;
+      border-top: 1px solid #ddd;
+      color: #999;
+      font-size: 12px;
     }
   </style>
 </head>
 <body>
-  <div class="container">
-    <div class="header">
-      <h1>¡Bienvenido a Monitor Judicial!</h1>
-      <p>Tus credenciales de acceso</p>
-    </div>
+  <div class="header">
+    <h1>Bienvenido a Monitor Judicial</h1>
+  </div>
 
-    <div class="content">
-      <p>Hola,</p>
+  <div class="content">
+    <p>Tu cuenta de colaborador ha sido creada exitosamente. A continuación encontrarás tus credenciales de acceso:</p>
 
-      <p>Tu cuenta de colaborador ha sido creada exitosamente. A continuación encontrarás tus credenciales de acceso:</p>
-
-      <div class="credentials-box">
-        <p>
-          <span class="credentials-label">Email de acceso:</span>
-          <div class="credentials-value">${collaboratorEmail}</div>
-        </p>
-        <p>
-          <span class="credentials-label">Contraseña temporal:</span>
-          <div class="credentials-value">${temporaryPassword}</div>
-        </p>
-      </div>
-
-      <div class="button-container">
-        <a href="${loginUrl}" class="button">Iniciar Sesión Ahora</a>
-      </div>
-
-      <div class="warning-box">
-        <h3>⚠️ Importante - Seguridad de tu cuenta</h3>
-        <ul>
-          <li><strong>Cambia tu contraseña</strong> inmediatamente después de tu primer inicio de sesión</li>
-          <li>Guarda estas credenciales en un lugar seguro</li>
-          <li>No compartas tu contraseña con nadie</li>
-          <li>Esta es una contraseña temporal generada automáticamente</li>
-        </ul>
-      </div>
-
-      <div class="info-section">
-        <h3>Acceso de Colaborador</h3>
-        <p>Como colaborador, tendrás acceso de solo lectura a los casos que te sean asignados. Podrás:</p>
-        <ul>
-          <li>Ver casos asignados y sus actualizaciones</li>
-          <li>Recibir alertas por email</li>
-          <li>Acceder al historial de cada caso</li>
-          <li>Usar las herramientas de búsqueda y asistente legal</li>
-        </ul>
-        <p><strong>Nota:</strong> No podrás crear, editar o eliminar casos. Solo podrás consultar información.</p>
-      </div>
-
-      <p style="margin-top: 30px; font-size: 14px; color: #666;">
-        Si tienes alguna pregunta o problema para acceder, contacta al administrador de la cuenta que te invitó.
+    <div class="credentials-box">
+      <p>
+        <span class="credentials-label">Correo electrónico:</span>
+        <div class="credentials-value">${collaboratorEmail}</div>
+      </p>
+      <p>
+        <span class="credentials-label">Contraseña temporal:</span>
+        <div class="credentials-value">${temporaryPassword}</div>
       </p>
     </div>
 
-    <div class="footer">
-      <p>Monitor Judicial - Poder Judicial de Baja California</p>
-      <p style="margin-top: 15px; font-size: 12px; color: #999;">
-        Este es un correo automático. Por favor no respondas a este mensaje.
-      </p>
+    <div class="button-container">
+      <a href="${loginUrl}" class="button">Iniciar Sesión</a>
     </div>
+
+    <div class="warning-box">
+      <h3>Importante: Seguridad de tu cuenta</h3>
+      <ul>
+        <li>Cambia tu contraseña inmediatamente después de tu primer inicio de sesión</li>
+        <li>Guarda estas credenciales en un lugar seguro</li>
+        <li>No compartas tu contraseña con nadie</li>
+      </ul>
+    </div>
+
+    <div class="info-section">
+      <h3>Acceso de Colaborador</h3>
+      <p>Como colaborador, tendrás acceso de solo lectura a los casos que te sean asignados:</p>
+      <ul>
+        <li>Ver casos asignados y sus actualizaciones</li>
+        <li>Recibir alertas por correo electrónico</li>
+        <li>Acceder al historial de cada caso</li>
+        <li>Usar las herramientas de búsqueda y asistente legal</li>
+      </ul>
+    </div>
+
+    <p style="margin-top: 25px; font-size: 14px; color: #666;">
+      Si tienes alguna pregunta, contacta al administrador de la cuenta que te invitó.
+    </p>
+  </div>
+
+  <div class="footer">
+    <p>
+      Este es un correo automático del sistema Monitor Judicial PJBC.<br>
+      No respondas a este correo.
+    </p>
   </div>
 </body>
 </html>

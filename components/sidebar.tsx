@@ -22,6 +22,7 @@ import { SignOutButton } from '@/components/sign-out-button'
 import { ThemeToggle } from '@/components/theme-toggle'
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'
 import { cn } from '@/lib/utils'
+import { useUserRole } from '@/lib/hooks/use-user-role'
 
 interface SidebarProps {
   email: string
@@ -29,7 +30,7 @@ interface SidebarProps {
   hasStripeCustomer: boolean
 }
 
-const navItems = [
+const allNavItems = [
   { href: '/dashboard', label: 'Monitoreo por Expediente', icon: FileText },
   { href: '/dashboard/alerts', label: 'Alertas', icon: Bell },
   { href: '/dashboard/calendar', label: 'Calendario', icon: Calendar },
@@ -37,13 +38,17 @@ const navItems = [
   { href: '/dashboard/machotes', label: 'Machotes', icon: FileText },
   { href: '/dashboard/tesis', label: 'Buscador de Tesis', icon: BookOpen },
   { href: '/dashboard/ai-assistant', label: 'Asistente Legal IA', icon: Sparkles },
-  { href: '/dashboard/settings', label: 'Configuración', icon: Settings },
+  { href: '/dashboard/settings', label: 'Configuración', icon: Settings, masterOnly: true },
 ]
 
 export function Sidebar({ email, tier, hasStripeCustomer }: SidebarProps) {
   const [isCollapsed, setIsCollapsed] = useState(false)
   const [isMobileOpen, setIsMobileOpen] = useState(false)
   const pathname = usePathname()
+  const { isCollaborator } = useUserRole()
+
+  // Filter out master-only items if user is a collaborator
+  const navItems = allNavItems.filter(item => !(item.masterOnly && isCollaborator))
 
   const SidebarContent = () => (
     <div className="flex flex-col h-full">

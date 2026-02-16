@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
-import { Loader2, CheckCircle2, AlertTriangle, FileText, Trash2, RefreshCw, Upload, File, X } from 'lucide-react'
+import { Loader2, CheckCircle2, AlertTriangle, FileText, Trash2, RefreshCw, Upload, File, X, ShieldAlert } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Switch } from '@/components/ui/switch'
 import { SubscriptionButton } from '@/components/subscription-button'
@@ -16,8 +16,10 @@ import { CollaboratorsSection } from '@/components/collaborators-section'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog'
+import { useUserRole } from '@/lib/hooks/use-user-role'
 
 export default function SettingsPage() {
+  const { isCollaborator, loading: roleLoading } = useUserRole()
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [phone, setPhone] = useState('')
@@ -387,10 +389,42 @@ export default function SettingsPage() {
     })
   }
 
-  if (loading) {
+  if (loading || roleLoading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
         <Loader2 className="h-8 w-8 animate-spin" />
+      </div>
+    )
+  }
+
+  // Block collaborators from accessing settings
+  if (isCollaborator) {
+    return (
+      <div className="h-full overflow-y-auto">
+        <div className="container max-w-2xl mx-auto py-8 px-4">
+          <Card>
+            <CardHeader className="text-center">
+              <div className="flex justify-center mb-4">
+                <div className="h-16 w-16 rounded-full bg-destructive/10 flex items-center justify-center">
+                  <ShieldAlert className="h-8 w-8 text-destructive" />
+                </div>
+              </div>
+              <CardTitle className="text-2xl">Acceso Denegado</CardTitle>
+              <CardDescription>
+                Como colaborador, no tienes permiso para acceder a la configuración de la cuenta.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="text-center">
+              <p className="text-sm text-muted-foreground mb-4">
+                Solo el propietario de la cuenta puede modificar la configuración, gestionar suscripciones
+                y administrar colaboradores.
+              </p>
+              <Button asChild variant="outline">
+                <a href="/dashboard">Volver al Dashboard</a>
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
       </div>
     )
   }

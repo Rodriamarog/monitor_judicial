@@ -177,11 +177,34 @@ export function CollaboratorsSection({
     }
 
     try {
-      const newCollaborators = collaborators.filter(c => c.email !== email)
-      await onUpdate(newCollaborators)
-      toast.success('Colaborador eliminado')
-      await fetchInvitations()
+      console.log('[CollaboratorsSection] Removing collaborator:', email)
+
+      // Call the API endpoint to properly remove collaborator
+      const response = await fetch('/api/collaborators/remove', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      })
+
+      console.log('[CollaboratorsSection] API response status:', response.status)
+
+      if (!response.ok) {
+        const data = await response.json()
+        console.error('[CollaboratorsSection] API error:', data)
+        throw new Error(data.error || 'Error al eliminar colaborador')
+      }
+
+      const result = await response.json()
+      console.log('[CollaboratorsSection] API success:', result)
+
+      toast.success('Colaborador eliminado exitosamente')
+
+      // Reload the page to refresh all collaborator data
+      setTimeout(() => {
+        window.location.reload()
+      }, 1000)
     } catch (err) {
+      console.error('[CollaboratorsSection] Error removing collaborator:', err)
       const errorMsg = err instanceof Error ? err.message : 'Error al eliminar colaborador'
       setError(errorMsg)
       toast.error(errorMsg)

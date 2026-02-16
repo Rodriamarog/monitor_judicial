@@ -77,44 +77,29 @@ export async function GET(request: NextRequest) {
 
       const existingUser = existingUsers.users.find(u => u.email === invitation.collaborator_email);
 
-      let collaboratorUserId: string;
-      let generatedPassword: string | null = null;
+      // Update invitation status first
+      await serviceSupabase
+        .from('collaborator_invitations')
+        .update({
+          status: 'accepted',
+          responded_at: new Date().toISOString(),
+        })
+        .eq('id', invitation.id);
 
       if (!existingUser) {
-        // Generate secure password for new collaborator
-        generatedPassword = generateSecurePassword();
+        // NEW USER: Redirect to password setup page
+        console.log(`[Collaborators] New user, redirecting to password setup: ${invitation.collaborator_email}`);
 
-        // Create auth account
-        const { data: newUserData, error: createError } = await serviceSupabase.auth.admin.createUser({
-          email: invitation.collaborator_email,
-          password: generatedPassword,
-          email_confirm: true, // Skip email verification
-          user_metadata: {
-            role: 'collaborator',
-            invited_by: invitation.owner_id,
-          },
-        });
+        const setupUrl = new URL('/collaborator/setup-password', request.url);
+        setupUrl.searchParams.set('token', token!);
+        setupUrl.searchParams.set('email', invitation.collaborator_email);
 
-        if (createError || !newUserData.user) {
-          console.error('[Collaborators] Error creating user:', createError);
-          return NextResponse.redirect(
-            new URL('/collaborator/invitation-response?status=error', request.url)
-          );
-        }
-
-        collaboratorUserId = newUserData.user.id;
-
-        // Update role in user_profiles (should be auto-created by trigger)
-        await serviceSupabase
-          .from('user_profiles')
-          .update({ role: 'collaborator' })
-          .eq('id', collaboratorUserId);
-
-        console.log(`[Collaborators] Created new user account: ${invitation.collaborator_email}`);
-      } else {
-        collaboratorUserId = existingUser.id;
-        console.log(`[Collaborators] User already exists: ${invitation.collaborator_email}`);
+        return NextResponse.redirect(setupUrl);
       }
+
+      // EXISTING USER: Create collaborator relationship directly
+      const collaboratorUserId = existingUser.id;
+      console.log(`[Collaborators] Existing user, adding as collaborator: ${invitation.collaborator_email}`);
 
       // Create collaborator relationship
       const { error: collabError } = await serviceSupabase
@@ -150,39 +135,15 @@ export async function GET(request: NextRequest) {
           .eq('id', invitation.owner_id);
       }
 
-      // Update invitation status
-      await serviceSupabase
-        .from('collaborator_invitations')
-        .update({
-          status: 'accepted',
-          responded_at: new Date().toISOString(),
-        })
-        .eq('id', invitation.id);
+      console.log(`[Collaborators] Invitation accepted (existing user): ${invitation.collaborator_email}`);
 
-      // Send credentials email if new account was created
-      if (generatedPassword) {
-        const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://monitorjudicial.com.mx';
-        const loginUrl = `${siteUrl}/login`;
+      // Redirect to success page for existing users
+      const redirectUrl = new URL('/collaborator/invitation-response', request.url);
+      redirectUrl.searchParams.set('status', 'accepted');
+      redirectUrl.searchParams.set('new', 'false');
+      redirectUrl.searchParams.set('email', invitation.collaborator_email);
 
-        const emailResult = await sendCollaboratorCredentials({
-          collaboratorEmail: invitation.collaborator_email,
-          temporaryPassword: generatedPassword,
-          loginUrl,
-        });
-
-        if (!emailResult.success) {
-          console.error('[Collaborators] Failed to send credentials email:', emailResult.error);
-          // Don't fail the entire operation if email fails
-        } else {
-          console.log(`[Collaborators] Credentials email sent to: ${invitation.collaborator_email}`);
-        }
-      }
-
-      console.log(`[Collaborators] Invitation accepted: ${invitation.collaborator_email}`);
-
-      return NextResponse.redirect(
-        new URL('/collaborator/invitation-response?status=accepted', request.url)
-      );
+      return NextResponse.redirect(redirectUrl);
     } catch (error) {
       console.error('[Collaborators] Unexpected error during acceptance:', error);
       return NextResponse.redirect(
