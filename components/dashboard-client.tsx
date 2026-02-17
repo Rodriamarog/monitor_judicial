@@ -9,6 +9,8 @@ import { CasesTable } from '@/components/cases-table'
 import { DowngradeBlockedAlert } from '@/components/downgrade-blocked-alert'
 import { AddCaseDialog } from '@/components/add-case-dialog'
 import { ImportCasesDialog } from '@/components/import-cases-dialog'
+import { ReadOnlyBanner } from '@/components/read-only-banner'
+import { useUserRole } from '@/lib/hooks/use-user-role'
 
 interface DashboardClientProps {
   casesWithAlerts: any[]
@@ -31,11 +33,15 @@ export function DashboardClient({
 }: DashboardClientProps) {
   const [addDialogOpen, setAddDialogOpen] = useState(false)
   const [importDialogOpen, setImportDialogOpen] = useState(false)
+  const { isCollaborator } = useUserRole()
 
   return (
     <div className="flex flex-col h-full gap-4 overflow-hidden">
       {/* Alerts - Fixed height */}
       <div className="flex-shrink-0 space-y-4">
+        {/* Read-Only Banner for Collaborators */}
+        {isCollaborator && <ReadOnlyBanner />}
+
         {/* Downgrade Blocked Alert */}
         {showDowngradeAlert && (
           <DowngradeBlockedAlert
@@ -50,45 +56,51 @@ export function DashboardClient({
           <div>
             <h1 className="text-3xl font-bold">Monitoreo por Expediente</h1>
             <p className="text-muted-foreground">
-              {caseCount} de {maxCases} casos monitoreados
+              {isCollaborator
+                ? `${caseCount} caso${caseCount !== 1 ? 's' : ''} asignado${caseCount !== 1 ? 's' : ''}`
+                : `${caseCount} de ${maxCases} casos monitoreados`}
             </p>
           </div>
-          <div className="flex gap-2">
-            <Button
-              onClick={() => setImportDialogOpen(true)}
-              variant="outline"
-              size="icon"
-              className="cursor-pointer"
-              title="Importar Expedientes desde JSON"
-            >
-              <Upload className="h-4 w-4" />
-            </Button>
-            <Button onClick={() => setAddDialogOpen(true)} className="gap-2 cursor-pointer">
-              <Plus className="h-4 w-4" />
-              Agregar Caso
-            </Button>
-          </div>
+          {!isCollaborator && (
+            <div className="flex gap-2">
+              <Button
+                onClick={() => setImportDialogOpen(true)}
+                variant="outline"
+                size="icon"
+                className="cursor-pointer"
+                title="Importar Expedientes desde JSON"
+              >
+                <Upload className="h-4 w-4" />
+              </Button>
+              <Button onClick={() => setAddDialogOpen(true)} className="gap-2 cursor-pointer">
+                <Plus className="h-4 w-4" />
+                Agregar Caso
+              </Button>
+            </div>
+          )}
         </div>
 
-        {/* Compact Stats Card */}
-        <Card>
-          <CardContent className="py-2 px-3">
-            <div className="grid grid-cols-3 gap-2 text-center">
-              <div>
-                <p className="text-xs text-muted-foreground">Monitoreados</p>
-                <p className="text-lg font-bold">{caseCount}</p>
+        {/* Compact Stats Card (master only) */}
+        {!isCollaborator && (
+          <Card>
+            <CardContent className="py-2 px-3">
+              <div className="grid grid-cols-3 gap-2 text-center">
+                <div>
+                  <p className="text-xs text-muted-foreground">Monitoreados</p>
+                  <p className="text-lg font-bold">{caseCount}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Plan</p>
+                  <p className="text-lg font-bold capitalize">{tier}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Disponibles</p>
+                  <p className="text-lg font-bold">{maxCases - caseCount}</p>
+                </div>
               </div>
-              <div>
-                <p className="text-xs text-muted-foreground">Plan</p>
-                <p className="text-lg font-bold capitalize">{tier}</p>
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground">Disponibles</p>
-                <p className="text-lg font-bold">{maxCases - caseCount}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        )}
       </div>
 
       {/* Cases Table - Fills remaining space */}
@@ -100,21 +112,27 @@ export function DashboardClient({
           {!casesWithAlerts || casesWithAlerts.length === 0 ? (
             <div className="text-center py-12">
               <p className="text-muted-foreground mb-4">
-                No tiene casos registrados aún
+                {isCollaborator
+                  ? 'No tienes casos asignados aún'
+                  : 'No tiene casos registrados aún'}
               </p>
-              <Button onClick={() => setAddDialogOpen(true)}>Agregar su primer caso</Button>
+              {!isCollaborator && (
+                <Button onClick={() => setAddDialogOpen(true)}>Agregar su primer caso</Button>
+              )}
             </div>
           ) : (
-            <CasesTable cases={casesWithAlerts} onDelete={onDelete} onUpdate={onUpdate} />
+            <CasesTable cases={casesWithAlerts} onDelete={onDelete} onUpdate={onUpdate} readOnly={isCollaborator} />
           )}
         </CardContent>
       </Card>
 
-      {/* Add Case Dialog */}
-      <AddCaseDialog open={addDialogOpen} onOpenChange={setAddDialogOpen} />
-
-      {/* Import Cases Dialog */}
-      <ImportCasesDialog open={importDialogOpen} onOpenChange={setImportDialogOpen} />
+      {/* Add Case Dialog (master only) */}
+      {!isCollaborator && (
+        <>
+          <AddCaseDialog open={addDialogOpen} onOpenChange={setAddDialogOpen} />
+          <ImportCasesDialog open={importDialogOpen} onOpenChange={setImportDialogOpen} />
+        </>
+      )}
     </div>
   )
 }

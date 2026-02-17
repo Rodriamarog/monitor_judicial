@@ -87,8 +87,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // If pending or expired, update and resend
-    if (existingInvitation.status === 'pending' || existingInvitation.status === 'expired') {
+    // If pending, expired, rejected, or cancelled - update and resend
+    if (['pending', 'expired', 'rejected', 'cancelled'].includes(existingInvitation.status)) {
       const newExpiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
 
       const { error: updateError } = await supabase
@@ -97,6 +97,7 @@ export async function POST(request: NextRequest) {
           status: 'pending',
           expires_at: newExpiresAt,
           created_at: new Date().toISOString(),
+          responded_at: null, // Clear previous response
         })
         .eq('id', existingInvitation.id);
 
@@ -132,8 +133,6 @@ export async function POST(request: NextRequest) {
         },
       });
     }
-
-    // If rejected or cancelled, create new invitation (fall through to create)
   }
 
   // Create new invitation

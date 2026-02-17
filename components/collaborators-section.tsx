@@ -42,6 +42,7 @@ export function CollaboratorsSection({
   const [loading, setLoading] = useState(false)
   const [invitations, setInvitations] = useState<Invitation[]>([])
   const [loadingInvitations, setLoadingInvitations] = useState(true)
+  const [removingEmail, setRemovingEmail] = useState<string | null>(null)
 
   const maxCollaborators = getMaxCollaborators(tier)
   const tierConfig = getTierConfig(tier)
@@ -176,6 +177,12 @@ export function CollaboratorsSection({
       return
     }
 
+    // Set loading state immediately for instant feedback
+    setRemovingEmail(email)
+
+    // Show loading toast immediately
+    const loadingToastId = toast.loading('Eliminando colaborador...')
+
     try {
       console.log('[CollaboratorsSection] Removing collaborator:', email)
 
@@ -197,17 +204,23 @@ export function CollaboratorsSection({
       const result = await response.json()
       console.log('[CollaboratorsSection] API success:', result)
 
+      // Dismiss loading toast and show success
+      toast.dismiss(loadingToastId)
       toast.success('Colaborador eliminado exitosamente')
 
       // Reload the page to refresh all collaborator data
       setTimeout(() => {
         window.location.reload()
-      }, 1000)
+      }, 800)
     } catch (err) {
       console.error('[CollaboratorsSection] Error removing collaborator:', err)
       const errorMsg = err instanceof Error ? err.message : 'Error al eliminar colaborador'
-      setError(errorMsg)
+
+      // Dismiss loading toast and show error
+      toast.dismiss(loadingToastId)
       toast.error(errorMsg)
+      setError(errorMsg)
+      setRemovingEmail(null)
     }
   }
 
@@ -285,8 +298,13 @@ export function CollaboratorsSection({
                     size="icon"
                     className="h-8 w-8"
                     onClick={() => handleRemoveCollaborator(invitation.collaborator_email)}
+                    disabled={removingEmail === invitation.collaborator_email}
                   >
-                    <X className="h-4 w-4" />
+                    {removingEmail === invitation.collaborator_email ? (
+                      <RefreshCw className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <X className="h-4 w-4" />
+                    )}
                   </Button>
                 </div>
               </Card>

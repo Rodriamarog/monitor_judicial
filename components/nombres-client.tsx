@@ -6,6 +6,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Plus } from 'lucide-react';
 import { MonitoredNamesTable } from '@/components/monitored-names-table';
 import { AddNameDialog } from '@/components/add-name-dialog';
+import { ReadOnlyBanner } from '@/components/read-only-banner';
+import { useUserRole } from '@/lib/hooks/use-user-role';
 import { useRouter } from 'next/navigation';
 
 interface NombresClientProps {
@@ -34,6 +36,7 @@ export function NombresClient({
   onUpdate,
 }: NombresClientProps) {
   const router = useRouter();
+  const { isCollaborator } = useUserRole();
 
   const handleSuccess = () => {
     router.refresh();
@@ -50,43 +53,52 @@ export function NombresClient({
     <div className="flex flex-col h-full gap-4 overflow-hidden">
       {/* Header Section */}
       <div className="flex-shrink-0 space-y-4">
+        {/* Read-Only Banner for Collaborators */}
+        {isCollaborator && <ReadOnlyBanner />}
+
         {/* Page Header */}
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold">Monitoreo por Nombre</h1>
             <p className="text-muted-foreground">
-              {nameCount} de {maxNames} nombres monitoreados
+              {isCollaborator
+                ? `${nameCount} nombre${nameCount !== 1 ? 's' : ''} asignado${nameCount !== 1 ? 's' : ''}`
+                : `${nameCount} de ${maxNames} nombres monitoreados`}
             </p>
           </div>
-          <div className="flex gap-2">
-            <AddNameDialog
-              userId={userId}
-              currentCount={nameCount}
-              maxNames={maxNames}
-              onSuccess={handleSuccess}
-            />
-          </div>
+          {!isCollaborator && (
+            <div className="flex gap-2">
+              <AddNameDialog
+                userId={userId}
+                currentCount={nameCount}
+                maxNames={maxNames}
+                onSuccess={handleSuccess}
+              />
+            </div>
+          )}
         </div>
 
-        {/* Compact Stats Card */}
-        <Card>
-          <CardContent className="py-2 px-3">
-            <div className="grid grid-cols-3 gap-2 text-center">
-              <div>
-                <p className="text-xs text-muted-foreground">Monitoreados</p>
-                <p className="text-lg font-bold">{nameCount}</p>
+        {/* Compact Stats Card (master only) */}
+        {!isCollaborator && (
+          <Card>
+            <CardContent className="py-2 px-3">
+              <div className="grid grid-cols-3 gap-2 text-center">
+                <div>
+                  <p className="text-xs text-muted-foreground">Monitoreados</p>
+                  <p className="text-lg font-bold">{nameCount}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Total de Alertas</p>
+                  <p className="text-lg font-bold">{totalAlerts}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Disponibles</p>
+                  <p className="text-lg font-bold">{maxNames - nameCount}</p>
+                </div>
               </div>
-              <div>
-                <p className="text-xs text-muted-foreground">Total de Alertas</p>
-                <p className="text-lg font-bold">{totalAlerts}</p>
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground">Disponibles</p>
-                <p className="text-lg font-bold">{maxNames - nameCount}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        )}
       </div>
 
       {/* Names Table - Fills remaining space */}
@@ -101,17 +113,21 @@ export function NombresClient({
           {!namesWithAlerts || namesWithAlerts.length === 0 ? (
             <div className="text-center py-12">
               <p className="text-muted-foreground mb-4">
-                No tienes nombres monitoreados aún
+                {isCollaborator
+                  ? 'No tienes nombres asignados aún'
+                  : 'No tienes nombres monitoreados aún'}
               </p>
-              <AddNameDialog
-                userId={userId}
-                currentCount={nameCount}
-                maxNames={maxNames}
-                onSuccess={handleSuccess}
-              />
+              {!isCollaborator && (
+                <AddNameDialog
+                  userId={userId}
+                  currentCount={nameCount}
+                  maxNames={maxNames}
+                  onSuccess={handleSuccess}
+                />
+              )}
             </div>
           ) : (
-            <MonitoredNamesTable names={namesWithAlerts} onDelete={handleDelete} onUpdate={onUpdate} />
+            <MonitoredNamesTable names={namesWithAlerts} onDelete={handleDelete} onUpdate={onUpdate} readOnly={isCollaborator} />
           )}
         </CardContent>
       </Card>
