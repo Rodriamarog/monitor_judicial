@@ -16,23 +16,41 @@ export default async function DashboardPage() {
 
   if (!user) return null // Layout already verified auth
 
-  // Get user's monitored cases
-  const { data: cases, error } = await supabase
-    .from('monitored_cases')
-    .select('*')
-    .eq('user_id', user.id)
-    .order('created_at', { ascending: false })
-
-  // Get user profile for tier info and downgrade block status
-  const { data: profile } = await supabase
+  // Check if this user is a collaborator and get master user ID if so
+  const { data: ownProfile } = await supabase
     .from('user_profiles')
-    .select('subscription_tier, downgrade_blocked, downgrade_blocked_at')
+    .select('role')
     .eq('id', user.id)
     .single()
 
-  // Get alert counts for each case (efficient aggregation in database)
+  let masterUserId = user.id
+  if (ownProfile?.role === 'collaborator') {
+    const { data: collab } = await supabase
+      .from('collaborators')
+      .select('master_user_id')
+      .eq('collaborator_user_id', user.id)
+      .eq('status', 'active')
+      .single()
+    if (collab?.master_user_id) masterUserId = collab.master_user_id
+  }
+
+  // Get monitored cases - no user_id filter, let RLS handle visibility
+  // Masters see their own cases; collaborators see their assigned cases via RLS
+  const { data: cases, error } = await supabase
+    .from('monitored_cases')
+    .select('*')
+    .order('created_at', { ascending: false })
+
+  // Get master's profile for tier info (collaborators share master's plan)
+  const { data: profile } = await supabase
+    .from('user_profiles')
+    .select('subscription_tier, downgrade_blocked, downgrade_blocked_at')
+    .eq('id', masterUserId)
+    .single()
+
+  // Get alert counts using master's user_id
   const { data: alertCountsData, error: alertsError } = await supabase
-    .rpc('get_alert_counts_by_case', { p_user_id: user.id })
+    .rpc('get_alert_counts_by_case', { p_user_id: masterUserId })
 
   if (alertsError) {
     console.error('Error fetching alert counts:', alertsError)
@@ -48,7 +66,7 @@ export default async function DashboardPage() {
   const { data: payments } = await supabase
     .from('case_payments')
     .select('case_id, amount')
-    .eq('user_id', user.id)
+    .eq('user_id', masterUserId)
 
   // Create a map of case_id -> total_paid
   const paymentTotals = new Map<string, number>()

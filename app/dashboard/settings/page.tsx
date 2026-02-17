@@ -89,7 +89,7 @@ export default function SettingsPage() {
 
       const { data: profile, error: profileError } = await supabase
         .from('user_profiles')
-        .select('email, phone, whatsapp_enabled, email_notifications_enabled, timezone, subscription_tier, stripe_customer_id, collaborator_emails')
+        .select('email, phone, whatsapp_enabled, email_notifications_enabled, timezone, subscription_tier, stripe_customer_id, collaborator_emails, role')
         .eq('id', user.id)
         .single()
 
@@ -100,8 +100,30 @@ export default function SettingsPage() {
       setWhatsappEnabled(profile.whatsapp_enabled || false)
       setEmailEnabled(profile.email_notifications_enabled !== false)
       setTimezone(profile.timezone || 'America/Tijuana')
-      setTier(profile.subscription_tier || 'free')
       setHasStripeCustomer(!!profile.stripe_customer_id)
+
+      // For collaborators, show the master's plan instead of their own
+      if (profile.role === 'collaborator') {
+        const { data: collab } = await supabase
+          .from('collaborators')
+          .select('master_user_id')
+          .eq('collaborator_user_id', user.id)
+          .eq('status', 'active')
+          .single()
+        if (collab?.master_user_id) {
+          const { data: masterProfile } = await supabase
+            .from('user_profiles')
+            .select('subscription_tier, stripe_customer_id')
+            .eq('id', collab.master_user_id)
+            .single()
+          if (masterProfile) {
+            setTier(masterProfile.subscription_tier || 'gratis')
+            setHasStripeCustomer(!!masterProfile.stripe_customer_id)
+          }
+        }
+      } else {
+        setTier(profile.subscription_tier || 'gratis')
+      }
 
       // Parse collaborators from JSONB array (email only)
       const emails = profile.collaborator_emails || []
