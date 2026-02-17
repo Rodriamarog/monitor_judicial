@@ -23,24 +23,22 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Missing caseId' }, { status: 400 })
     }
 
-    // Verify case belongs to user
+    // Verify case is accessible (RLS handles master vs collaborator authorization)
     const { data: caseData, error: caseError } = await supabase
       .from('monitored_cases')
       .select('id')
       .eq('id', caseId)
-      .eq('user_id', user.id)
       .single()
 
     if (caseError || !caseData) {
       return NextResponse.json({ error: 'Case not found or unauthorized' }, { status: 404 })
     }
 
-    // Get all files for this case
+    // Get all files for this case (RLS handles master vs collaborator access)
     const { data: files, error: filesError } = await supabase
       .from('case_files')
       .select('*')
       .eq('case_id', caseId)
-      .eq('user_id', user.id)
       .order('uploaded_at', { ascending: false })
 
     if (filesError) {
