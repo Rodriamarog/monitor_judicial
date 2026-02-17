@@ -9,9 +9,9 @@ import { Eye } from 'lucide-react';
  */
 export function ReadOnlyBanner() {
   return (
-    <Alert className="mb-4 bg-blue-50 border-blue-200">
-      <Eye className="h-4 w-4 text-blue-600" />
-      <AlertDescription className="text-blue-900">
+    <Alert className="mb-4 bg-blue-50 border-blue-200 dark:bg-blue-950/20 dark:border-blue-800">
+      <Eye className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+      <AlertDescription className="text-blue-900 dark:text-blue-200">
         Estás en modo de solo lectura. No puedes crear, editar o eliminar casos.
       </AlertDescription>
     </Alert>

@@ -4,7 +4,7 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Plus, Upload } from 'lucide-react'
+import { Plus, Upload, Loader2 } from 'lucide-react'
 import { CasesTable } from '@/components/cases-table'
 import { DowngradeBlockedAlert } from '@/components/downgrade-blocked-alert'
 import { AddCaseDialog } from '@/components/add-case-dialog'
@@ -33,7 +33,15 @@ export function DashboardClient({
 }: DashboardClientProps) {
   const [addDialogOpen, setAddDialogOpen] = useState(false)
   const [importDialogOpen, setImportDialogOpen] = useState(false)
-  const { isCollaborator } = useUserRole()
+  const { isCollaborator, loading: roleLoading } = useUserRole()
+
+  if (roleLoading) {
+    return (
+      <div className="flex items-center justify-center h-48">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    )
+  }
 
   return (
     <div className="flex flex-col h-full gap-4 overflow-hidden">

@@ -13,6 +13,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { createClient } from "@/lib/supabase/client"
+import { useUserRole } from "@/lib/hooks/use-user-role"
 import TaskCard from "@/components/task-card"
 import AddTaskDialog from "@/components/add-task-dialog"
 import TaskEditModal from "@/components/kanban/task-edit-modal"
@@ -56,6 +57,7 @@ export interface Column {
 export default function KanbanBoard() {
   const router = useRouter()
   const supabase = createClient()
+  const { isCollaborator, masterUserId, userId: roleUserId, loading: roleLoading } = useUserRole()
 
   const [columns, setColumns] = useState<Column[]>([])
   const [loading, setLoading] = useState(true)
@@ -70,16 +72,19 @@ export default function KanbanBoard() {
 
   // Load kanban data from database
   useEffect(() => {
+    if (roleLoading) return
+
     async function loadKanbanData() {
       try {
-        const { data: { user } } = await supabase.auth.getUser()
+        // Collaborators see the master's board; masters see their own
+        const effectiveUserId = isCollaborator && masterUserId ? masterUserId : roleUserId
 
-        if (!user) {
+        if (!effectiveUserId) {
           router.push('/login')
           return
         }
 
-        setUserId(user.id)
+        setUserId(effectiveUserId)
 
         let { data: columns, error } = await supabase
           .from('kanban_columns')
@@ -87,7 +92,7 @@ export default function KanbanBoard() {
             *,
             kanban_tasks (*)
           `)
-          .eq('user_id', user.id)
+          .eq('user_id', effectiveUserId)
           .is('deleted_at', null)
           .order('position')
 
@@ -96,26 +101,28 @@ export default function KanbanBoard() {
           return
         }
 
-        // If no columns exist, initialize defaults
+        // If no columns exist and user is master, initialize defaults
         if (!columns || columns.length === 0) {
-          console.log('📋 No columns found, initializing defaults...')
-          await supabase.rpc('initialize_default_kanban_columns', {
-            p_user_id: user.id,
-          })
+          if (!isCollaborator) {
+            console.log('📋 No columns found, initializing defaults...')
+            await supabase.rpc('initialize_default_kanban_columns', {
+              p_user_id: effectiveUserId,
+            })
 
-          // Re-fetch columns after initialization
-          const { data: newColumns } = await supabase
-            .from('kanban_columns')
-            .select(`
-              *,
-              kanban_tasks (*)
-            `)
-            .eq('user_id', user.id)
-            .is('deleted_at', null)
-            .order('position')
+            // Re-fetch columns after initialization
+            const { data: newColumns } = await supabase
+              .from('kanban_columns')
+              .select(`
+                *,
+                kanban_tasks (*)
+              `)
+              .eq('user_id', effectiveUserId)
+              .is('deleted_at', null)
+              .order('position')
 
-          columns = newColumns
-          console.log('✅ Default columns initialized')
+            columns = newColumns
+            console.log('✅ Default columns initialized')
+          }
         }
 
         // Organize subtasks by parent task ID
@@ -182,7 +189,7 @@ export default function KanbanBoard() {
     }
 
     loadKanbanData()
-  }, [router, supabase, reloadTrigger])
+  }, [roleLoading, isCollaborator, masterUserId, roleUserId, reloadTrigger])
 
   // Helper to format date for display
   const formatDisplayDate = (dateStr: string): string => {

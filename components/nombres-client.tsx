@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Plus } from 'lucide-react';
+import { Plus, Loader2 } from 'lucide-react';
 import { MonitoredNamesTable } from '@/components/monitored-names-table';
 import { AddNameDialog } from '@/components/add-name-dialog';
 import { ReadOnlyBanner } from '@/components/read-only-banner';
@@ -36,7 +36,15 @@ export function NombresClient({
   onUpdate,
 }: NombresClientProps) {
   const router = useRouter();
-  const { isCollaborator } = useUserRole();
+  const { isCollaborator, loading: roleLoading } = useUserRole();
+
+  if (roleLoading) {
+    return (
+      <div className="flex items-center justify-center h-48">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
 
   const handleSuccess = () => {
     router.refresh();
