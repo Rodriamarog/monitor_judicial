@@ -235,168 +235,132 @@ export async function sendBatchAlertEmail(data: BatchAlertEmailData): Promise<{ 
     const { userEmail, userName, bulletinDate, alerts } = data;
     const alertCount = alerts.length;
 
-    const emailHtml = `
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <style>
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-      line-height: 1.6;
-      color: #333;
-      max-width: 600px;
-      margin: 0 auto;
-      padding: 20px;
-    }
-    .header {
-      background: #1e293b;
-      color: white;
-      padding: 30px;
-      border-radius: 10px 10px 0 0;
-      text-align: center;
-    }
-    .header h1 {
-      margin: 0;
-      font-size: 24px;
-      font-weight: 600;
-    }
-    .badge {
-      background: rgba(255,255,255,0.15);
-      padding: 5px 15px;
-      border-radius: 20px;
-      display: inline-block;
-      margin-top: 10px;
-      font-size: 14px;
-    }
-    .content {
-      background: #f8fafc;
-      padding: 30px;
-      border-radius: 0 0 10px 10px;
-    }
-    .alert-box {
-      background: white;
-      border-left: 4px solid #475569;
-      padding: 20px;
-      margin: 15px 0;
-      border-radius: 4px;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.08);
-    }
-    .case-header {
-      font-weight: 600;
-      color: #334155;
-      font-size: 16px;
-      margin-bottom: 10px;
-    }
-    .detail-row {
-      margin: 8px 0;
-      font-size: 14px;
-    }
-    .label {
-      font-weight: 600;
-      color: #555;
-    }
-    .case-details {
-      background: #f0f0f0;
-      padding: 12px;
-      border-radius: 4px;
-      margin: 10px 0;
-      font-family: 'Courier New', monospace;
-      font-size: 12px;
-      white-space: pre-wrap;
-      word-wrap: break-word;
-    }
-    .button {
-      display: inline-block;
-      background: #334155;
-      color: white;
-      padding: 12px 30px;
-      text-decoration: none;
-      border-radius: 5px;
-      margin: 10px 5px;
-      font-size: 14px;
-    }
-    .footer {
-      text-align: center;
-      margin-top: 30px;
-      padding-top: 20px;
-      border-top: 1px solid #e2e8f0;
-      color: #64748b;
-      font-size: 12px;
-    }
-    .summary {
-      background: #f1f5f9;
-      padding: 15px;
-      border-radius: 8px;
-      margin: 20px 0;
-      text-align: center;
-      color: #334155;
-    }
-  </style>
-</head>
-<body>
-  <div class="header">
-    <h1>${alertCount === 1 ? 'Actualización' : 'Actualizaciones'} en Boletín Judicial</h1>
-    <div class="badge">${new Date(bulletinDate + 'T12:00:00').toLocaleDateString('es-MX', {
+    const formattedBulletinDate = new Date(bulletinDate + 'T12:00:00').toLocaleDateString('es-MX', {
       weekday: 'long',
       year: 'numeric',
       month: 'long',
       day: 'numeric',
       timeZone: 'America/Tijuana'
-    })}</div>
-  </div>
+    });
 
-  <div class="content">
-    <p>Estimado${userName ? ' ' + userName : ''} usuario,</p>
+    const emailHtml = `<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Actualizaciones en Boletin Judicial</title>
+  <style>
+    @media screen and (max-width: 600px) {
+      .email-container { width: 100% !important; border-radius: 0 !important; }
+      .email-pad { padding-left: 20px !important; padding-right: 20px !important; }
+      .email-title { padding-top: 24px !important; }
+      .alert-text { font-size: 12px !important; }
+    }
+  </style>
+</head>
+<body style="margin: 0; padding: 0; background-color: #f4f4f4; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f4f4f4; padding: 20px 0;">
+    <tr>
+      <td align="center" style="padding: 0 12px;">
+        <table class="email-container" cellpadding="0" cellspacing="0" style="width: 100%; max-width: 560px; background-color: #ffffff; border-radius: 6px; overflow: hidden; border: 1px solid #e0e0e0;">
 
-    <div class="summary">
-      Se ${alertCount === 1 ? 'ha detectado' : 'han detectado'} <strong>${alertCount} ${alertCount === 1 ? 'actualización' : 'actualizaciones'}</strong> en los boletines judiciales del Poder Judicial de Baja California.
-    </div>
+          <!-- Header -->
+          <tr>
+            <td class="email-pad" style="padding: 24px 48px 20px; border-bottom: 1px solid #f0f0f0;">
+              <table width="100%" cellpadding="0" cellspacing="0">
+                <tr>
+                  <td>
+                    <span style="font-size: 15px; font-weight: 600; color: #111111; letter-spacing: -0.3px;">Monitor Judicial</span>
+                  </td>
+                  <td align="right">
+                    <span style="font-size: 12px; color: #999999;">${formattedBulletinDate}</span>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
 
-    ${alerts.map((alert, index) => `
-    <div class="alert-box">
-      <div class="case-header">
-        ${alert.matchedOn === 'name' ? 'Coincidencia por Nombre' : 'Actualización de Caso'} ${index + 1} de ${alertCount}
-      </div>
-      ${alert.matchedOn === 'name' ? `
-      <div class="detail-row">
-        <span class="label">Nombre Monitoreado:</span> ${alert.monitoredName || 'Desconocido'}
-      </div>
-      <div class="detail-row">
-        <span class="label">Encontrado en Expediente:</span> ${alert.caseNumber}
-      </div>
-      ` : `
-      <div class="detail-row">
-        <span class="label">Número de Expediente:</span> ${alert.caseNumber}
-      </div>
-      ${alert.caseName ? `<div class="detail-row"><span class="label">Referencia:</span> ${alert.caseName}</div>` : ''}
-      `}
-      <div class="detail-row">
-        <span class="label">Juzgado:</span> ${alert.juzgado}
-      </div>
-      <div class="case-details">${alert.rawText}</div>
-      ${alert.bulletinUrl ? `
-      <div style="text-align: center; margin-top: 15px;">
-        <a href="${alert.bulletinUrl}" class="button">Consultar Boletín Oficial</a>
-      </div>
-      ` : ''}
-    </div>
-    `).join('')}
+          <!-- Title -->
+          <tr>
+            <td class="email-pad email-title" style="padding: 28px 48px 8px;">
+              <h1 style="margin: 0 0 8px; font-size: 20px; font-weight: 600; color: #111111; letter-spacing: -0.4px;">
+                ${alertCount === 1 ? '1 nueva actualizacion' : `${alertCount} nuevas actualizaciones`} en boletin judicial
+              </h1>
+              <p style="margin: 0 0 24px; font-size: 14px; color: #666666;">
+                Poder Judicial del Estado de Baja California
+              </p>
+            </td>
+          </tr>
 
-    <p style="margin-top: 30px; color: #666; font-size: 14px;">
-      Puede consultar el detalle completo de estas actualizaciones en su panel de control.
-    </p>
-  </div>
+          ${alerts.map((alert, index) => `
+          <!-- Alert ${index + 1} -->
+          <tr>
+            <td class="email-pad" style="padding: 0 48px ${index < alertCount - 1 ? '0' : '8px'};">
+              <table width="100%" cellpadding="0" cellspacing="0" style="border: 1px solid #e8e8e8; border-radius: 5px; overflow: hidden; margin-bottom: 16px;">
+                <tr>
+                  <td style="padding: 12px 16px; background-color: #f8f8f8; border-bottom: 1px solid #e8e8e8;">
+                    <span style="font-size: 11px; font-weight: 600; color: #888888; text-transform: uppercase; letter-spacing: 0.5px;">
+                      ${alert.matchedOn === 'name' ? 'Coincidencia por nombre' : 'Actualizacion de expediente'}
+                    </span>
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding: 16px;">
+                    ${alert.matchedOn === 'name' ? `
+                    <p style="margin: 0 0 6px; font-size: 13px; color: #888888;">Nombre monitoreado</p>
+                    <p style="margin: 0 0 16px; font-size: 15px; font-weight: 600; color: #111111;">${alert.monitoredName || 'Desconocido'}</p>
+                    <p style="margin: 0 0 4px; font-size: 13px; color: #888888;">Expediente donde aparece</p>
+                    <p style="margin: 0 0 16px; font-size: 15px; color: #111111;">${alert.caseNumber}</p>
+                    ` : `
+                    <p style="margin: 0 0 4px; font-size: 13px; color: #888888;">Expediente</p>
+                    <p style="margin: 0 0 16px; font-size: 16px; font-weight: 600; color: #111111;">${alert.caseNumber}</p>
+                    ${alert.caseName ? `<p style="margin: 0 0 4px; font-size: 13px; color: #888888;">Referencia</p><p style="margin: 0 0 16px; font-size: 14px; color: #333333;">${alert.caseName}</p>` : ''}
+                    `}
+                    <p style="margin: 0 0 4px; font-size: 13px; color: #888888;">Juzgado</p>
+                    <p style="margin: 0 0 16px; font-size: 14px; color: #333333; word-break: break-word;">${alert.juzgado}</p>
+                    <p style="margin: 0 0 8px; font-size: 13px; color: #888888;">Texto del boletin</p>
+                    <div class="alert-text" style="background-color: #f8f8f8; border-radius: 4px; padding: 12px; font-size: 13px; color: #333333; line-height: 1.6; font-family: 'Courier New', Courier, monospace; white-space: pre-wrap; word-break: break-word; overflow-wrap: break-word;">${alert.rawText}</div>
+                    ${alert.bulletinUrl ? `
+                    <div style="margin-top: 16px;">
+                      <a href="${alert.bulletinUrl}" style="font-size: 13px; color: #111111; font-weight: 500;">Consultar boletin oficial &rarr;</a>
+                    </div>
+                    ` : ''}
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+          `).join('')}
 
-  <div class="footer">
-    <p>
-      Este es un correo automático del sistema Monitor Judicial PJBC.<br>
-      No respondas a este correo.
-    </p>
-  </div>
+          <!-- CTA -->
+          <tr>
+            <td class="email-pad" style="padding: 16px 48px 32px;">
+              <table cellpadding="0" cellspacing="0">
+                <tr>
+                  <td>
+                    <a href="https://monitorjudicial.com.mx/dashboard/alerts"
+                       style="display: inline-block; background-color: #111111; color: #ffffff; text-decoration: none; font-size: 14px; font-weight: 500; padding: 11px 22px; border-radius: 5px;">
+                      Ver en el panel de control
+                    </a>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td class="email-pad" style="padding: 20px 48px; border-top: 1px solid #f0f0f0;">
+              <p style="margin: 0; font-size: 12px; color: #aaaaaa;">Monitor Judicial &mdash; Este es un mensaje automatico, no respondas a este correo.</p>
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
 </body>
-</html>
-    `;
+</html>`;
 
     const emailText = `
 MONITOR JUDICIAL PJBC
@@ -531,149 +495,72 @@ export async function sendCollaboratorInvitation(
 
     const emailHtml = `
 <!DOCTYPE html>
-<html>
+<html lang="es">
 <head>
   <meta charset="utf-8">
-  <style>
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-      line-height: 1.6;
-      color: #333;
-      max-width: 600px;
-      margin: 0 auto;
-      padding: 20px;
-    }
-    .header {
-      background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-      color: white;
-      padding: 30px;
-      border-radius: 10px 10px 0 0;
-      text-align: center;
-    }
-    .header h1 {
-      margin: 0;
-      font-size: 24px;
-    }
-    .content {
-      background: #f9f9f9;
-      padding: 30px;
-      border-radius: 0 0 10px 10px;
-    }
-    .invitation-box {
-      background: white;
-      border-left: 4px solid #10b981;
-      padding: 20px;
-      margin: 20px 0;
-      border-radius: 4px;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    }
-    .owner-name {
-      font-weight: bold;
-      color: #10b981;
-    }
-    .button-container {
-      text-align: center;
-      margin: 25px 0;
-    }
-    .button {
-      display: inline-block;
-      padding: 12px 30px;
-      margin: 5px;
-      text-decoration: none;
-      border-radius: 5px;
-    }
-    .button-accept {
-      background: #10b981;
-      color: white;
-    }
-    .button-reject {
-      background: #e5e7eb;
-      color: #6b7280;
-    }
-    .info-section {
-      background: #ecfdf5;
-      border-left: 4px solid #10b981;
-      border-radius: 4px;
-      padding: 15px;
-      margin: 20px 0;
-      font-size: 14px;
-    }
-    .info-section h3 {
-      margin-top: 0;
-      color: #059669;
-      font-size: 16px;
-    }
-    .info-section ul {
-      margin: 10px 0;
-      padding-left: 20px;
-    }
-    .info-section li {
-      margin: 6px 0;
-    }
-    .expiration {
-      background: #fef3c7;
-      border-left: 4px solid #f59e0b;
-      padding: 15px;
-      margin: 20px 0;
-      border-radius: 4px;
-      font-size: 14px;
-      color: #92400e;
-    }
-    .footer {
-      text-align: center;
-      margin-top: 30px;
-      padding-top: 20px;
-      border-top: 1px solid #ddd;
-      color: #999;
-      font-size: 12px;
-    }
-  </style>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Invitacion para colaborar</title>
 </head>
-<body>
-  <div class="header">
-    <h1>Invitación de Colaboración</h1>
-  </div>
+<body style="margin: 0; padding: 0; background-color: #f4f4f4; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f4f4f4; padding: 40px 0;">
+    <tr>
+      <td align="center">
+        <table width="520" cellpadding="0" cellspacing="0" style="background-color: #ffffff; border-radius: 6px; overflow: hidden; border: 1px solid #e0e0e0;">
 
-  <div class="content">
-    <p>Se te ha invitado a colaborar en una cuenta de Monitor Judicial.</p>
+          <!-- Header -->
+          <tr>
+            <td style="padding: 36px 48px 28px; border-bottom: 1px solid #f0f0f0;">
+              <span style="font-size: 16px; font-weight: 600; color: #111111; letter-spacing: -0.3px;">Monitor Judicial</span>
+            </td>
+          </tr>
 
-    <div class="invitation-box">
-      <div style="margin: 10px 0;">
-        <span class="owner-name">${ownerDisplay}</span> te ha invitado a colaborar en su cuenta de Monitor Judicial.
-      </div>
-    </div>
+          <!-- Body -->
+          <tr>
+            <td style="padding: 36px 48px 28px;">
+              <h1 style="margin: 0 0 20px; font-size: 22px; font-weight: 600; color: #111111; letter-spacing: -0.4px;">Te han invitado a colaborar</h1>
 
-    <p>Como colaborador, recibirás notificaciones por email cuando se detecten actualizaciones en los casos judiciales que ${ownerDisplay} te asigne específicamente.</p>
+              <p style="margin: 0 0 20px; font-size: 15px; line-height: 1.6; color: #444444;">
+                <strong style="color: #111111;">${ownerDisplay}</strong> te ha invitado a ser colaborador en su cuenta de Monitor Judicial.
+              </p>
 
-    <div class="button-container">
-      <a href="${acceptUrl}" class="button button-accept">Aceptar Invitación</a>
-      <a href="${rejectUrl}" class="button button-reject">Rechazar Invitación</a>
-    </div>
+              <p style="margin: 0 0 28px; font-size: 15px; line-height: 1.6; color: #444444;">
+                Como colaborador tendras acceso de lectura a los expedientes que te sean asignados y recibiras alertas cuando haya actualizaciones en ellos.
+              </p>
 
-    <div class="expiration">
-      Esta invitación expirará el <strong>${formattedDate}</strong>
-    </div>
+              <!-- Accept button -->
+              <table cellpadding="0" cellspacing="0" style="margin-bottom: 12px;">
+                <tr>
+                  <td>
+                    <a href="${acceptUrl}"
+                       style="display: inline-block; background-color: #111111; color: #ffffff; text-decoration: none; font-size: 14px; font-weight: 500; padding: 12px 24px; border-radius: 5px;">
+                      Aceptar invitacion
+                    </a>
+                  </td>
+                </tr>
+              </table>
 
-    <div class="info-section">
-      <h3>Como colaborador podrás:</h3>
-      <ul>
-        <li>Recibir alertas por email de casos asignados</li>
-        <li>Acceder al historial de actualizaciones</li>
-        <li>Colaborar con ${ownerDisplay} en el seguimiento de casos</li>
-      </ul>
-    </div>
+              <!-- Reject link -->
+              <p style="margin: 0 0 28px;">
+                <a href="${rejectUrl}" style="font-size: 14px; color: #888888;">No me interesa, rechazar invitacion</a>
+              </p>
 
-    <p style="margin-top: 25px; font-size: 14px; color: #666;">
-      Si no reconoces a ${ownerDisplay} o no deseas colaborar, simplemente ignora este correo.
-    </p>
-  </div>
+              <p style="margin: 0; font-size: 13px; line-height: 1.6; color: #aaaaaa;">
+                Esta invitacion expira el ${formattedDate}. Si no conoces a ${ownerDisplay}, ignora este mensaje.
+              </p>
+            </td>
+          </tr>
 
-  <div class="footer">
-    <p>
-      Este es un correo automático del sistema Monitor Judicial PJBC.<br>
-      No respondas a este correo.
-    </p>
-  </div>
+          <!-- Footer -->
+          <tr>
+            <td style="padding: 20px 48px; border-top: 1px solid #f0f0f0;">
+              <p style="margin: 0; font-size: 12px; color: #aaaaaa;">Monitor Judicial &mdash; Este es un mensaje automatico, no respondas a este correo.</p>
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
 </body>
 </html>
     `;
@@ -704,7 +591,7 @@ ${baseUrl}
     const result = await resend.emails.send({
       from: 'Monitor Judicial <noreply@monitorjudicial.com.mx>',
       to: collaboratorEmail,
-      subject: `Invitación para colaborar en Monitor Judicial`,
+      subject: `${ownerDisplay} te invita a colaborar en Monitor Judicial`,
       html: emailHtml,
       text: emailText,
     });
