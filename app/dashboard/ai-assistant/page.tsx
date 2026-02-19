@@ -837,11 +837,6 @@ export default function AIAssistantPage() {
 
           {/* Input Area */}
           <div className="border-t p-4">
-            {aiUsage && (
-              <p className="text-xs text-muted-foreground text-right mb-1">
-                {aiUsage.used}/{aiUsage.limit} mensajes hoy
-              </p>
-            )}
             {limitReached ? (
               <div className="text-center py-3 text-sm text-muted-foreground">
                 Has alcanzado el límite de 50 mensajes por día. Regresa mañana.
