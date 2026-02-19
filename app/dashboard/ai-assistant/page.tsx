@@ -119,6 +119,8 @@ export default function AIAssistantPage() {
   const [loadingMessages, setLoadingMessages] = useState(false) // Loading state for conversation messages
   const [hasMoreMessages, setHasMoreMessages] = useState(false) // Whether there are older messages to load
   const [loadingMore, setLoadingMore] = useState(false) // Loading state for "load more"
+  const [aiUsage, setAiUsage] = useState<{ used: number; limit: number } | null>(null)
+  const [limitReached, setLimitReached] = useState(false)
 
   const scrollRef = useRef<HTMLDivElement>(null)
   const supabase = createClient()
@@ -137,6 +139,19 @@ export default function AIAssistantPage() {
   const shouldAutoScrollRef = useRef(true) // Track if we should auto-scroll
 
   const prevMessageCountRef = useRef(0)
+
+  // Fetch initial AI usage on mount
+  useEffect(() => {
+    fetch('/api/ai-assistant/usage')
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.used !== undefined) {
+          setAiUsage({ used: data.used, limit: data.limit })
+          if (data.used >= data.limit) setLimitReached(true)
+        }
+      })
+      .catch(() => {/* non-critical, ignore */})
+  }, [])
 
   // RAF-throttled scroll function for performance
   const scrollToBottomThrottled = useCallback(() => {
@@ -184,10 +199,32 @@ export default function AIAssistantPage() {
       async fetch(input, init) {
         const response = await fetch(input, init)
 
+        // Handle daily limit reached
+        if (response.status === 429) {
+          try {
+            const body = await response.clone().json()
+            if (body.error === 'DAILY_LIMIT_REACHED') {
+              setLimitReached(true)
+              setAiUsage({ used: body.used ?? 50, limit: body.limit ?? 50 })
+            }
+          } catch {/* ignore parse errors */}
+          return response
+        }
+
         // Extract headers
         const conversationId = response.headers.get('X-Conversation-Id')
         const ragExecuted = response.headers.get('X-RAG-Executed') === 'true'
         const sourcesHeader = response.headers.get('X-Sources-Data')
+
+        // Update usage counter from response headers
+        const usageCount = response.headers.get('X-AI-Usage-Count')
+        const usageLimit = response.headers.get('X-AI-Usage-Limit')
+        if (usageCount !== null && usageLimit !== null) {
+          const used = parseInt(usageCount, 10)
+          const limit = parseInt(usageLimit, 10)
+          setAiUsage({ used, limit })
+          if (used >= limit) setLimitReached(true)
+        }
 
         console.log('[DEBUG] RAG executed:', ragExecuted)
         setIsRagExecuting(ragExecuted)
@@ -800,22 +837,33 @@ export default function AIAssistantPage() {
 
           {/* Input Area */}
           <div className="border-t p-4">
-            <form onSubmit={handleSubmit} className="flex gap-2">
-              <Input
-                value={inputValue}
-                onChange={(e) => setInputValue(e.target.value)}
-                placeholder="Escribe tu pregunta sobre tesis jurisprudenciales..."
-                disabled={isLoading}
-                className="flex-1"
-              />
-              <Button type="submit" disabled={isLoading || !inputValue.trim()}>
-                {isLoading ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : (
-                  <Send className="w-4 h-4" />
-                )}
-              </Button>
-            </form>
+            {aiUsage && (
+              <p className="text-xs text-muted-foreground text-right mb-1">
+                {aiUsage.used}/{aiUsage.limit} mensajes hoy
+              </p>
+            )}
+            {limitReached ? (
+              <div className="text-center py-3 text-sm text-muted-foreground">
+                Has alcanzado el límite de 50 mensajes por día. Regresa mañana.
+              </div>
+            ) : (
+              <form onSubmit={handleSubmit} className="flex gap-2">
+                <Input
+                  value={inputValue}
+                  onChange={(e) => setInputValue(e.target.value)}
+                  placeholder="Escribe tu pregunta sobre tesis jurisprudenciales..."
+                  disabled={isLoading}
+                  className="flex-1"
+                />
+                <Button type="submit" disabled={isLoading || !inputValue.trim() || limitReached}>
+                  {isLoading ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Send className="w-4 h-4" />
+                  )}
+                </Button>
+              </form>
+            )}
           </div>
         </Card>
       </div>

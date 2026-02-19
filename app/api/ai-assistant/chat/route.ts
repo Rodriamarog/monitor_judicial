@@ -15,6 +15,9 @@ import { createTimer, estimateTokens } from '@/lib/ai/utils'
 import { AgentController } from '@/lib/ai/agent-controller'
 import type { TesisSource as AgentTesisSource } from '@/lib/ai/agent-state'
 
+// Usage limiting
+import { resolveMasterUserId } from '@/lib/ai/resolve-master-user'
+
 // Local PostgreSQL database for tesis embeddings
 import { queryLocalTesis } from '@/lib/db/local-tesis-client'
 
@@ -385,6 +388,22 @@ export async function POST(req: NextRequest) {
 
     if (authError || !user) {
       return new Response('Unauthorized', { status: 401 })
+    }
+
+    // Check and increment daily usage limit (50 messages/day shared per master account)
+    const masterUserId = await resolveMasterUserId(supabase, user.id)
+
+    const { data: usageData, error: usageError } = await supabase
+      .rpc('check_and_increment_ai_usage', { p_master_user_id: masterUserId })
+      .single()
+
+    if (usageError || !usageData?.allowed) {
+      return new Response(JSON.stringify({
+        error: 'DAILY_LIMIT_REACHED',
+        message: 'Has alcanzado el límite de 50 mensajes por día.',
+        used: usageData?.message_count ?? 50,
+        limit: 50,
+      }), { status: 429, headers: { 'Content-Type': 'application/json' } })
     }
 
     const body = await req.json()
@@ -770,6 +789,8 @@ IMPORTANTE:
         'X-Agent-Iterations': agentIterations.toString(),
         'X-Agent-Exit-Reason': agentExitReason,
         'X-Agent-Cost': agentCost.toFixed(4),
+        'X-AI-Usage-Count': (usageData?.message_count ?? 0).toString(),
+        'X-AI-Usage-Limit': '50',
       },
     })
   } catch (error) {
