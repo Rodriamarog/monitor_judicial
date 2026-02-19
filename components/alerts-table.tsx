@@ -136,14 +136,14 @@ export function AlertsTable({ alerts }: AlertsTableProps) {
         ref={parentRef}
         className="overflow-auto flex-1"
       >
-        <Table>
+        <Table className="table-fixed">
           <TableHeader className="sticky top-0 bg-background z-10">
             <TableRow>
-              <TableHead>Fecha de Alerta</TableHead>
+              <TableHead className="w-[130px]">Fecha de Alerta</TableHead>
               <TableHead>Nombre / Expediente</TableHead>
-              <TableHead className="hidden md:table-cell">Juzgado</TableHead>
-              <TableHead className="hidden sm:table-cell">Boletín</TableHead>
-              <TableHead className="text-right">Detalles</TableHead>
+              <TableHead className="hidden md:table-cell w-[400px]">Juzgado</TableHead>
+              <TableHead className="hidden sm:table-cell w-[120px]">Boletín</TableHead>
+              <TableHead className="text-right w-[90px]">Detalles</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
