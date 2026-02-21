@@ -140,16 +140,29 @@ export async function POST(request: NextRequest) {
     // Extract phone number (remove whatsapp: prefix)
     const phone = from.replace('whatsapp:', '')
 
-    // Look up user by phone
+    // Build alternate phone forms to handle Mexican number inconsistency:
+    // Twilio sends +5216XXXXXXXXX but users may store +526XXXXXXXXX (or vice versa)
+    const phoneVariants = [phone]
+    if (phone.startsWith('+521') && phone.length === 13) {
+      // +5216641887153 → +526641887153
+      phoneVariants.push('+52' + phone.slice(4))
+    } else if (phone.startsWith('+52') && !phone.startsWith('+521') && phone.length === 12) {
+      // +526641887153 → +5216641887153
+      phoneVariants.push('+521' + phone.slice(3))
+    }
+
+    // Look up user by phone (try all variants)
     const supabase = getServiceClient()
-    const { data: user, error: userError } = await supabase
+    const { data: users, error: userError } = await supabase
       .from('user_profiles')
       .select('*')
-      .eq('phone', phone)
-      .single()
+      .in('phone', phoneVariants)
+      .limit(1)
+
+    const user = users?.[0] ?? null
 
     if (userError || !user) {
-      console.log('User not found for phone:', phone)
+      console.log('User not found for phone:', phone, '(variants tried:', phoneVariants, ')')
       await sendWhatsAppReply(
         from,
         '❌ Tu número de teléfono no está registrado en Monitor Judicial. Por favor regístrate en la aplicación web primero: https://monitor-judicial.vercel.app'
