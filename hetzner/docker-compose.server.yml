@@ -1,0 +1,150 @@
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: legal-rag-postgres
+    restart: unless-stopped
+
+    ports:
+      - "5432:5432"
+
+    environment:
+      POSTGRES_DB: legal_rag
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_INITDB_ARGS: "-E UTF8 --locale=C"
+
+    volumes:
+      - /opt/monitor-judicial/postgres/init:/docker-entrypoint-initdb.d
+      - postgres-data:/var/lib/postgresql/data
+      - /opt/monitor-judicial/postgres/postgresql.conf:/etc/postgresql/postgresql.conf:ro
+
+    deploy:
+      resources:
+        limits:
+          memory: 8G
+        reservations:
+          memory: 2G
+
+    shm_size: 4gb
+
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d legal_rag"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+    networks:
+      - monitor-network
+
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: legal-rag-pgadmin
+    restart: unless-stopped
+
+    ports:
+      - "5050:80"
+
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_EMAIL:-admin@local.dev}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD:-admin}
+      PGADMIN_CONFIG_SERVER_MODE: 'False'
+
+    volumes:
+      - pgadmin-data:/var/lib/pgadmin
+
+    depends_on:
+      - postgres
+
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+    networks:
+      - monitor-network
+
+  tribunal-scraper:
+    image: rodriamarog/tribunal-scraper:latest
+    container_name: tribunal-scraper
+    restart: unless-stopped
+
+    ports:
+      - "3001:3001"
+
+    env_file:
+      - /opt/monitor-judicial/tribunal_scraper/.env
+
+    environment:
+      - PUPPETEER_EXECUTABLE_PATH=/usr/bin/google-chrome
+      - PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
+
+    shm_size: 2gb
+
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+    networks:
+      - monitor-network
+
+  rag-api:
+    image: rodriamarog/rag-api:latest
+    container_name: rag-api-server
+    restart: unless-stopped
+
+    ports:
+      - "3002:3002"
+
+    env_file:
+      - /opt/monitor-judicial/rag_api_server/.env
+
+    environment:
+      - NODE_ENV=production
+      - PORT=3002
+
+    depends_on:
+      - postgres
+
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3002/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1); }).on('error', () => process.exit(1));"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+    networks:
+      - monitor-network
+
+networks:
+  monitor-network:
+    external: true
+    name: monitor-network
+
+volumes:
+  postgres-data:
+    name: legal-rag-postgres-data
+  pgadmin-data:
+    name: legal-rag-pgadmin-data

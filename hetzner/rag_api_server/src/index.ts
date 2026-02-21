@@ -7,6 +7,7 @@ import cors from 'cors'
 import dotenv from 'dotenv'
 import chatRoute from './routes/chat'
 import healthRoute from './routes/health'
+import searchRoute from './routes/search'
 import { authMiddleware } from './middleware/auth'
 import { errorHandler } from './middleware/error-handler'
 
@@ -40,6 +41,7 @@ app.get('/', (req, res) => {
 
 app.use('/health', healthRoute)
 app.use('/chat', authMiddleware, chatRoute)
+app.use('/search', authMiddleware, searchRoute)
 
 // Error handler (must be last)
 app.use(errorHandler)

@@ -503,8 +503,8 @@ export async function POST(req: NextRequest) {
 
       // Step 2b: Execute RAG (agentic or single-shot)
       if (USE_AGENTIC_RAG) {
-        // === AGENTIC RAG MODE ===
-        console.log('[AI Flow] Using agentic RAG mode')
+        // === AGENTIC RAG MODE (via Hetzner) ===
+        console.log('[AI Flow] Using agentic RAG mode via Hetzner')
 
         // Prepare discussed tesis set from conversation history
         const discussedTesisIds = new Set<number>(
@@ -520,28 +520,39 @@ export async function POST(req: NextRequest) {
           tipo: s.tipo_tesis,
           year: s.anio,
           similarity: s.similarity,
-          organismo: (s as any).organismo, // Add organismo if available
+          organismo: (s as any).organismo,
         }))
 
-        // Initialize agent controller
-        const agent = new AgentController({
-          userQuery: userMessageText,
-          currentQuery: rewriteResult.rewrittenQuery,
-          maxIterations: 5,
-          discussedTesis: discussedTesisIds,
-          historicalSources: agentHistoricalSources,
+        // Call Hetzner RAG search endpoint
+        const hetznerRagUrl = process.env.HETZNER_RAG_URL || 'http://localhost:3002'
+        const searchResponse = await fetch(`${hetznerRagUrl}/search`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${process.env.RAG_API_KEY}`,
+          },
+          body: JSON.stringify({
+            query: rewriteResult.rewrittenQuery,
+            userQuery: userMessageText,
+            discussedTesisIds: Array.from(discussedTesisIds),
+            historicalSources: agentHistoricalSources,
+            filters: expandedFilters,
+          }),
         })
 
-        // Run agent loop (agent uses tools internally now)
-        const finalState = await agent.runLoop()
+        if (!searchResponse.ok) {
+          throw new Error(`Hetzner RAG search failed: ${searchResponse.status} ${searchResponse.statusText}`)
+        }
+
+        const searchResult = await searchResponse.json()
 
         // Convert agent results back to TesisSource format
-        const agentSources: TesisSource[] = finalState.currentResults.map(s => ({
+        const agentSources: TesisSource[] = searchResult.sources.map((s: any) => ({
           id_tesis: s.id_tesis,
           chunk_text: s.texto,
           chunk_type: 'full_text',
           similarity: s.similarity || 0,
-          recency_score: 0, // Agent uses legal hierarchy instead
+          recency_score: 0,
           epoca_score: 0,
           final_score: s.similarity || 0,
           rubro: s.titulo,
@@ -552,10 +563,10 @@ export async function POST(req: NextRequest) {
           materias: [],
         }))
 
-        // Store agent metadata first
-        agentIterations = finalState.iteration
-        agentExitReason = finalState.exitReason || ''
-        agentCost = finalState.totalCost
+        // Store agent metadata
+        agentIterations = searchResult.iterations
+        agentExitReason = searchResult.exitReason || ''
+        agentCost = searchResult.cost
 
         console.log(`[AI Flow] Agent completed: ${agentIterations} iterations, exit: ${agentExitReason}`)
         console.log(`[AI Flow] Agent cost: $${agentCost.toFixed(4)}`)
@@ -563,27 +574,15 @@ export async function POST(req: NextRequest) {
 
         // Check if agent found ANY new sources
         if (agentSources.length === 0) {
-          // Agent found no new tesis - be honest with user
           console.log('[AI Flow] No new sources found - using historical sources only')
           sources = historicalSources
-
-          // Add a flag to tell the LLM to be honest
           ;(sources as any).noNewResults = true
         } else {
-          // Merge new sources with historical
           sources = mergeSources(agentSources, historicalSources, 15)
           console.log(`[AI Flow] Sources: ${agentSources.length} new, ${historicalSources.length} historical, ${sources.length} final`)
         }
 
-        console.log('[DEBUG] ===== AGENT SOURCES SAMPLE =====')
-        if (sources.length > 0) {
-          console.log('[DEBUG] First source:', JSON.stringify(sources[0], null, 2))
-        } else {
-          console.log('[DEBUG] NO SOURCES!')
-        }
-        console.log('[DEBUG] =====================================')
-
-        timer.log('Agentic RAG')
+        timer.log('Agentic RAG (Hetzner)')
 
       } else {
         // === SINGLE-SHOT RAG MODE (original) ===
