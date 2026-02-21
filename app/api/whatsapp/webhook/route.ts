@@ -143,11 +143,11 @@ export async function POST(request: NextRequest) {
     // Build alternate phone forms to handle Mexican number inconsistency:
     // Twilio sends +5216XXXXXXXXX but users may store +526XXXXXXXXX (or vice versa)
     const phoneVariants = [phone]
-    if (phone.startsWith('+521') && phone.length === 13) {
-      // +5216641887153 → +526641887153
+    if (phone.startsWith('+521') && phone.length === 14) {
+      // +5216641887153 (14 chars) → +526641887153 (13 chars)
       phoneVariants.push('+52' + phone.slice(4))
-    } else if (phone.startsWith('+52') && !phone.startsWith('+521') && phone.length === 12) {
-      // +526641887153 → +5216641887153
+    } else if (phone.startsWith('+52') && !phone.startsWith('+521') && phone.length === 13) {
+      // +526641887153 (13 chars) → +5216641887153 (14 chars)
       phoneVariants.push('+521' + phone.slice(3))
     }
 
