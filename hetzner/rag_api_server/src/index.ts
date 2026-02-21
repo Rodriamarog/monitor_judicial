@@ -8,6 +8,7 @@ import dotenv from 'dotenv'
 import chatRoute from './routes/chat'
 import healthRoute from './routes/health'
 import searchRoute from './routes/search'
+import ingestRoute from './routes/ingest'
 import { authMiddleware } from './middleware/auth'
 import { errorHandler } from './middleware/error-handler'
 
@@ -19,13 +20,14 @@ const PORT = process.env.PORT || 3002
 
 // Middleware
 app.use(cors({ origin: process.env.FRONTEND_URL || '*' }))
-app.use(express.json({ limit: '10mb' }))
 
-// Log requests
+// Log requests (before json parser so we always see them)
 app.use((req, res, next) => {
   console.log(`[${new Date().toISOString()}] ${req.method} ${req.path}`)
   next()
 })
+
+app.use(express.json({ limit: '10mb' }))
 
 // Routes
 app.get('/', (req, res) => {
@@ -42,6 +44,7 @@ app.get('/', (req, res) => {
 app.use('/health', healthRoute)
 app.use('/chat', authMiddleware, chatRoute)
 app.use('/search', authMiddleware, searchRoute)
+app.use('/ingest', authMiddleware, ingestRoute)
 
 // Error handler (must be last)
 app.use(errorHandler)

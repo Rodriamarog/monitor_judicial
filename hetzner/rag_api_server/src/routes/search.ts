@@ -39,7 +39,7 @@ router.post('/', async (req: Request, res: Response) => {
     const agent = new AgentController({
       userQuery: body.userQuery || body.query,
       currentQuery: body.query,
-      maxIterations: 5,
+      maxIterations: 3,
       discussedTesis,
       historicalSources,
     })

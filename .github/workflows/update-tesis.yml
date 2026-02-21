@@ -44,6 +44,8 @@ jobs:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          HETZNER_RAG_URL: ${{ secrets.HETZNER_RAG_URL }}
+          HETZNER_RAG_API_KEY: ${{ secrets.HETZNER_RAG_API_KEY }}
           RUN_TYPE: ${{ inputs.run_type || 'scheduled' }}
           DRY_RUN: ${{ inputs.dry_run }}
         run: |

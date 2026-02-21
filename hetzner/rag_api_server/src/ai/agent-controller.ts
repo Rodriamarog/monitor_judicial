@@ -46,7 +46,7 @@ export class AgentController {
     this.stateManager = new AgentStateManager({
       userQuery: config.userQuery,
       currentQuery: config.currentQuery,
-      maxIterations: config.maxIterations || 5,
+      maxIterations: config.maxIterations || 3,
       discussedTesis: config.discussedTesis || new Set(),
       historicalSources: config.historicalSources || [],
     });
@@ -217,8 +217,7 @@ Llama a searchTesis ahora (una o más veces según la complejidad).`,
       // 4. Update state (cost already updated in tool section)
       this.stateManager.updateState({ currentResults: reranked });
 
-      // 5. Evaluate with LLM (unless empty results)
-      console.log('[Agent] Evaluating results with LLM...');
+      // 5. Evaluate results
       let evaluation;
 
       if (reranked.length === 0) {
@@ -226,16 +225,45 @@ Llama a searchTesis ahora (una o más veces según la complejidad).`,
         evaluation = evaluateEmptyResults(state.currentQuery, state.iteration);
         console.log('[Agent] Empty results - skipped LLM evaluation');
       } else {
-        // Call LLM evaluator
-        evaluation = await evaluateResults(
-          state.userQuery,
-          state.currentQuery,
-          reranked,
-          state.iteration,
-          state.queryHistory,
-          toolsUsed
-        );
-        this.stateManager.updateCost(0, 1); // 1 LLM call for evaluation
+        // Programmatic SATISFECHO check - no LLM needed for clear cases
+        const sim = (r: TesisSource) => r.similarity || 0;
+        const above70 = reranked.filter(r => sim(r) >= 0.70).length;
+        const above65 = reranked.filter(r => sim(r) >= 0.65).length;
+        const above60 = reranked.filter(r => sim(r) >= 0.60).length;
+        const isLastIteration = (state.iteration + 1) >= state.maxIterations;
+
+        if (above70 >= 2 || above65 >= 3 || above60 >= 5) {
+          console.log(`[Agent] Programmatic SATISFECHO: ${above70}>=70%, ${above65}>=65%, ${above60}>=60%`);
+          evaluation = {
+            satisfecho: true,
+            decision: 'SATISFECHO' as const,
+            razonamiento: `Criterio cumplido: ${above70} tesis >70%, ${above65} tesis >65%, ${above60} tesis >60%`,
+            siguienteConsulta: null,
+            confianza: 0.9,
+          };
+        } else if (isLastIteration) {
+          // Last iteration — accept whatever we have, don't waste an LLM call
+          console.log(`[Agent] Last iteration: accepting ${reranked.length} results without LLM call`);
+          evaluation = {
+            satisfecho: true,
+            decision: 'SATISFECHO' as const,
+            razonamiento: `Última iteración: ${reranked.length} resultados disponibles`,
+            siguienteConsulta: null,
+            confianza: 0.6,
+          };
+        } else {
+          // Borderline case — call LLM to decide strategy and next query
+          console.log('[Agent] Borderline results - calling LLM evaluator');
+          evaluation = await evaluateResults(
+            state.userQuery,
+            state.currentQuery,
+            reranked,
+            state.iteration,
+            state.queryHistory,
+            toolsUsed
+          );
+          this.stateManager.updateCost(0, 1); // 1 LLM call for evaluation
+        }
       }
 
       // Update state with evaluation

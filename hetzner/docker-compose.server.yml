@@ -4,13 +4,13 @@ services:
     container_name: legal-rag-postgres
     restart: unless-stopped
 
-    ports:
-      - "5432:5432"
+    # No external port mapping - postgres only accessible within Docker network
+    # Exposing 5432 publicly is a security risk (ransomware attacks)
 
     environment:
       POSTGRES_DB: legal_rag
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-cd574550ea72594cd65509db9a9e675585e10f576f6779da}
       POSTGRES_INITDB_ARGS: "-E UTF8 --locale=C"
 
     volumes:

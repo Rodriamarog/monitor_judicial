@@ -64,15 +64,17 @@ class IncrementalUpdateManager:
 
         logger.info(f"Initialized Supabase client: {supabase_url}")
         
-        # Initialize OpenAI for embeddings
-        # Disabled 2026-01-14: Embeddings moved to Hetzner server
-        # import openai
-        # self.openai_client = openai.OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
-        self.openai_client = None  # Disabled - no embeddings generated
-        
+        # Hetzner RAG API for embedding new tesis into the vector database
+        self.hetzner_url = os.getenv('HETZNER_RAG_URL', '').rstrip('/')
+        self.hetzner_api_key = os.getenv('HETZNER_RAG_API_KEY', '')
+        if self.hetzner_url:
+            logger.info(f"Hetzner ingest enabled: {self.hetzner_url}/ingest")
+        else:
+            logger.warning("HETZNER_RAG_URL not set - new tesis will NOT be embedded to Hetzner")
+
         # Text processor
         self.text_processor = LegalTextProcessor()
-        
+
         logger.info(f"Initialized IncrementalUpdateManager (run_type={run_type}, dry_run={dry_run})")
     
     def get_existing_ids(self, id_list: List[int]) -> set:
@@ -241,6 +243,68 @@ class IncrementalUpdateManager:
             logger.error(f"Error inserting tesis {tesis.get('idTesis')}: {e}")
             return False
     
+    def ingest_to_hetzner(self, tesis_batch: List[Dict]) -> int:
+        """
+        Send new tesis to Hetzner RAG API for embedding and storage.
+        Hetzner generates the embeddings and upserts into its local postgres.
+
+        Args:
+            tesis_batch: List of raw tesis dicts (from SCJN API)
+
+        Returns:
+            Number of tesis successfully embedded
+        """
+        if self.dry_run:
+            logger.info(f"[DRY RUN] Would ingest {len(tesis_batch)} tesis to Hetzner")
+            return 0
+
+        if not self.hetzner_url or not self.hetzner_api_key:
+            logger.warning("Hetzner ingest skipped: HETZNER_RAG_URL or HETZNER_RAG_API_KEY not set")
+            return 0
+
+        # Map SCJN API fields to what Hetzner expects
+        payload = []
+        for t in tesis_batch:
+            payload.append({
+                'id_tesis': t.get('idTesis'),
+                'rubro': t.get('rubro', ''),
+                'texto': t.get('texto', ''),
+                'tipo_tesis': t.get('tipoTesis', 'Tesis Aislada'),
+                'epoca': t.get('epoca', 'Undécima Época'),
+                'instancia': t.get('instancia'),
+                'anio': t.get('anio'),
+                'materias': t.get('materias', []),
+            })
+
+        # Send in batches of 50 to avoid timeouts
+        batch_size = 50
+        total_inserted = 0
+
+        for i in range(0, len(payload), batch_size):
+            batch = payload[i:i + batch_size]
+            try:
+                logger.info(f"Sending batch {i // batch_size + 1} ({len(batch)} tesis) to Hetzner...")
+                response = requests.post(
+                    f"{self.hetzner_url}/ingest",
+                    json={'tesis': batch},
+                    headers={
+                        'Authorization': f'Bearer {self.hetzner_api_key}',
+                        'Content-Type': 'application/json',
+                    },
+                    timeout=300,  # 5 min per batch (embeddings take time)
+                )
+                response.raise_for_status()
+                result = response.json()
+                total_inserted += result.get('inserted', 0)
+                logger.info(f"Hetzner batch result: {result.get('inserted')} inserted, {result.get('failed')} failed")
+                if result.get('failedIds'):
+                    logger.warning(f"Hetzner failed IDs: {result['failedIds']}")
+            except Exception as e:
+                logger.error(f"Error sending batch to Hetzner: {e}")
+
+        logger.info(f"Hetzner ingest complete: {total_inserted}/{len(tesis_batch)} tesis embedded")
+        return total_inserted
+
     def generate_embeddings(self, tesis: Dict) -> int:
         """Generate embeddings for a tesis"""
         if self.dry_run:
@@ -327,7 +391,8 @@ class IncrementalUpdateManager:
             processed_count = 0
             embeddings_count = 0
             failed_ids = []
-            
+            inserted_tesis_raw = []  # Collect raw tesis for Hetzner ingest
+
             for tesis_id in new_ids:
                 try:
                     # Download
@@ -335,34 +400,35 @@ class IncrementalUpdateManager:
                     if not tesis:
                         failed_ids.append(tesis_id)
                         continue
-                    
-                    # Insert document
+
+                    # Insert document to Supabase
                     if self.insert_tesis(tesis):
                         processed_count += 1
-
-                        # Skip embedding generation - moved to Hetzner (2026-01-14)
-                        # num_embeddings = self.generate_embeddings(tesis)
-                        # embeddings_count += num_embeddings
-                        num_embeddings = 0  # No embeddings generated
+                        inserted_tesis_raw.append(tesis)  # Keep for Hetzner ingest
 
                         if processed_count % 10 == 0:
-                            logger.info(f"Progress: {processed_count}/{len(new_ids)} tesis (no embeddings - moved to Hetzner)")
+                            logger.info(f"Progress: {processed_count}/{len(new_ids)} tesis inserted to Supabase")
                     else:
                         failed_ids.append(tesis_id)
-                    
+
                     time.sleep(0.1)  # Rate limiting
-                    
+
                 except Exception as e:
                     logger.error(f"Error processing tesis {tesis_id}: {e}")
                     failed_ids.append(tesis_id)
-            
+
+            # Send new tesis to Hetzner for embedding
+            if inserted_tesis_raw:
+                logger.info(f"Sending {len(inserted_tesis_raw)} new tesis to Hetzner for embedding...")
+                embeddings_count = self.ingest_to_hetzner(inserted_tesis_raw)
+
             duration = (datetime.now() - start_time).total_seconds()
             logger.info(f"Completed in {duration:.1f}s")
             logger.info(f"Processed: {processed_count}/{len(new_ids)}")
-            logger.info(f"Embeddings created: {embeddings_count} (embedding generation disabled - moved to Hetzner)")
+            logger.info(f"Hetzner embeddings: {embeddings_count}")
             if failed_ids:
                 logger.warning(f"Failed IDs: {failed_ids}")
-            
+
             self.record_automation_run('success', processed_count, embeddings_count)
             
         except Exception as e:
