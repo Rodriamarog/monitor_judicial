@@ -5,16 +5,17 @@
 
 import Stripe from 'stripe';
 
-// Determine if we're in development/test mode
-const isTestMode = process.env.NODE_ENV !== 'production';
+// Toggle between sandbox and live mode via STRIPE_TEST_MODE env var
+// Set STRIPE_TEST_MODE=true  → uses sandbox account (NeuroCrow sandbox)
+// Set STRIPE_TEST_MODE=false → uses live account   (NeuroCrow)
+const isTestMode = process.env.STRIPE_TEST_MODE === 'true';
 
-// Select the appropriate Stripe secret key
 const stripeSecretKey = isTestMode
-  ? process.env.TEST_STRIPE_SECRET_KEY
-  : process.env.STRIPE_SECRET_KEY;
+  ? process.env.STRIPE_TEST_SECRET_KEY
+  : process.env.STRIPE_LIVE_SECRET_KEY;
 
-if (!stripeSecretKey && process.env.NODE_ENV === 'production') {
-  console.warn('⚠️ STRIPE_SECRET_KEY is not set. Stripe functionality will be disabled.');
+if (!stripeSecretKey) {
+  console.warn(`⚠️ Stripe ${isTestMode ? 'STRIPE_TEST_SECRET_KEY' : 'STRIPE_LIVE_SECRET_KEY'} is not set. Stripe functionality will be disabled.`);
 }
 
 // Initialize Stripe client (use placeholder key during build if not set)
@@ -26,39 +27,22 @@ export const stripe = new Stripe(stripeSecretKey || 'sk_test_placeholder', {
 // Product IDs from Stripe Dashboard
 // Note: These are PRODUCT IDs, not PRICE IDs. Prices will be retrieved from products.
 // In development, use TEST products. In production, use live products.
+const prefix = isTestMode ? 'STRIPE_TEST' : 'STRIPE_LIVE';
+const env = process.env;
+
 export const STRIPE_PRODUCTS = {
   // Monthly products
-  pro50: isTestMode
-    ? process.env.TEST_STRIPE_PRICE_PRO50 || ''
-    : process.env.STRIPE_PRICE_PRO50 || '',
-  pro100: isTestMode
-    ? process.env.TEST_STRIPE_PRICE_PRO100 || ''
-    : process.env.STRIPE_PRICE_PRO100 || '',
-  pro250: isTestMode
-    ? process.env.TEST_STRIPE_PRICE_PRO250 || ''
-    : process.env.STRIPE_PRICE_PRO250 || '',
-  pro500: isTestMode
-    ? process.env.TEST_STRIPE_PRICE_PRO500 || ''
-    : process.env.STRIPE_PRICE_PRO500 || '',
-  pro1000: isTestMode
-    ? process.env.TEST_STRIPE_PRICE_PRO1000 || ''
-    : process.env.STRIPE_PRICE_PRO1000 || '',
+  pro50:   env[`${prefix}_PRICE_PRO50`]   || '',
+  pro100:  env[`${prefix}_PRICE_PRO100`]  || '',
+  pro250:  env[`${prefix}_PRICE_PRO250`]  || '',
+  pro500:  env[`${prefix}_PRICE_PRO500`]  || '',
+  pro1000: env[`${prefix}_PRICE_PRO1000`] || '',
   // Yearly products
-  pro50_yearly: isTestMode
-    ? process.env.TEST_STRIPE_PRICE_PRO50_YEARLY || ''
-    : process.env.STRIPE_PRICE_PRO50_YEARLY || '',
-  pro100_yearly: isTestMode
-    ? process.env.TEST_STRIPE_PRICE_PRO100_YEARLY || ''
-    : process.env.STRIPE_PRICE_PRO100_YEARLY || '',
-  pro250_yearly: isTestMode
-    ? process.env.TEST_STRIPE_PRICE_PRO250_YEARLY || ''
-    : process.env.STRIPE_PRICE_PRO250_YEARLY || '',
-  pro500_yearly: isTestMode
-    ? process.env.TEST_STRIPE_PRICE_PRO500_YEARLY || ''
-    : process.env.STRIPE_PRICE_PRO500_YEARLY || '',
-  pro1000_yearly: isTestMode
-    ? process.env.TEST_STRIPE_PRICE_PRO1000_YEARLY || ''
-    : process.env.STRIPE_PRICE_PRO1000_YEARLY || '',
+  pro50_yearly:   env[`${prefix}_PRICE_PRO50_YEARLY`]   || '',
+  pro100_yearly:  env[`${prefix}_PRICE_PRO100_YEARLY`]  || '',
+  pro250_yearly:  env[`${prefix}_PRICE_PRO250_YEARLY`]  || '',
+  pro500_yearly:  env[`${prefix}_PRICE_PRO500_YEARLY`]  || '',
+  pro1000_yearly: env[`${prefix}_PRICE_PRO1000_YEARLY`] || '',
 } as const;
 
 // Subscription tier mapping (tier + billing period -> Stripe Product ID)

@@ -31,6 +31,16 @@ function getTwilioClient() {
   return twilio(accountSid, authToken)
 }
 
+// Normalize phone to E.164 SMS format for Mexico (+52XXXXXXXXXX, no extra 1)
+function normalizeForSms(phone: string): string {
+  const stripped = phone.replace('whatsapp:', '')
+  // +5216641887153 (14 chars) → +526641887153 (13 chars)
+  if (stripped.startsWith('+521') && stripped.length === 14) {
+    return '+52' + stripped.slice(4)
+  }
+  return stripped
+}
+
 // Verify cron secret
 function verifyCronSecret(request: NextRequest): boolean {
   const authHeader = request.headers.get('authorization')
@@ -58,10 +68,10 @@ export async function GET(request: NextRequest) {
 
     const supabase = getServiceClient()
     const twilioClient = getTwilioClient()
-    const twilioFromNumber = process.env.TWILIO_WHATSAPP_FROM?.replace('whatsapp:', '')
+    const twilioFromNumber = process.env.TWILIO_SMS_FROM
 
     if (!twilioFromNumber) {
-      throw new Error('TWILIO_WHATSAPP_FROM not configured')
+      throw new Error('TWILIO_SMS_FROM not configured')
     }
 
     // Find all pending reminders that are due
@@ -110,7 +120,7 @@ export async function GET(request: NextRequest) {
         // Send SMS to lawyer if phone exists
         if (reminder.lawyer_phone) {
           try {
-            const lawyerPhone = reminder.lawyer_phone.replace('whatsapp:', '')
+            const lawyerPhone = normalizeForSms(reminder.lawyer_phone)
 
             await twilioClient.messages.create({
               from: twilioFromNumber,
@@ -135,7 +145,7 @@ export async function GET(request: NextRequest) {
         // Send SMS to client if phone exists
         if (reminder.client_phone) {
           try {
-            const clientPhone = reminder.client_phone.replace('whatsapp:', '')
+            const clientPhone = normalizeForSms(reminder.client_phone)
 
             // Format time in Tijuana timezone
             const meetingTime = new Date(reminder.meeting_time)

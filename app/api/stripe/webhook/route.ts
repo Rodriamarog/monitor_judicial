@@ -9,11 +9,10 @@ import { stripe, getTierFromProduct } from '@/lib/stripe';
 import { createClient } from '@supabase/supabase-js';
 import Stripe from 'stripe';
 
-// Use TEST webhook secret in development, production webhook secret in production
-const isTestMode = process.env.NODE_ENV !== 'production';
+const isTestMode = process.env.STRIPE_TEST_MODE === 'true';
 const webhookSecret = isTestMode
-  ? process.env.TEST_STRIPE_WEBHOOK_SECRET!
-  : process.env.STRIPE_WEBHOOK_SECRET!;
+  ? process.env.STRIPE_TEST_WEBHOOK_SECRET!
+  : process.env.STRIPE_LIVE_WEBHOOK_SECRET!;
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 
