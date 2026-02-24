@@ -68,10 +68,10 @@ export async function GET(request: NextRequest) {
 
     const supabase = getServiceClient()
     const twilioClient = getTwilioClient()
-    const twilioFromNumber = process.env.TWILIO_SMS_FROM
+    const twilioFromNumber = process.env.TWILIO_WHATSAPP_FROM?.replace('whatsapp:', '')
 
     if (!twilioFromNumber) {
-      throw new Error('TWILIO_SMS_FROM not configured')
+      throw new Error('TWILIO_WHATSAPP_FROM not configured')
     }
 
     // Find all pending reminders that are due
