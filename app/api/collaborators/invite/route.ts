@@ -2,12 +2,18 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { getMaxCollaborators } from '@/lib/subscription-tiers';
 import { sendCollaboratorInvitation } from '@/lib/email';
+import { createNotificationLogger } from '@/lib/notification-logger';
 
 /**
  * POST /api/collaborators/invite
  * Send a collaborator invitation
  */
 export async function POST(request: NextRequest) {
+  const logger = createNotificationLogger(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  );
+
   const supabase = await createClient();
 
   // Authenticate user
@@ -71,6 +77,9 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  // Log the request now that basic validation has passed
+  logger.info('Invitation requested', undefined, { collaborator_email: normalizedEmail, owner_id: user.id });
+
   // Check if invitation already exists
   const { data: existingInvitation } = await supabase
     .from('collaborator_invitations')
@@ -81,6 +90,7 @@ export async function POST(request: NextRequest) {
 
   if (existingInvitation) {
     if (existingInvitation.status === 'accepted') {
+      await logger.flush();
       return NextResponse.json(
         { error: 'This email is already an active collaborator' },
         { status: 400 }
@@ -102,7 +112,11 @@ export async function POST(request: NextRequest) {
         .eq('id', existingInvitation.id);
 
       if (updateError) {
-        console.error('Error updating invitation:', updateError);
+        logger.invitationError('DB update failed on resend', existingInvitation.invitation_token, {
+          db_error: updateError.message,
+          invitation_id: existingInvitation.id,
+        });
+        await logger.flush();
         return NextResponse.json({ error: 'Failed to update invitation' }, { status: 500 });
       }
 
@@ -116,12 +130,21 @@ export async function POST(request: NextRequest) {
       });
 
       if (!emailResult.success) {
-        console.error('Failed to send invitation email:', emailResult.error);
+        logger.invitationError('Email failed on resend', existingInvitation.invitation_token, {
+          email_error: emailResult.error,
+        });
+        await logger.flush();
         return NextResponse.json(
           { error: 'Invitation updated but email failed to send' },
           { status: 500 }
         );
       }
+
+      logger.invitationInfo('Invitation resent', existingInvitation.invitation_token, {
+        resend_message_id: emailResult.messageId,
+        previous_status: existingInvitation.status,
+      });
+      await logger.flush();
 
       return NextResponse.json({
         success: true,
@@ -147,7 +170,8 @@ export async function POST(request: NextRequest) {
     .single();
 
   if (createError) {
-    console.error('Error creating invitation:', createError);
+    logger.error('DB create invitation failed', undefined, { db_error: createError.message });
+    await logger.flush();
     return NextResponse.json({ error: 'Failed to create invitation' }, { status: 500 });
   }
 
@@ -161,20 +185,27 @@ export async function POST(request: NextRequest) {
   });
 
   if (!emailResult.success) {
-    console.error('Failed to send invitation email:', emailResult.error);
+    logger.invitationError('Email failed on new invite', invitation.invitation_token, {
+      email_error: emailResult.error,
+    });
     // Delete the invitation since email failed
     await supabase
       .from('collaborator_invitations')
       .delete()
       .eq('id', invitation.id);
-
+    await logger.flush();
     return NextResponse.json(
       { error: 'Failed to send invitation email' },
       { status: 500 }
     );
   }
 
-  console.log(`[Collaborators] Invitation sent from ${user.id} to ${normalizedEmail}`);
+  logger.invitationInfo('New invitation created and email sent', invitation.invitation_token, {
+    resend_message_id: emailResult.messageId,
+    invitation_id: invitation.id,
+    expires_at: invitation.expires_at,
+  });
+  await logger.flush();
 
   return NextResponse.json({
     success: true,

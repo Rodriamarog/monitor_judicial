@@ -137,6 +137,27 @@ export class NotificationLogger {
     this.log(level, message, alertId, context);
     await this.flush();
   }
+
+  /**
+   * Log an info message correlated to an invitation token
+   */
+  invitationInfo(message: string, invitationToken: string, context?: LogContext) {
+    this.log('info', message, undefined, { ...context, invitation_token: invitationToken });
+  }
+
+  /**
+   * Log a warning correlated to an invitation token
+   */
+  invitationWarn(message: string, invitationToken: string, context?: LogContext) {
+    this.log('warn', message, undefined, { ...context, invitation_token: invitationToken });
+  }
+
+  /**
+   * Log an error correlated to an invitation token
+   */
+  invitationError(message: string, invitationToken: string, context?: LogContext) {
+    this.log('error', message, undefined, { ...context, invitation_token: invitationToken });
+  }
 }
 
 /**

@@ -1,13 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createServiceClient } from '@/lib/supabase/service';
-import { sendCollaboratorCredentials } from '@/lib/email';
+import { createNotificationLogger } from '@/lib/notification-logger';
 
 /**
  * GET /api/collaborators/accept?token=XXX&action=accept|reject
  * Public route for accepting/rejecting invitations
  */
 export async function GET(request: NextRequest) {
+  const logger = createNotificationLogger(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  );
+
   const supabase = await createClient();
   const searchParams = request.nextUrl.searchParams;
 
@@ -35,6 +40,8 @@ export async function GET(request: NextRequest) {
     .single();
 
   if (fetchError || !invitation) {
+    logger.warn('Token not found or fetch error', undefined, { token, error: fetchError?.message });
+    await logger.flush();
     return NextResponse.redirect(
       new URL('/collaborator/invitation-response?status=invalid', request.url)
     );
@@ -48,6 +55,8 @@ export async function GET(request: NextRequest) {
       .update({ status: 'expired' })
       .eq('id', invitation.id);
 
+    logger.invitationWarn('Invitation expired', token, { invitation_id: invitation.id });
+    await logger.flush();
     return NextResponse.redirect(
       new URL('/collaborator/invitation-response?status=expired', request.url)
     );
@@ -55,6 +64,8 @@ export async function GET(request: NextRequest) {
 
   // Check if invitation is still pending
   if (invitation.status !== 'pending') {
+    logger.invitationWarn('Invitation already responded', token, { status: invitation.status });
+    await logger.flush();
     return NextResponse.redirect(
       new URL(`/collaborator/invitation-response?status=${invitation.status}`, request.url)
     );
@@ -69,7 +80,8 @@ export async function GET(request: NextRequest) {
       const { data: existingUsers, error: listError } = await serviceSupabase.auth.admin.listUsers();
 
       if (listError) {
-        console.error('[Collaborators] Error listing users:', listError);
+        logger.invitationError('listUsers auth error', token, { error: listError.message });
+        await logger.flush();
         return NextResponse.redirect(
           new URL('/collaborator/invitation-response?status=error', request.url)
         );
@@ -88,7 +100,10 @@ export async function GET(request: NextRequest) {
 
       if (!existingUser) {
         // NEW USER: Redirect to password setup page
-        console.log(`[Collaborators] New user, redirecting to password setup: ${invitation.collaborator_email}`);
+        logger.invitationInfo('New user, redirecting to setup-password', token, {
+          collaborator_email: invitation.collaborator_email,
+        });
+        await logger.flush();
 
         const setupUrl = new URL('/collaborator/setup-password', request.url);
         setupUrl.searchParams.set('token', token!);
@@ -99,7 +114,6 @@ export async function GET(request: NextRequest) {
 
       // EXISTING USER: Create collaborator relationship directly
       const collaboratorUserId = existingUser.id;
-      console.log(`[Collaborators] Existing user, adding as collaborator: ${invitation.collaborator_email}`);
 
       // Create collaborator relationship
       const { error: collabError } = await serviceSupabase
@@ -112,7 +126,10 @@ export async function GET(request: NextRequest) {
         });
 
       if (collabError) {
-        console.error('[Collaborators] Error creating collaborator relationship:', collabError);
+        logger.invitationError('Failed to create collaborator relationship', token, {
+          db_error: collabError.message,
+        });
+        await logger.flush();
         return NextResponse.redirect(
           new URL('/collaborator/invitation-response?status=error', request.url)
         );
@@ -135,7 +152,10 @@ export async function GET(request: NextRequest) {
           .eq('id', invitation.owner_id);
       }
 
-      console.log(`[Collaborators] Invitation accepted (existing user): ${invitation.collaborator_email}`);
+      logger.invitationInfo('Existing user linked as collaborator', token, {
+        collaborator_user_id: collaboratorUserId,
+      });
+      await logger.flush();
 
       // Redirect to success page for existing users
       const redirectUrl = new URL('/collaborator/invitation-response', request.url);
@@ -145,7 +165,10 @@ export async function GET(request: NextRequest) {
 
       return NextResponse.redirect(redirectUrl);
     } catch (error) {
-      console.error('[Collaborators] Unexpected error during acceptance:', error);
+      logger.invitationError('Unexpected error during acceptance', token, {
+        error: error instanceof Error ? error.message : String(error),
+      });
+      await logger.flush();
       return NextResponse.redirect(
         new URL('/collaborator/invitation-response?status=error', request.url)
       );
@@ -161,13 +184,15 @@ export async function GET(request: NextRequest) {
       .eq('id', invitation.id);
 
     if (updateError) {
-      console.error('Error updating invitation:', updateError);
+      logger.invitationError('Reject DB update failed', token, { db_error: updateError.message });
+      await logger.flush();
       return NextResponse.redirect(
         new URL('/collaborator/invitation-response?status=error', request.url)
       );
     }
 
-    console.log(`[Collaborators] Invitation rejected: ${invitation.collaborator_email}`);
+    logger.invitationInfo('Invitation rejected', token);
+    await logger.flush();
 
     return NextResponse.redirect(
       new URL('/collaborator/invitation-response?status=rejected', request.url)

@@ -467,7 +467,7 @@ export interface CollaboratorInvitationData {
  */
 export async function sendCollaboratorInvitation(
   data: CollaboratorInvitationData
-): Promise<{ success: boolean; error?: string }> {
+): Promise<{ success: boolean; messageId?: string; error?: string }> {
   if (!resend) {
     return {
       success: false,
@@ -588,7 +588,7 @@ Monitor Judicial
 ${baseUrl}
     `;
 
-    const result = await resend.emails.send({
+    const { data: resendData, error: resendError } = await resend.emails.send({
       from: 'Monitor Judicial <noreply@monitorjudicial.com.mx>',
       to: collaboratorEmail,
       subject: `${ownerDisplay} te invita a colaborar en Monitor Judicial`,
@@ -596,8 +596,13 @@ ${baseUrl}
       text: emailText,
     });
 
-    console.log(`[Email] Collaborator invitation sent to ${collaboratorEmail}:`, result);
-    return { success: true };
+    if (resendError) {
+      console.error(`[Email] Collaborator invitation error for ${collaboratorEmail}:`, resendError);
+      return { success: false, error: resendError.message || String(resendError) };
+    }
+
+    console.log(`[Email] Collaborator invitation sent to ${collaboratorEmail}, messageId: ${resendData?.id}`);
+    return { success: true, messageId: resendData?.id };
   } catch (error) {
     console.error('Error sending collaborator invitation:', error);
     return {
@@ -621,7 +626,7 @@ export interface CollaboratorCredentialsData {
  */
 export async function sendCollaboratorCredentials(
   data: CollaboratorCredentialsData
-): Promise<{ success: boolean; error?: string }> {
+): Promise<{ success: boolean; messageId?: string; error?: string }> {
   if (!resend) {
     return {
       success: false,
@@ -838,7 +843,7 @@ Si tienes alguna pregunta, contacta al administrador de la cuenta que te invitó
 Monitor Judicial
     `;
 
-    const result = await resend.emails.send({
+    const { data: resendData, error: resendError } = await resend.emails.send({
       from: 'Monitor Judicial <noreply@monitorjudicial.com.mx>',
       to: collaboratorEmail,
       subject: 'Bienvenido a Monitor Judicial - Credenciales de Acceso',
@@ -846,8 +851,13 @@ Monitor Judicial
       text: emailText,
     });
 
-    console.log(`[Email] Collaborator credentials sent to ${collaboratorEmail}:`, result);
-    return { success: true };
+    if (resendError) {
+      console.error(`[Email] Collaborator credentials error for ${collaboratorEmail}:`, resendError);
+      return { success: false, error: resendError.message || String(resendError) };
+    }
+
+    console.log(`[Email] Collaborator credentials sent to ${collaboratorEmail}, messageId: ${resendData?.id}`);
+    return { success: true, messageId: resendData?.id };
   } catch (error) {
     console.error('Error sending collaborator credentials:', error);
     return {

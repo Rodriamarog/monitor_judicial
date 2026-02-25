@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createServiceClient } from '@/lib/supabase/service';
+import { createNotificationLogger } from '@/lib/notification-logger';
 
 /**
  * POST /api/collaborators/setup-password
@@ -9,6 +10,11 @@ import { createServiceClient } from '@/lib/supabase/service';
  * Body: { token: string, password: string }
  */
 export async function POST(request: NextRequest) {
+  const logger = createNotificationLogger(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  );
+
   try {
     const supabase = await createClient();
     const serviceSupabase = createServiceClient();
@@ -45,6 +51,7 @@ export async function POST(request: NextRequest) {
 
     // Check if invitation is still valid
     if (invitation.status !== 'accepted') {
+      logger.invitationWarn('Invitation not in accepted state', token, { status: invitation.status });
       return NextResponse.json(
         { error: 'Esta invitación ya no está disponible' },
         { status: 400 }
@@ -74,7 +81,9 @@ export async function POST(request: NextRequest) {
     });
 
     if (createError || !newUserData.user) {
-      console.error('[API] Error creating user:', createError);
+      logger.invitationError('Auth user creation failed', token, {
+        auth_error: createError?.message,
+      });
       return NextResponse.json(
         { error: 'Error al crear la cuenta' },
         { status: 500 }
@@ -116,17 +125,24 @@ export async function POST(request: NextRequest) {
         .eq('id', invitation.owner_id);
     }
 
-    console.log(`[API] Collaborator account created with password: ${invitation.collaborator_email}`);
+    logger.invitationInfo('Account created', token, {
+      collaborator_user_id: collaboratorUserId,
+      owner_id: invitation.owner_id,
+    });
 
     return NextResponse.json({
       success: true,
       message: 'Cuenta creada exitosamente',
     });
   } catch (error) {
-    console.error('[API] Unexpected error in setup-password:', error);
+    logger.error('Unexpected error in setup-password', undefined, {
+      error: error instanceof Error ? error.message : String(error),
+    });
     return NextResponse.json(
       { error: 'Error interno del servidor' },
       { status: 500 }
     );
+  } finally {
+    await logger.flush();
   }
 }

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createServiceClient } from '@/lib/supabase/service';
+import { createNotificationLogger } from '@/lib/notification-logger';
 
 /**
  * DELETE /api/collaborators/remove
@@ -9,6 +10,11 @@ import { createServiceClient } from '@/lib/supabase/service';
  * Body: { email: string }
  */
 export async function DELETE(request: NextRequest) {
+  const logger = createNotificationLogger(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  );
+
   try {
     const supabase = await createClient();
     const serviceSupabase = createServiceClient();
@@ -33,6 +39,8 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
+    logger.info('Collaborator removal initiated', undefined, { email, owner_id: user.id });
+
     // Update invitation status to 'cancelled' (so it doesn't show in UI anymore)
     const { error: updateInvitationError } = await serviceSupabase
       .from('collaborator_invitations')
@@ -42,8 +50,10 @@ export async function DELETE(request: NextRequest) {
       .eq('status', 'accepted');
 
     if (updateInvitationError) {
-      console.error('[API] Error updating invitation status:', updateInvitationError);
-      // Don't fail the entire operation
+      logger.warn('Invitation cancel failed (non-fatal)', undefined, {
+        error: updateInvitationError.message,
+        email,
+      });
     }
 
     // Delete from collaborators table (requires service role because of cascading operations)
@@ -54,7 +64,10 @@ export async function DELETE(request: NextRequest) {
       .eq('collaborator_email', email);
 
     if (deleteCollabError) {
-      console.error('[API] Error deleting from collaborators table:', deleteCollabError);
+      logger.error('Collaborator table delete failed', undefined, {
+        error: deleteCollabError.message,
+        email,
+      });
       return NextResponse.json(
         { error: 'Failed to remove collaborator' },
         { status: 500 }
@@ -79,8 +92,8 @@ export async function DELETE(request: NextRequest) {
         .eq('id', user.id);
 
       if (updateProfileError) {
+        // Non-fatal: don't block the removal
         console.error('[API] Error updating user profile:', updateProfileError);
-        // Don't fail the entire operation if this fails
       }
     }
 
@@ -94,21 +107,27 @@ export async function DELETE(request: NextRequest) {
     );
 
     if (rpcError) {
-      console.error('[API] Error removing assignments:', rpcError);
-      // Don't fail - the collaborator relationship is already deleted
+      logger.warn('RPC assignments cleanup failed (non-fatal)', undefined, {
+        error: rpcError.message,
+        email,
+      });
     }
 
-    console.log(`[API] Successfully removed collaborator: ${email}`);
+    logger.info('Collaborator removed successfully', undefined, { email, owner_id: user.id });
 
     return NextResponse.json({
       success: true,
       message: 'Collaborator removed successfully',
     });
   } catch (error) {
-    console.error('[API] Unexpected error in remove collaborator:', error);
+    logger.error('Unexpected error in remove collaborator', undefined, {
+      error: error instanceof Error ? error.message : String(error),
+    });
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
     );
+  } finally {
+    await logger.flush();
   }
 }
