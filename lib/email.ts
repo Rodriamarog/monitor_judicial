@@ -486,10 +486,8 @@ export async function sendCollaboratorInvitation(
       day: 'numeric',
     });
 
-    // Build accept/reject URLs
     const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://monitorjudicial.com.mx';
-    const acceptUrl = `${baseUrl}/api/collaborators/accept?token=${invitationToken}&action=accept`;
-    const rejectUrl = `${baseUrl}/api/collaborators/accept?token=${invitationToken}&action=reject`;
+    const acceptUrl = `${baseUrl}/collaborator/accept?token=${invitationToken}`;
 
     const ownerDisplay = ownerName || ownerEmail;
 
@@ -528,7 +526,7 @@ export async function sendCollaboratorInvitation(
               </p>
 
               <!-- Accept button -->
-              <table cellpadding="0" cellspacing="0" style="margin-bottom: 12px;">
+              <table cellpadding="0" cellspacing="0" style="margin-bottom: 20px;">
                 <tr>
                   <td>
                     <a href="${acceptUrl}"
@@ -539,13 +537,8 @@ export async function sendCollaboratorInvitation(
                 </tr>
               </table>
 
-              <!-- Reject link -->
-              <p style="margin: 0 0 28px;">
-                <a href="${rejectUrl}" style="font-size: 14px; color: #888888;">No me interesa, rechazar invitacion</a>
-              </p>
-
               <p style="margin: 0; font-size: 13px; line-height: 1.6; color: #aaaaaa;">
-                Esta invitacion expira el ${formattedDate}. Si no conoces a ${ownerDisplay}, ignora este mensaje.
+                Esta invitacion expira el ${formattedDate}.
               </p>
             </td>
           </tr>
@@ -575,13 +568,7 @@ Como colaborador, recibirás notificaciones por email cuando se detecten actuali
 Para aceptar esta invitación, visita:
 ${acceptUrl}
 
-Para rechazar esta invitación, visita:
-${rejectUrl}
-
 Esta invitación expirará el ${formattedDate}.
-
-¿Qué es Monitor Judicial?
-Monitor Judicial es un sistema automatizado que rastrea boletines judiciales y notifica cuando aparecen casos específicos.
 
 ---
 Monitor Judicial
@@ -591,7 +578,7 @@ ${baseUrl}
     const { data: resendData, error: resendError } = await resend.emails.send({
       from: 'Monitor Judicial <noreply@monitorjudicial.com.mx>',
       to: collaboratorEmail,
-      subject: `${ownerDisplay} te invita a colaborar en Monitor Judicial`,
+      subject: 'Tienes una invitación para colaborar en Monitor Judicial',
       html: emailHtml,
       text: emailText,
     });
