@@ -14,6 +14,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Loader2 } from 'lucide-react'
+import { CollaboratorSelector } from '@/components/collaborator-selector'
 
 interface Case {
   id: string
@@ -23,6 +24,7 @@ interface Case {
   telefono: string | null
   total_amount_charged?: number
   currency?: string
+  assigned_collaborators?: string[]
 }
 
 interface Juzgado {
@@ -36,6 +38,7 @@ interface EditCaseDialogProps {
   case_: Case | null
   open: boolean
   onClose: () => void
+  availableCollaborators?: string[]
   onSave: (caseId: string, updates: {
     case_number?: string
     juzgado?: string
@@ -43,10 +46,11 @@ interface EditCaseDialogProps {
     telefono?: string | null
     total_amount_charged?: number
     currency?: string
+    assigned_collaborators?: string[]
   }) => Promise<void>
 }
 
-const EditCaseDialogComponent = ({ case_, open, onClose, onSave }: EditCaseDialogProps) => {
+const EditCaseDialogComponent = ({ case_, open, onClose, onSave, availableCollaborators = [] }: EditCaseDialogProps) => {
   const [editCaseNumber, setEditCaseNumber] = useState('')
   const [editJuzgado, setEditJuzgado] = useState('')
   const [editNombre, setEditNombre] = useState('')
@@ -54,6 +58,7 @@ const EditCaseDialogComponent = ({ case_, open, onClose, onSave }: EditCaseDialo
   const [editTelefono, setEditTelefono] = useState('')
   const [editTotalAmountCharged, setEditTotalAmountCharged] = useState('')
   const [editCurrency, setEditCurrency] = useState('MXN')
+  const [editCollaborators, setEditCollaborators] = useState<string[]>([])
   const [editLoading, setEditLoading] = useState(false)
   const [editError, setEditError] = useState<string | null>(null)
 
@@ -107,6 +112,7 @@ const EditCaseDialogComponent = ({ case_, open, onClose, onSave }: EditCaseDialo
 
     setEditTotalAmountCharged(case_.total_amount_charged ? case_.total_amount_charged.toString() : '')
     setEditCurrency(case_.currency || 'MXN')
+    setEditCollaborators(case_.assigned_collaborators || [])
     setEditError(null)
   }, [case_])
 
@@ -156,6 +162,7 @@ const EditCaseDialogComponent = ({ case_, open, onClose, onSave }: EditCaseDialo
         telefono: formattedPhone,
         total_amount_charged: totalAmount,
         currency: editCurrency,
+        assigned_collaborators: editCollaborators,
       })
 
       onClose()
@@ -297,6 +304,18 @@ const EditCaseDialogComponent = ({ case_, open, onClose, onSave }: EditCaseDialo
               </Select>
             </div>
           </div>
+
+          {availableCollaborators.length > 0 && (
+            <div className="space-y-2">
+              <Label>Colaboradores</Label>
+              <CollaboratorSelector
+                selectedEmails={editCollaborators}
+                onSelectionChange={setEditCollaborators}
+                availableCollaborators={availableCollaborators}
+                disabled={editLoading}
+              />
+            </div>
+          )}
         </div>
 
         <DialogFooter>

@@ -89,6 +89,15 @@ export default async function DashboardPage() {
     }
   })
 
+  // Get accepted collaborators for the master user (used in edit dialog)
+  const { data: collaboratorsData } = await supabase
+    .from('collaborator_invitations')
+    .select('collaborator_email')
+    .eq('owner_id', masterUserId)
+    .eq('status', 'accepted')
+
+  const availableCollaborators = collaboratorsData?.map((c) => c.collaborator_email) || []
+
   const caseCount = cases?.length || 0
   const tierConfig = getTierConfig(profile?.subscription_tier)
   const tier = tierConfig.displayName
@@ -103,7 +112,7 @@ export default async function DashboardPage() {
 
   const handleUpdate = async (
     caseId: string,
-    updates: { case_number?: string; juzgado?: string; nombre?: string | null; telefono?: string | null; total_amount_charged?: number; currency?: string }
+    updates: { case_number?: string; juzgado?: string; nombre?: string | null; telefono?: string | null; total_amount_charged?: number; currency?: string; assigned_collaborators?: string[] }
   ) => {
     'use server'
     const supabase = await createClient()
@@ -120,6 +129,7 @@ export default async function DashboardPage() {
       showDowngradeAlert={profile?.downgrade_blocked || false}
       onDelete={handleDelete}
       onUpdate={handleUpdate}
+      availableCollaborators={availableCollaborators}
     />
   )
 }

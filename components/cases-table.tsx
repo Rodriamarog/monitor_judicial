@@ -36,11 +36,12 @@ interface Case {
 interface CasesTableProps {
   cases: Case[]
   onDelete: (caseId: string) => void
-  onUpdate?: (caseId: string, updates: { case_number?: string; juzgado?: string; nombre?: string | null; telefono?: string | null; total_amount_charged?: number; currency?: string }) => Promise<void>
+  onUpdate?: (caseId: string, updates: { case_number?: string; juzgado?: string; nombre?: string | null; telefono?: string | null; total_amount_charged?: number; currency?: string; assigned_collaborators?: string[] }) => Promise<void>
   readOnly?: boolean
+  availableCollaborators?: string[]
 }
 
-export function CasesTable({ cases, onDelete, onUpdate, readOnly = false }: CasesTableProps) {
+export function CasesTable({ cases, onDelete, onUpdate, readOnly = false, availableCollaborators = [] }: CasesTableProps) {
   const router = useRouter()
   const [searchQuery, setSearchQuery] = useState('')
   const [sortOrder, setSortOrder] = useState<'alerts' | 'asc' | 'desc'>('desc')
@@ -390,6 +391,7 @@ export function CasesTable({ cases, onDelete, onUpdate, readOnly = false }: Case
         open={!!editingCase}
         onClose={handleEditClose}
         onSave={handleEditSave}
+        availableCollaborators={availableCollaborators}
       />
 
       {/* Expediente Details Modal */}

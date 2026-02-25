@@ -20,6 +20,7 @@ interface DashboardClientProps {
   showDowngradeAlert: boolean
   onDelete: (caseId: string) => void
   onUpdate: (caseId: string, updates: any) => Promise<void>
+  availableCollaborators?: string[]
 }
 
 export function DashboardClient({
@@ -30,6 +31,7 @@ export function DashboardClient({
   showDowngradeAlert,
   onDelete,
   onUpdate,
+  availableCollaborators = [],
 }: DashboardClientProps) {
   const [addDialogOpen, setAddDialogOpen] = useState(false)
   const [importDialogOpen, setImportDialogOpen] = useState(false)
@@ -129,7 +131,7 @@ export function DashboardClient({
               )}
             </div>
           ) : (
-            <CasesTable cases={casesWithAlerts} onDelete={onDelete} onUpdate={onUpdate} readOnly={isCollaborator} />
+            <CasesTable cases={casesWithAlerts} onDelete={onDelete} onUpdate={onUpdate} readOnly={isCollaborator} availableCollaborators={availableCollaborators} />
           )}
         </CardContent>
       </Card>
