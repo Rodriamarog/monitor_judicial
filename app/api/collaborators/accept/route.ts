@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
 import { createServiceClient } from '@/lib/supabase/service';
 import { createNotificationLogger } from '@/lib/notification-logger';
 
@@ -13,7 +12,10 @@ export async function GET(request: NextRequest) {
     process.env.SUPABASE_SERVICE_ROLE_KEY!
   );
 
-  const supabase = await createClient();
+  // This is a public route (unauthenticated visitors click email links).
+  // The regular Supabase client operates as anon and is blocked by RLS
+  // (SELECT policy requires auth.uid() = owner_id). Use service role throughout.
+  const serviceSupabase = createServiceClient();
   const searchParams = request.nextUrl.searchParams;
 
   const token = searchParams.get('token');
@@ -32,8 +34,8 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  // Find invitation by token (using service role to bypass RLS for public access)
-  const { data: invitation, error: fetchError } = await supabase
+  // Find invitation by token (service role bypasses RLS for public access)
+  const { data: invitation, error: fetchError } = await serviceSupabase
     .from('collaborator_invitations')
     .select('*')
     .eq('invitation_token', token)
@@ -50,7 +52,7 @@ export async function GET(request: NextRequest) {
   // Check if invitation is expired
   if (new Date(invitation.expires_at) < new Date()) {
     // Update status to expired
-    await supabase
+    await serviceSupabase
       .from('collaborator_invitations')
       .update({ status: 'expired' })
       .eq('id', invitation.id);
@@ -74,7 +76,6 @@ export async function GET(request: NextRequest) {
   // Process action
   if (action === 'accept') {
     try {
-      const serviceSupabase = createServiceClient();
 
       // Check if user exists with this email
       const { data: existingUsers, error: listError } = await serviceSupabase.auth.admin.listUsers();
@@ -175,7 +176,7 @@ export async function GET(request: NextRequest) {
     }
   } else {
     // Reject invitation
-    const { error: updateError } = await supabase
+    const { error: updateError } = await serviceSupabase
       .from('collaborator_invitations')
       .update({
         status: 'rejected',
