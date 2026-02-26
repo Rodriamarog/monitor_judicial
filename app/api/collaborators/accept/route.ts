@@ -66,6 +66,24 @@ export async function GET(request: NextRequest) {
 
   // Check if invitation is still pending
   if (invitation.status !== 'pending') {
+    // Special case: if accepted but user never finished setting up their password,
+    // let them back into the setup-password page
+    if (invitation.status === 'accepted' && action === 'accept') {
+      const { data: existingUsers } = await serviceSupabase.auth.admin.listUsers();
+      const userExists = existingUsers?.users.some(u => u.email === invitation.collaborator_email);
+
+      if (!userExists) {
+        logger.invitationInfo('Accepted but no account yet, redirecting back to setup-password', token, {
+          collaborator_email: invitation.collaborator_email,
+        });
+        await logger.flush();
+        const setupUrl = new URL('/collaborator/setup-password', request.url);
+        setupUrl.searchParams.set('token', token);
+        setupUrl.searchParams.set('email', invitation.collaborator_email);
+        return NextResponse.redirect(setupUrl);
+      }
+    }
+
     logger.invitationWarn('Invitation already responded', token, { status: invitation.status });
     await logger.flush();
     return NextResponse.redirect(
