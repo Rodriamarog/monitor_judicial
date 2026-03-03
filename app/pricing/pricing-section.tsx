@@ -19,7 +19,8 @@ export function PricingSection({ isAuthenticated }: PricingSectionProps) {
       price: billing === 'monthly' ? tier.monthlyPrice : tier.yearlyPrice,
       description: tier.description,
       maxCases: tier.maxCases,
-      features: tier.features,
+      features: tier.displayFeatures,
+      highlightedFeatures: tier.highlightedDisplayFeatures,
       isPopular: tier.isPopular,
       billing: billing,
     }))
@@ -63,7 +64,7 @@ export function PricingSection({ isAuthenticated }: PricingSectionProps) {
         )}
       </div>
 
-      <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8 mb-12">
+      <div className="grid md:grid-cols-2 lg:grid-cols-5 gap-3 mb-12">
         {PRICING_TIERS.map((tier) => (
           <PricingCard
             key={tier.name}

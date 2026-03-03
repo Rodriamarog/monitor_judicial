@@ -170,13 +170,12 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ status: 'user_not_found' })
     }
 
-    // Check tier eligibility (pro500+)
-    const eligibleTiers = ['pro500', 'pro1000']
-    if (!eligibleTiers.includes(user.subscription_tier)) {
+    // Check tier eligibility (Max only)
+    if (user.subscription_tier !== 'max') {
       console.log('User not eligible (tier):', user.subscription_tier)
       await sendWhatsAppReply(
         from,
-        '⚠️ Esta función está disponible solo para usuarios Pro 500+. Actualiza tu suscripción en https://monitor-judicial.vercel.app/dashboard/settings'
+        '⚠️ Esta función está disponible solo para usuarios del plan Max. Actualiza tu suscripción en https://monitorjudicial.com.mx/upgrade'
       )
       return NextResponse.json({ status: 'tier_not_eligible' })
     }

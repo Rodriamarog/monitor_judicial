@@ -1,41 +1,24 @@
-'use client'
+import { redirect } from 'next/navigation';
+import { createClient } from '@/lib/supabase/server';
+import { getEffectiveTier } from '@/lib/server/get-effective-tier';
+import { hasFeature } from '@/lib/subscription-tiers';
+import { TemplateContent } from './template-content';
 
-import { useParams, useRouter } from 'next/navigation'
-import { Button } from '@/components/ui/button'
-import { ChevronLeft } from 'lucide-react'
-import { JuicioAlimentosForm } from '@/components/templates/juicio-alimentos-form'
-import { JuicioPlenarioPosesionForm } from '@/components/templates/juicio-plenario-posesion-form'
-import { JurisdiccionConcubinatoForm } from '@/components/templates/jurisdiccion-concubinato-form'
-import { OfrecimientoPruebasForm } from '@/components/templates/ofrecimiento-pruebas-form'
-import { PrescripcionForm } from '@/components/templates/prescripcion-form'
+export default async function TemplatePage({
+    params,
+}: {
+    params: Promise<{ templateId: string }>;
+}) {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) redirect('/login');
 
-export default function TemplatePage() {
-    const params = useParams()
-    const router = useRouter()
-    const templateId = params?.templateId as string
-
-    const renderForm = () => {
-        switch (templateId) {
-            case 'juicio-alimentos':
-                return <JuicioAlimentosForm />
-            case 'juicio-plenario-posesion':
-                return <JuicioPlenarioPosesionForm />
-            case 'jurisdiccion-concubinato':
-                return <JurisdiccionConcubinatoForm />
-            case 'ofrecimiento-pruebas':
-                return <OfrecimientoPruebasForm />
-            case 'prescripcion':
-                return <PrescripcionForm />
-            default:
-                return <div>Plantilla no encontrada</div>
-        }
+    const tier = await getEffectiveTier(supabase, user.id);
+    if (!hasFeature(tier, 'hasTemplates')) {
+        redirect('/upgrade?feature=machotes');
     }
 
-    return (
-        <div className="h-full flex flex-col">
-            <div className="flex-1 min-h-0">
-                {renderForm()}
-            </div>
-        </div>
-    )
+    const { templateId } = await params;
+
+    return <TemplateContent templateId={templateId} />;
 }

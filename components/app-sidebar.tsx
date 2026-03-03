@@ -28,6 +28,7 @@ import { ThemeToggle } from "@/components/theme-toggle"
 import { SignOutButton } from "@/components/sign-out-button"
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "@/components/ui/sheet"
 import { Button } from "@/components/ui/button"
+import { hasFeature, type TierFeatureKey } from "@/lib/subscription-tiers"
 
 interface NavItem {
   icon: React.ElementType
@@ -35,6 +36,7 @@ interface NavItem {
   href: string
   disabled?: boolean
   badge?: string
+  feature?: TierFeatureKey
 }
 
 interface NavSection {
@@ -68,16 +70,16 @@ const navigation: NavSection[] = [
   {
     title: "WORKSPACE",
     items: [
-      { href: '/dashboard/machotes', label: 'Machotes', icon: FileText },
-      { href: '/dashboard/proyectos', label: 'Proyectos', icon: Kanban },
-      { href: '/dashboard/calendar', label: 'Calendario', icon: Calendar },
+      { href: '/dashboard/machotes', label: 'Machotes', icon: FileText, feature: 'hasTemplates' },
+      { href: '/dashboard/proyectos', label: 'Proyectos', icon: Kanban, feature: 'hasKanban' },
+      { href: '/dashboard/calendar', label: 'Calendario', icon: Calendar, feature: 'hasCalendar' },
     ],
   },
   {
     title: "TESIS",
     items: [
-      { href: '/dashboard/tesis', label: 'Buscador de Tesis', icon: BookOpen },
-      { href: '/dashboard/ai-assistant', label: 'Asistente Legal IA', icon: Sparkles },
+      { href: '/dashboard/tesis', label: 'Buscador de Tesis', icon: BookOpen, feature: 'hasTesis' },
+      { href: '/dashboard/ai-assistant', label: 'Asistente Legal IA', icon: Sparkles, feature: 'hasAIAssistant' },
     ],
   },
   {
@@ -93,6 +95,13 @@ export function AppSidebar({ email, tier, hasStripeCustomer }: AppSidebarProps) 
   const [isCollapsed, setIsCollapsed] = useState(false)
   const [isMobileOpen, setIsMobileOpen] = useState(false)
   const pathname = usePathname()
+
+  const visibleNavigation = navigation.map((section) => ({
+    ...section,
+    items: section.items.filter(
+      (item) => !item.feature || hasFeature(tier, item.feature)
+    ),
+  })).filter((section) => section.items.length > 0)
 
   const SidebarContent = () => (
     <div className="flex h-full flex-col">
@@ -110,7 +119,7 @@ export function AppSidebar({ email, tier, hasStripeCustomer }: AppSidebarProps) 
 
       {/* Navigation */}
       <nav className="flex-1 overflow-y-auto px-3 py-4 sidebar-scroll">
-        {navigation.map((section, sectionIndex) => (
+        {visibleNavigation.map((section, sectionIndex) => (
           <div key={sectionIndex} className={cn(sectionIndex > 0 && "mt-4")}>
             {!isCollapsed && section.title && (
               <div className="px-3 py-1 text-xs font-medium uppercase tracking-wider text-sidebar-muted">

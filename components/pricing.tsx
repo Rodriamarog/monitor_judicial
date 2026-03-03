@@ -18,7 +18,7 @@ export function Pricing() {
     id: tier.id,
     price: billing === 'monthly' ? tier.monthlyPrice : tier.yearlyPrice,
     description: tier.description,
-    features: tier.features,
+    features: tier.displayFeatures,
     popular: tier.isPopular || false,
     isFree: tier.id === 'gratis',
   }))

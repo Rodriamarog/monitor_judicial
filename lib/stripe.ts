@@ -31,46 +31,40 @@ const prefix = isTestMode ? 'STRIPE_TEST' : 'STRIPE_LIVE';
 const env = process.env;
 
 export const STRIPE_PRODUCTS = {
-  // Monthly products
-  pro50:   env[`${prefix}_PRICE_PRO50`]   || '',
-  pro100:  env[`${prefix}_PRICE_PRO100`]  || '',
-  pro250:  env[`${prefix}_PRICE_PRO250`]  || '',
-  pro500:  env[`${prefix}_PRICE_PRO500`]  || '',
-  pro1000: env[`${prefix}_PRICE_PRO1000`] || '',
-  // Yearly products
-  pro50_yearly:   env[`${prefix}_PRICE_PRO50_YEARLY`]   || '',
-  pro100_yearly:  env[`${prefix}_PRICE_PRO100_YEARLY`]  || '',
-  pro250_yearly:  env[`${prefix}_PRICE_PRO250_YEARLY`]  || '',
-  pro500_yearly:  env[`${prefix}_PRICE_PRO500_YEARLY`]  || '',
-  pro1000_yearly: env[`${prefix}_PRICE_PRO1000_YEARLY`] || '',
+  // Monthly prices
+  esencial: env[`${prefix}_PRICE_ESENCIAL`] || '',
+  pro:      env[`${prefix}_PRICE_PRO`]      || '',
+  elite:    env[`${prefix}_PRICE_ELITE`]    || '',
+  max:      env[`${prefix}_PRICE_MAX`]      || '',
+  // Yearly prices
+  esencial_yearly: env[`${prefix}_PRICE_ESENCIAL_YEARLY`] || '',
+  pro_yearly:      env[`${prefix}_PRICE_PRO_YEARLY`]      || '',
+  elite_yearly:    env[`${prefix}_PRICE_ELITE_YEARLY`]    || '',
+  max_yearly:      env[`${prefix}_PRICE_MAX_YEARLY`]      || '',
 } as const;
 
-// Subscription tier mapping (tier + billing period -> Stripe Product ID)
+// Subscription tier mapping (tier + billing period -> Stripe Price ID)
 export const TIER_TO_PRODUCT: Record<string, string> = {
-  'pro50_monthly': STRIPE_PRODUCTS.pro50,
-  'pro100_monthly': STRIPE_PRODUCTS.pro100,
-  'pro250_monthly': STRIPE_PRODUCTS.pro250,
-  'pro500_monthly': STRIPE_PRODUCTS.pro500,
-  'pro1000_monthly': STRIPE_PRODUCTS.pro1000,
-  'pro50_yearly': STRIPE_PRODUCTS.pro50_yearly,
-  'pro100_yearly': STRIPE_PRODUCTS.pro100_yearly,
-  'pro250_yearly': STRIPE_PRODUCTS.pro250_yearly,
-  'pro500_yearly': STRIPE_PRODUCTS.pro500_yearly,
-  'pro1000_yearly': STRIPE_PRODUCTS.pro1000_yearly,
+  'esencial_monthly': STRIPE_PRODUCTS.esencial,
+  'pro_monthly':      STRIPE_PRODUCTS.pro,
+  'elite_monthly':    STRIPE_PRODUCTS.elite,
+  'max_monthly':      STRIPE_PRODUCTS.max,
+  'esencial_yearly':  STRIPE_PRODUCTS.esencial_yearly,
+  'pro_yearly':       STRIPE_PRODUCTS.pro_yearly,
+  'elite_yearly':     STRIPE_PRODUCTS.elite_yearly,
+  'max_yearly':       STRIPE_PRODUCTS.max_yearly,
 };
 
-// Reverse mapping (Stripe Product ID -> tier)
+// Reverse mapping (Stripe Price ID -> tier)
 export const PRODUCT_TO_TIER: Record<string, { tier: string; billing: 'monthly' | 'yearly' }> = {
-  [STRIPE_PRODUCTS.pro50]: { tier: 'pro50', billing: 'monthly' },
-  [STRIPE_PRODUCTS.pro100]: { tier: 'pro100', billing: 'monthly' },
-  [STRIPE_PRODUCTS.pro250]: { tier: 'pro250', billing: 'monthly' },
-  [STRIPE_PRODUCTS.pro500]: { tier: 'pro500', billing: 'monthly' },
-  [STRIPE_PRODUCTS.pro1000]: { tier: 'pro1000', billing: 'monthly' },
-  [STRIPE_PRODUCTS.pro50_yearly]: { tier: 'pro50', billing: 'yearly' },
-  [STRIPE_PRODUCTS.pro100_yearly]: { tier: 'pro100', billing: 'yearly' },
-  [STRIPE_PRODUCTS.pro250_yearly]: { tier: 'pro250', billing: 'yearly' },
-  [STRIPE_PRODUCTS.pro500_yearly]: { tier: 'pro500', billing: 'yearly' },
-  [STRIPE_PRODUCTS.pro1000_yearly]: { tier: 'pro1000', billing: 'yearly' },
+  [STRIPE_PRODUCTS.esencial]:        { tier: 'esencial', billing: 'monthly' },
+  [STRIPE_PRODUCTS.pro]:             { tier: 'pro',      billing: 'monthly' },
+  [STRIPE_PRODUCTS.elite]:           { tier: 'elite',    billing: 'monthly' },
+  [STRIPE_PRODUCTS.max]:             { tier: 'max',      billing: 'monthly' },
+  [STRIPE_PRODUCTS.esencial_yearly]: { tier: 'esencial', billing: 'yearly'  },
+  [STRIPE_PRODUCTS.pro_yearly]:      { tier: 'pro',      billing: 'yearly'  },
+  [STRIPE_PRODUCTS.elite_yearly]:    { tier: 'elite',    billing: 'yearly'  },
+  [STRIPE_PRODUCTS.max_yearly]:      { tier: 'max',      billing: 'yearly'  },
 };
 
 /**

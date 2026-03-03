@@ -8,51 +8,51 @@ require('dotenv').config({ path: '.env.local' });
 
 const Stripe = require('stripe');
 
-// Use your TEST secret key (starts with sk_test_)
-if (!process.env.TEST_STRIPE_SECRET_KEY) {
-  console.error('ERROR: TEST_STRIPE_SECRET_KEY not found in .env.local');
+// Use TEST secret key
+const secretKey = process.env.STRIPE_TEST_SECRET_KEY;
+if (!secretKey) {
+  console.error('ERROR: STRIPE_TEST_SECRET_KEY not found in .env.local');
   process.exit(1);
 }
 
-const stripe = Stripe(process.env.TEST_STRIPE_SECRET_KEY);
+const stripe = Stripe(secretKey);
 
 const products = [
   {
-    name: '[TEST] Pro 50',
-    description: '[TEST] Para abogados independientes - 50 casos monitoreados',
-    monthlyPrice: 19900, // $199 in cents
-    yearlyPrice: 199900, // $1,999 in cents
+    name: 'Esencial',
+    description: 'Para abogados independientes - 100 casos monitoreados',
+    monthlyPrice: 49900, // $499 MXN in cents
+    yearlyPrice: 499000, // $4,990 MXN in cents
   },
   {
-    name: '[TEST] Pro 100',
-    description: '[TEST] Para profesionales independientes - 100 casos monitoreados',
-    monthlyPrice: 39900, // $399 in cents
-    yearlyPrice: 349900, // $3,499 in cents
+    name: 'Pro',
+    description: 'Para bufetes pequeños - 250 casos monitoreados',
+    monthlyPrice: 99900, // $999 MXN in cents
+    yearlyPrice: 999000, // $9,990 MXN in cents
   },
   {
-    name: '[TEST] Pro 250',
-    description: '[TEST] Para bufetes pequeños - 250 casos monitoreados',
-    monthlyPrice: 64900, // $649 in cents
-    yearlyPrice: 499900, // $4,999 in cents
+    name: 'Elite',
+    description: 'Para despachos medianos - 500 casos monitoreados',
+    monthlyPrice: 199900, // $1,999 MXN in cents
+    yearlyPrice: 1999000, // $19,990 MXN in cents
   },
   {
-    name: '[TEST] Pro 500',
-    description: '[TEST] Para despachos medianos - 500 casos monitoreados',
-    monthlyPrice: 99900, // $999 in cents
-    yearlyPrice: 899900, // $8,999 in cents
-  },
-  {
-    name: '[TEST] Pro 1000',
-    description: '[TEST] Para despachos grandes - 1000 casos monitoreados',
-    monthlyPrice: 179900, // $1,799 in cents
-    yearlyPrice: 1249900, // $12,499 in cents
+    name: 'Max',
+    description: 'Para despachos grandes - 1000 casos monitoreados',
+    monthlyPrice: 299900, // $2,999 MXN in cents
+    yearlyPrice: 2999000, // $29,990 MXN in cents
   },
 ];
 
-async function createProducts() {
-  console.log('Creating TEST products in Stripe...\n');
+const envKeys = ['ESENCIAL', 'PRO', 'ELITE', 'MAX'];
 
-  for (const productData of products) {
+async function createProducts() {
+  console.log('Creating TEST products in Stripe (sandbox)...\n');
+
+  for (let i = 0; i < products.length; i++) {
+    const productData = products[i];
+    const envKey = envKeys[i];
+
     try {
       // Create the product
       console.log(`Creating product: ${productData.name}...`);
@@ -73,7 +73,7 @@ async function createProducts() {
         },
       });
 
-      console.log(`✓ Monthly price created: ${monthlyPrice.id} ($${productData.monthlyPrice / 100} MXN/month)`);
+      console.log(`✓ Monthly price: ${monthlyPrice.id} ($${productData.monthlyPrice / 100} MXN/month)`);
 
       // Create yearly price
       const yearlyPrice = await stripe.prices.create({
@@ -85,29 +85,23 @@ async function createProducts() {
         },
       });
 
-      console.log(`✓ Yearly price created: ${yearlyPrice.id} ($${productData.yearlyPrice / 100} MXN/year)`);
-      console.log(`\nProduct ID: ${product.id}`);
-      console.log(`Monthly Price ID: ${monthlyPrice.id}`);
-      console.log(`Yearly Price ID: ${yearlyPrice.id}`);
-      console.log('---\n');
+      console.log(`✓ Yearly price:  ${yearlyPrice.id} ($${productData.yearlyPrice / 100} MXN/year)`);
+      console.log('');
 
     } catch (error) {
       console.error(`✗ Error creating ${productData.name}:`, error.message);
     }
   }
 
-  console.log('\n✅ Done! Copy the Product IDs above and add them to your .env.local file as:');
-  console.log('\nFor TEST environment (.env.local):');
-  console.log('STRIPE_PRICE_PRO50=prod_xxx');
-  console.log('STRIPE_PRICE_PRO100=prod_xxx');
-  console.log('STRIPE_PRICE_PRO250=prod_xxx');
-  console.log('STRIPE_PRICE_PRO500=prod_xxx');
-  console.log('STRIPE_PRICE_PRO1000=prod_xxx');
-  console.log('\nSTRIPE_PRICE_PRO50_YEARLY=prod_xxx');
-  console.log('STRIPE_PRICE_PRO100_YEARLY=prod_xxx');
-  console.log('STRIPE_PRICE_PRO250_YEARLY=prod_xxx');
-  console.log('STRIPE_PRICE_PRO500_YEARLY=prod_xxx');
-  console.log('STRIPE_PRICE_PRO1000_YEARLY=prod_xxx');
+  console.log('\n✅ Done! Add the Price IDs above to your .env.local:');
+  console.log('\nSTRIPE_TEST_PRICE_ESENCIAL=price_xxx');
+  console.log('STRIPE_TEST_PRICE_PRO=price_xxx');
+  console.log('STRIPE_TEST_PRICE_ELITE=price_xxx');
+  console.log('STRIPE_TEST_PRICE_MAX=price_xxx');
+  console.log('STRIPE_TEST_PRICE_ESENCIAL_YEARLY=price_xxx');
+  console.log('STRIPE_TEST_PRICE_PRO_YEARLY=price_xxx');
+  console.log('STRIPE_TEST_PRICE_ELITE_YEARLY=price_xxx');
+  console.log('STRIPE_TEST_PRICE_MAX_YEARLY=price_xxx');
 }
 
 createProducts().catch(console.error);

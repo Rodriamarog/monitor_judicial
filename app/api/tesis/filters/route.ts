@@ -1,5 +1,8 @@
 import { NextResponse } from 'next/server';
 import { query } from '@/lib/postgres/tesis-db';
+import { createClient } from '@/lib/supabase/server';
+import { getEffectiveTier } from '@/lib/server/get-effective-tier';
+import { hasFeature } from '@/lib/subscription-tiers';
 
 /**
  * GET /api/tesis/filters
@@ -7,6 +10,23 @@ import { query } from '@/lib/postgres/tesis-db';
  */
 export async function GET() {
   try {
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const tier = await getEffectiveTier(supabase, user.id);
+    if (!hasFeature(tier, 'hasTesis')) {
+      return NextResponse.json(
+        { error: 'Tu plan no incluye acceso al Buscador de Tesis.' },
+        { status: 403 }
+      );
+    }
+
     // Get all unique materias with counts
     const materiasResult = await query(`
       WITH expanded_materias AS (

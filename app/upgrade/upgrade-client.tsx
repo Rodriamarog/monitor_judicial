@@ -29,7 +29,8 @@ export function UpgradeClient({ currentTier, stripeProducts }: UpgradeClientProp
     priceId: tier.id !== 'gratis' ? getProductFromTier(tier.id, billing) || '' : undefined,
     description: tier.description,
     maxCases: tier.maxCases,
-    features: tier.features,
+    features: tier.displayFeatures,
+    highlightedFeatures: tier.highlightedDisplayFeatures,
     isPopular: tier.isPopular,
     billing: billing,
   }))

@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/postgres/tesis-db';
+import { createClient } from '@/lib/supabase/server';
+import { getEffectiveTier } from '@/lib/server/get-effective-tier';
+import { hasFeature } from '@/lib/subscription-tiers';
 
 // Month name to number mapping for date comparisons
 const MONTH_TO_NUMBER: Record<string, number> = {
@@ -37,6 +40,23 @@ const MONTH_TO_NUMBER: Record<string, number> = {
  */
 export async function GET(request: NextRequest) {
   try {
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const tier = await getEffectiveTier(supabase, user.id);
+    if (!hasFeature(tier, 'hasTesis')) {
+      return NextResponse.json(
+        { error: 'Tu plan no incluye acceso al Buscador de Tesis.' },
+        { status: 403 }
+      );
+    }
+
     const searchParams = request.nextUrl.searchParams;
 
     // Get query parameters

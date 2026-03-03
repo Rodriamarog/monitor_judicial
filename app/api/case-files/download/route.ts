@@ -1,5 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextRequest, NextResponse } from 'next/server'
+import { getEffectiveTier } from '@/lib/server/get-effective-tier'
+import { hasFeature } from '@/lib/subscription-tiers'
 
 export async function GET(request: NextRequest) {
   try {
@@ -12,6 +14,14 @@ export async function GET(request: NextRequest) {
 
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const tier = await getEffectiveTier(supabase, user.id)
+    if (!hasFeature(tier, 'hasDocumentDownload')) {
+      return NextResponse.json(
+        { error: 'Tu plan no incluye descarga de documentos.' },
+        { status: 403 }
+      )
     }
 
     // Get fileId from query params

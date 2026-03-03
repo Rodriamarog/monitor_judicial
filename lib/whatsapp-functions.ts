@@ -390,7 +390,7 @@ export async function handleCreateMeeting(
             year: 'numeric',
             month: 'long',
             day: 'numeric',
-          })} a las ${startTime.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' })}\n\n⚠️ No se pudo crear el recordatorio: no tienes un número de teléfono registrado en tu perfil.`,
+          })} a las ${startTime.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit', timeZone: userTimezone })}\n\n⚠️ No se pudo crear el recordatorio: no tienes un número de teléfono registrado en tu perfil.`,
           data: { event }
         }
       }
@@ -411,7 +411,7 @@ export async function handleCreateMeeting(
           client_phone: clientPhone,
           meeting_time: startTime.toISOString(),
           scheduled_for: reminderTime.toISOString(),
-          reminder_message: `Recordatorio de reunión mañana a las ${startTime.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' })}${clientPhone ? ` con ${clientName || 'tu cliente'}` : ''}`,
+          reminder_message: `Recordatorio de reunión mañana a las ${startTime.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit', timeZone: userTimezone })}${clientPhone ? ` con ${clientName || 'tu cliente'}` : ''}`,
         })
 
       if (reminderError) {
@@ -430,7 +430,7 @@ export async function handleCreateMeeting(
 
 *${title}*${clientName ? `\nCliente: ${clientName}` : ''}${caseNumber ? `\nExpediente: ${caseNumber}` : ''}
 Fecha: ${startTime.toLocaleDateString('es-MX', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
-Hora: ${startTime.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' })} - ${endTime.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' })}${reminderMessage}`,
+Hora: ${startTime.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit', timeZone: userTimezone })} - ${endTime.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit', timeZone: userTimezone })}${reminderMessage}`,
       data: { event, reminderCreated },
     }
   } catch (error) {
@@ -555,7 +555,7 @@ export async function handleGetCalendarEvents(
           year: 'numeric',
           month: 'long',
           day: 'numeric',
-        })}\n   Hora: ${startDate.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' })}`
+        })}\n   Hora: ${startDate.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Tijuana' })}`
       })
       .join('\n\n')
 
@@ -613,10 +613,10 @@ export async function handleGetUpcomingReminders(
         return `${i + 1}. Reunión con *${r.client_name || 'sin cliente'}*\n   Fecha reunión: ${meetingDate.toLocaleDateString('es-MX', {
           month: 'long',
           day: 'numeric',
-        })} a las ${meetingDate.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' })}\n   Recordatorio: ${reminderDate.toLocaleDateString('es-MX', {
+        })} a las ${meetingDate.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Tijuana' })}\n   Recordatorio: ${reminderDate.toLocaleDateString('es-MX', {
           month: 'long',
           day: 'numeric',
-        })} a las ${reminderDate.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' })}`
+        })} a las ${reminderDate.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Tijuana' })}`
       })
       .join('\n\n')
 
@@ -691,7 +691,7 @@ export async function handleDeleteMeeting(
         weekday: 'long',
         month: 'long',
         day: 'numeric',
-      })} a las ${startDate.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' })}`,
+      })} a las ${startDate.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Tijuana' })}`,
       data: { deleted_event_id: event_id }
     }
   } catch (error) {
@@ -804,7 +804,7 @@ export async function handleRescheduleMeeting(
         weekday: 'long',
         month: 'long',
         day: 'numeric',
-      })}\n*Nueva hora:* ${newStartTime.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' })} - ${newEndTime.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' })}`,
+      })}\n*Nueva hora:* ${newStartTime.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Tijuana' })} - ${newEndTime.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Tijuana' })}`,
       data: {
         event_id,
         new_start_time: newStartTime.toISOString(),

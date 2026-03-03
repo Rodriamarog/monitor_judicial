@@ -1,9 +1,10 @@
-'use client'
-
-import Link from 'next/link'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { FileText, ArrowRight, Mail } from 'lucide-react'
-import { Button } from '@/components/ui/button'
+import { redirect } from 'next/navigation';
+import { createClient } from '@/lib/supabase/server';
+import { getEffectiveTier } from '@/lib/server/get-effective-tier';
+import { hasFeature } from '@/lib/subscription-tiers';
+import Link from 'next/link';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { FileText, ArrowRight, Mail } from 'lucide-react';
 
 const templates = [
     {
@@ -39,7 +40,16 @@ const templates = [
     // Future templates can be added here
 ]
 
-export default function MachotesPage() {
+export default async function MachotesPage() {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) redirect('/login');
+
+    const tier = await getEffectiveTier(supabase, user.id);
+    if (!hasFeature(tier, 'hasTemplates')) {
+        redirect('/upgrade?feature=machotes');
+    }
+
     return (
         <div className="space-y-6">
             <div>
@@ -78,14 +88,13 @@ export default function MachotesPage() {
                             <p>
                                 Solicita una cotización para que nuestro equipo desarrolle un machote personalizado y privado específico para tu cuenta.
                             </p>
-                            <Button
-                                variant="outline"
-                                className="w-full border-primary text-primary hover:bg-primary hover:text-primary-foreground"
-                                onClick={() => window.location.href = 'mailto:monitorjudicialmx@gmail.com?subject=Solicitud%20de%20Machote%20Personalizado'}
+                            <a
+                                href="mailto:monitorjudicialmx@gmail.com?subject=Solicitud%20de%20Machote%20Personalizado"
+                                className="flex items-center justify-center w-full rounded-md border border-primary text-primary hover:bg-primary hover:text-primary-foreground px-4 py-2 text-sm font-medium transition-colors"
                             >
                                 <Mail className="mr-2 h-4 w-4" />
                                 Solicitar Cotización
-                            </Button>
+                            </a>
                         </CardDescription>
                     </CardHeader>
                 </Card>

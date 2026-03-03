@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { getEffectiveTier } from '@/lib/server/get-effective-tier';
+import { hasFeature } from '@/lib/subscription-tiers';
 
 // Force dynamic rendering - no caching
 export const dynamic = 'force-dynamic';
@@ -16,6 +18,14 @@ export async function GET(request: NextRequest) {
 
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const tier = await getEffectiveTier(supabase, user.id);
+    if (!hasFeature(tier, 'hasCalendar')) {
+      return NextResponse.json(
+        { error: 'Tu plan no incluye acceso al Calendario.' },
+        { status: 403 }
+      );
     }
 
     const searchParams = request.nextUrl.searchParams;
@@ -72,6 +82,14 @@ export async function POST(request: NextRequest) {
 
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const tier = await getEffectiveTier(supabase, user.id);
+    if (!hasFeature(tier, 'hasCalendar')) {
+      return NextResponse.json(
+        { error: 'Tu plan no incluye acceso al Calendario.' },
+        { status: 403 }
+      );
     }
 
     const body = await request.json();

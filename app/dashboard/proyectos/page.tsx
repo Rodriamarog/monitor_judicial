@@ -1,21 +1,18 @@
-'use client'
+import { redirect } from 'next/navigation';
+import { createClient } from '@/lib/supabase/server';
+import { getEffectiveTier } from '@/lib/server/get-effective-tier';
+import { hasFeature } from '@/lib/subscription-tiers';
+import ProyectosContent from './proyectos-content';
 
-import dynamic from 'next/dynamic'
-import { Loader2 } from 'lucide-react'
+export default async function ProyectosPage() {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) redirect('/login');
 
-const KanbanBoard = dynamic(() => import('@/components/kanban-board'), {
-  loading: () => (
-    <div className="flex items-center justify-center min-h-[400px]">
-      <Loader2 className="h-8 w-8 animate-spin" />
-    </div>
-  ),
-  ssr: false,
-})
+    const tier = await getEffectiveTier(supabase, user.id);
+    if (!hasFeature(tier, 'hasKanban')) {
+        redirect('/upgrade?feature=proyectos');
+    }
 
-export default function ProyectosPage() {
-  return (
-    <div className="h-full flex flex-col">
-      <KanbanBoard />
-    </div>
-  )
+    return <ProyectosContent />;
 }

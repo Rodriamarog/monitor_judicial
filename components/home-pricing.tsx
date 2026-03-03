@@ -4,14 +4,13 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
-import { Check } from 'lucide-react'
+import { Check, Zap } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { getAllTiers, formatPrice, getMonthlyEquivalent } from '@/lib/subscription-tiers'
 
 export function HomePricing() {
   const [billing, setBilling] = useState<'monthly' | 'yearly'>('monthly')
 
-  // Get all tiers including gratis
   const tierConfigs = getAllTiers()
 
   const tiers = tierConfigs.map(tier => ({
@@ -19,7 +18,8 @@ export function HomePricing() {
     id: tier.id,
     price: billing === 'monthly' ? tier.monthlyPrice : tier.yearlyPrice,
     description: tier.description,
-    features: tier.features,
+    features: tier.displayFeatures,
+    highlightedFeatures: tier.highlightedDisplayFeatures || [],
     popular: tier.isPopular || false,
     isFree: tier.id === 'gratis',
     href: '/signup',
@@ -69,29 +69,29 @@ export function HomePricing() {
           </div>
         </div>
 
-        <div className="mx-auto mt-16 grid max-w-7xl grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-3">
+        <div className="mx-auto mt-16 grid max-w-7xl grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-5">
           {tiers.map((tier) => (
             <Card
               key={tier.id}
               className={`relative flex flex-col ${
-                tier.popular ? 'border-2 border-primary shadow-lg' : 'border-border'
+                tier.popular ? 'border-2 border-primary shadow-lg shadow-primary/20' : 'border-border'
               }`}
             >
               {tier.popular && (
-                <div className="absolute -top-4 left-1/2 -translate-x-1/2">
-                  <Badge className="bg-primary text-primary-foreground px-4 py-1">Más Popular</Badge>
+                <div className="absolute -top-3 left-1/2 -translate-x-1/2 whitespace-nowrap">
+                  <Badge className="bg-primary text-primary-foreground px-3 py-1 text-xs">Más Popular</Badge>
                 </div>
               )}
 
-              <CardHeader className="pb-6 pt-8">
-                <CardTitle className="text-2xl font-bold text-card-foreground">{tier.name}</CardTitle>
-                <CardDescription className="text-muted-foreground">{tier.description}</CardDescription>
-                <div className="mt-4">
-                  <span className="text-4xl font-bold text-card-foreground">{formatPrice(tier.price)}</span>
-                  <span className="text-muted-foreground text-sm">
+              <CardHeader className="pb-4 pt-8">
+                <CardTitle className="text-xl font-bold text-card-foreground">{tier.name}</CardTitle>
+                <CardDescription className="text-xs text-muted-foreground">{tier.description}</CardDescription>
+                <div className="mt-3">
+                  <span className="text-3xl font-bold text-card-foreground">{formatPrice(tier.price)}</span>
+                  <span className="text-muted-foreground text-xs">
                     {tier.isFree ? '' : billing === 'yearly' ? ' MXN/año' : ' MXN/mes'}
                   </span>
-                  <div className="mt-1 text-sm text-muted-foreground h-5">
+                  <div className="mt-1 text-xs text-muted-foreground h-4">
                     {billing === 'yearly' && !tier.isFree && tier.price > 0 && (
                       <span>{getMonthlyEquivalent(tier.price)} MXN/mes</span>
                     )}
@@ -100,19 +100,27 @@ export function HomePricing() {
               </CardHeader>
 
               <CardContent className="flex-1">
-                <ul className="space-y-3">
-                  {tier.features.map((feature) => (
-                    <li key={feature} className="flex items-start gap-2">
-                      <Check className="h-5 w-5 shrink-0 text-primary mt-0.5" />
-                      <span className="text-sm text-muted-foreground">{feature}</span>
-                    </li>
-                  ))}
+                <ul className="space-y-2">
+                  {tier.features.map((feature) => {
+                    const isHighlighted = tier.highlightedFeatures.includes(feature)
+                    return isHighlighted ? (
+                      <li key={feature} className="flex items-start gap-2 rounded-md border border-amber-500 bg-amber-500/10 px-2 py-1.5 -mx-1">
+                        <Zap className="h-4 w-4 text-amber-500 shrink-0 mt-0.5 fill-amber-500" />
+                        <span className="text-xs font-bold text-amber-500">{feature}</span>
+                      </li>
+                    ) : (
+                      <li key={feature} className="flex items-start gap-2">
+                        <Check className="h-4 w-4 shrink-0 text-primary mt-0.5" />
+                        <span className="text-xs text-muted-foreground">{feature}</span>
+                      </li>
+                    )
+                  })}
                 </ul>
               </CardContent>
 
-              <CardFooter className="pt-6">
+              <CardFooter className="pt-4">
                 <Link href={tier.href} className="w-full">
-                  <Button className="w-full" variant={tier.popular ? 'default' : 'outline'}>
+                  <Button className="w-full" size="sm" variant={tier.popular ? 'default' : 'outline'}>
                     {tier.ctaText}
                   </Button>
                 </Link>

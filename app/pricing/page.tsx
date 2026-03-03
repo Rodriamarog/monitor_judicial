@@ -54,7 +54,7 @@ export default async function PricingPage() {
       </header>
 
       {/* Pricing Section */}
-      <div className="container max-w-6xl mx-auto py-16 px-4">
+      <div className="container max-w-screen-xl mx-auto py-16 px-4">
         <div className="text-center mb-12">
           <h1 className="text-4xl md:text-5xl font-bold mb-4">
             Precios Simples y Transparentes

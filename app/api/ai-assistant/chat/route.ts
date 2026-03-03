@@ -17,6 +17,8 @@ import type { TesisSource as AgentTesisSource } from '@/lib/ai/agent-state'
 
 // Usage limiting
 import { resolveMasterUserId } from '@/lib/ai/resolve-master-user'
+import { getEffectiveTier } from '@/lib/server/get-effective-tier'
+import { hasFeature } from '@/lib/subscription-tiers'
 
 // Local PostgreSQL database for tesis embeddings
 import { queryLocalTesis } from '@/lib/db/local-tesis-client'
@@ -388,6 +390,15 @@ export async function POST(req: NextRequest) {
 
     if (authError || !user) {
       return new Response('Unauthorized', { status: 401 })
+    }
+
+    // Check tier eligibility
+    const tier = await getEffectiveTier(supabase, user.id)
+    if (!hasFeature(tier, 'hasAIAssistant')) {
+      return new Response(JSON.stringify({ error: 'Tu plan no incluye acceso al Asistente IA.' }), {
+        status: 403,
+        headers: { 'Content-Type': 'application/json' },
+      })
     }
 
     // Check and increment daily usage limit (50 messages/day shared per master account)

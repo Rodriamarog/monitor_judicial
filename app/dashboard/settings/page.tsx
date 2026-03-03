@@ -17,6 +17,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog'
 import { useUserRole } from '@/lib/hooks/use-user-role'
+import { hasFeature } from '@/lib/subscription-tiers'
 
 export default function SettingsPage() {
   const { isCollaborator, loading: roleLoading } = useUserRole()
@@ -703,6 +704,7 @@ export default function SettingsPage() {
         </CardContent>
       </Card>
 
+      {hasFeature(tier, 'hasTribunalAlerts') && <>
       {/* Tribunal Electrónico Card */}
       <Card>
         <CardHeader>
@@ -1009,6 +1011,7 @@ export default function SettingsPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      </>}
 
       {/* Collaborators Card */}
       <Card>
