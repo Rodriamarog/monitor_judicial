@@ -9,5 +9,11 @@ backups/
 migration_data/
 tesis_api/
 google-calendar-info/
+postgres/
+node_modules/
+pb_data/
+chrome_extension/
+machotes/
+docs/
 *.md
 !README.md

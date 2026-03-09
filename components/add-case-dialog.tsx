@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { getMaxCases } from '@/lib/subscription-tiers'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -161,11 +162,10 @@ export function AddCaseDialog({ open, onOpenChange }: AddCaseDialogProps) {
       .select('*', { count: 'exact', head: true })
       .eq('user_id', user.id)
 
-    const tier = profile?.subscription_tier || 'basico'
-    const maxCases = tier === 'basico' ? 10 : tier === 'profesional' ? 100 : 500
+    const maxCases = getMaxCases(profile?.subscription_tier)
 
     if ((count || 0) >= maxCases) {
-      setError(`Ha alcanzado el límite de ${maxCases} casos para su plan ${tier}`)
+      setError(`Ha alcanzado el límite de ${maxCases} casos para su plan`)
       setLoading(false)
       return
     }
