@@ -114,28 +114,23 @@ export async function createCheckoutSession(params: {
   cancelUrl: string;
   billing?: 'monthly' | 'yearly';
 }): Promise<Stripe.Checkout.Session> {
-  const { productId, userId, userEmail, successUrl, cancelUrl, billing = 'monthly' } = params;
+  const { productId, userId, userEmail, successUrl, cancelUrl } = params;
 
-  // Get the price ID from the product with the correct interval
-  const interval = billing === 'yearly' ? 'year' : 'month';
-  const priceId = await getPriceIdFromProduct(productId, interval);
-  if (!priceId) {
-    throw new Error(`No active ${billing} price found for product ${productId}`);
-  }
-
+  // productId here is actually a Stripe Price ID (from STRIPE_PRODUCTS)
   const session = await stripe.checkout.sessions.create({
     mode: 'subscription',
     payment_method_types: ['card'],
     line_items: [
       {
-        price: priceId,
+        price: productId,
         quantity: 1,
       },
     ],
+    allow_promotion_codes: true,
     success_url: successUrl,
     cancel_url: cancelUrl,
     customer_email: userEmail,
-    client_reference_id: userId, // Used to link customer to our user
+    client_reference_id: userId,
     metadata: {
       user_id: userId,
       product_id: productId,
