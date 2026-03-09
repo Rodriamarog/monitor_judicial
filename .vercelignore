@@ -1,19 +1,19 @@
 # Hetzner-only directory (not needed for Vercel deployment)
-hetzner/
+/hetzner/
 
 # Tribunal Electrónico source (only used on Hetzner)
-tribunal_electronico/
+/tribunal_electronico/
 
 # Other exclusions
-backups/
-migration_data/
-tesis_api/
-google-calendar-info/
-postgres/
-node_modules/
-pb_data/
-chrome_extension/
-machotes/
-docs/
+/backups/
+/migration_data/
+/tesis_api/
+/google-calendar-info/
+/postgres/
+/node_modules/
+/pb_data/
+/chrome_extension/
+/machotes/
+/docs/
 *.md
 !README.md
