@@ -38,8 +38,9 @@ type FormValues = z.infer<typeof formSchema>
 
 export function JuicioAlimentosForm() {
     const [isGenerating, setIsGenerating] = useState(false)
-    const [googleConnected, setGoogleConnected] = useState<boolean | null>(null)
-    const [checkingGoogle, setCheckingGoogle] = useState(true)
+    // TEMPORARILY COMMENTED OUT - Pending Google OAuth app approval.
+    // const [googleConnected, setGoogleConnected] = useState<boolean | null>(null)
+    // const [checkingGoogle, setCheckingGoogle] = useState(true)
 
     const form = useForm<FormValues>({
         resolver: zodResolver(formSchema),
@@ -71,22 +72,23 @@ export function JuicioAlimentosForm() {
     // Watch all fields for live preview
     const watchedValues = form.watch()
 
+    // TEMPORARILY COMMENTED OUT - Pending Google OAuth app approval.
     // Check Google connection status on mount
-    useEffect(() => {
-        const checkGoogleStatus = async () => {
-            try {
-                const response = await fetch('/api/google/status')
-                const data = await response.json()
-                setGoogleConnected(data.connected && data.scope_valid)
-            } catch (error) {
-                console.error('Error checking Google status:', error)
-                setGoogleConnected(false)
-            } finally {
-                setCheckingGoogle(false)
-            }
-        }
-        checkGoogleStatus()
-    }, [])
+    // useEffect(() => {
+    //     const checkGoogleStatus = async () => {
+    //         try {
+    //             const response = await fetch('/api/google/status')
+    //             const data = await response.json()
+    //             setGoogleConnected(data.connected && data.scope_valid)
+    //         } catch (error) {
+    //             console.error('Error checking Google status:', error)
+    //             setGoogleConnected(false)
+    //         } finally {
+    //             setCheckingGoogle(false)
+    //         }
+    //     }
+    //     checkGoogleStatus()
+    // }, [])
 
 
     // Helper function to create the document structure
@@ -608,67 +610,52 @@ export function JuicioAlimentosForm() {
         }
     }
 
-    const openInGoogleDocs = async () => {
-        setIsGenerating(true)
-
-        // Open blank window immediately to avoid popup blocking
-        const newWindow = window.open('about:blank', '_blank')
-
-        try {
-            const data = watchedValues
-
-            // Validate form data
-            const result = formSchema.safeParse(data)
-            if (!result.success) {
-                toast.error('Por favor completa todos los campos requeridos')
-                setIsGenerating(false)
-                newWindow?.close()
-                return
-            }
-
-            // User is connected - proceed with upload
-            const doc = createDocumentStructure(data)
-            const blob = await Packer.toBlob(doc)
-
-            // Create FormData for API upload
-            const formData = new FormData()
-            const fileName = `Demanda_Alimentos_${data.actorName.replace(/\s+/g, '_')}.docx`
-            const file = new File([blob], fileName, {
-                type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
-            })
-            formData.append('file', file)
-            formData.append('fileName', fileName)
-
-            // Upload to Google Docs via API
-            const response = await fetch('/api/google-docs/upload', {
-                method: 'POST',
-                body: formData,
-            })
-
-            const responseData = await response.json()
-
-            if (!response.ok) {
-                toast.error(responseData.error || 'Error al subir a Google Docs')
-                newWindow?.close()
-                return
-            }
-
-            // Navigate the opened window to Google Docs
-            if (responseData.docsUrl && newWindow) {
-                newWindow.location.href = responseData.docsUrl
-                toast.success('Documento abierto en Google Docs')
-            } else {
-                toast.error('No se pudo obtener la URL del documento')
-                newWindow?.close()
-            }
-
-        } catch (error) {
-            console.error('Error opening in Google Docs:', error)
-            toast.error('Error al abrir en Google Docs')
-        } finally {
-            setIsGenerating(false)
-        }
-    }
+    // TEMPORARILY COMMENTED OUT - Pending Google OAuth app approval.
+    // const openInGoogleDocs = async () => {
+    //     setIsGenerating(true)
+    //     const newWindow = window.open('about:blank', '_blank')
+    //     try {
+    //         const data = watchedValues
+    //         const result = formSchema.safeParse(data)
+    //         if (!result.success) {
+    //             toast.error('Por favor completa todos los campos requeridos')
+    //             setIsGenerating(false)
+    //             newWindow?.close()
+    //             return
+    //         }
+    //         const doc = createDocumentStructure(data)
+    //         const blob = await Packer.toBlob(doc)
+    //         const formData = new FormData()
+    //         const fileName = `Demanda_Alimentos_${data.actorName.replace(/\s+/g, '_')}.docx`
+    //         const file = new File([blob], fileName, {
+    //             type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+    //         })
+    //         formData.append('file', file)
+    //         formData.append('fileName', fileName)
+    //         const response = await fetch('/api/google-docs/upload', {
+    //             method: 'POST',
+    //             body: formData,
+    //         })
+    //         const responseData = await response.json()
+    //         if (!response.ok) {
+    //             toast.error(responseData.error || 'Error al subir a Google Docs')
+    //             newWindow?.close()
+    //             return
+    //         }
+    //         if (responseData.docsUrl && newWindow) {
+    //             newWindow.location.href = responseData.docsUrl
+    //             toast.success('Documento abierto en Google Docs')
+    //         } else {
+    //             toast.error('No se pudo obtener la URL del documento')
+    //             newWindow?.close()
+    //         }
+    //     } catch (error) {
+    //         console.error('Error opening in Google Docs:', error)
+    //         toast.error('Error al abrir en Google Docs')
+    //     } finally {
+    //         setIsGenerating(false)
+    //     }
+    // }
 
     return (
         <div className="flex gap-6 h-full">
@@ -803,6 +790,11 @@ export function JuicioAlimentosForm() {
                         </div>
 
                         <div className="flex gap-3 pt-4">
+                            {/* TEMPORARILY COMMENTED OUT - Pending Google OAuth app approval.
+                                Once Google approves the app, uncomment this block to re-enable
+                                the "Abrir en Google Docs" button. Also uncomment the Google Drive
+                                section in Configuración (settings/page.tsx).
+
                             {!googleConnected && !checkingGoogle ? (
                                 <div className="flex flex-col gap-2 w-full">
                                     <Button
@@ -840,6 +832,7 @@ export function JuicioAlimentosForm() {
                                     Abrir en Google Docs
                                 </Button>
                             )}
+                            */}
                             <Button
                                 onClick={form.handleSubmit(generateDocument)}
                                 disabled={isGenerating}

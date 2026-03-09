@@ -27,10 +27,11 @@ export default function SettingsPage() {
   const [whatsappEnabled, setWhatsappEnabled] = useState(false)
   const [emailEnabled, setEmailEnabled] = useState(true)
   const [timezone, setTimezone] = useState('America/Tijuana')
-  const [googleConnected, setGoogleConnected] = useState(false)
-  const [scopeValid, setScopeValid] = useState(true)
-  const [connecting, setConnecting] = useState(false)
-  const [disconnecting, setDisconnecting] = useState(false)
+  // TEMPORARILY COMMENTED OUT - Pending Google OAuth app approval.
+  // const [googleConnected, setGoogleConnected] = useState(false)
+  // const [scopeValid, setScopeValid] = useState(true)
+  // const [connecting, setConnecting] = useState(false)
+  // const [disconnecting, setDisconnecting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
   const [calendarSuccess, setCalendarSuccess] = useState(false)
@@ -62,21 +63,20 @@ export default function SettingsPage() {
   useEffect(() => {
     loadProfile()
 
+    // TEMPORARILY COMMENTED OUT - Pending Google OAuth app approval.
     // Check for OAuth callback success/error
-    const googleConnected = searchParams?.get('google_connected')
-    const googleError = searchParams?.get('google_error')
-
-    if (googleConnected === 'true') {
-      setCalendarSuccess(true)
-      setTimeout(() => setCalendarSuccess(false), 5000)
-      router.replace('/dashboard/settings')
-    }
-
-    if (googleError) {
-      setError(`Error de Google: ${googleError}`)
-      setTimeout(() => setError(null), 5000)
-      router.replace('/dashboard/settings')
-    }
+    // const googleConnected = searchParams?.get('google_connected')
+    // const googleError = searchParams?.get('google_error')
+    // if (googleConnected === 'true') {
+    //   setCalendarSuccess(true)
+    //   setTimeout(() => setCalendarSuccess(false), 5000)
+    //   router.replace('/dashboard/settings')
+    // }
+    // if (googleError) {
+    //   setError(`Error de Google: ${googleError}`)
+    //   setTimeout(() => setError(null), 5000)
+    //   router.replace('/dashboard/settings')
+    // }
   }, [searchParams])
 
   const loadProfile = async () => {
@@ -131,11 +131,11 @@ export default function SettingsPage() {
       const collabList = emails.map((email: string) => ({ email }))
       setCollaborators(collabList)
 
-      // Check unified Google (Calendar + Drive) status
-      const googleStatus = await fetch('/api/google/status')
-      const googleData = await googleStatus.json()
-      setGoogleConnected(googleData.connected || false)
-      setScopeValid(googleData.scope_valid || false)
+      // TEMPORARILY COMMENTED OUT - Pending Google OAuth app approval.
+      // const googleStatus = await fetch('/api/google/status')
+      // const googleData = await googleStatus.json()
+      // setGoogleConnected(googleData.connected || false)
+      // setScopeValid(googleData.scope_valid || false)
 
       // Check Tribunal Electrónico status
       setTribunalStatusLoading(true)
@@ -195,56 +195,40 @@ export default function SettingsPage() {
     }
   }
 
-  const handleConnectGoogle = async () => {
-    setConnecting(true)
-    setError(null)
+  // TEMPORARILY COMMENTED OUT - Pending Google OAuth app approval.
+  // const handleConnectGoogle = async () => {
+  //   setConnecting(true)
+  //   setError(null)
+  //   try {
+  //     const response = await fetch('/api/google/connect')
+  //     const data = await response.json()
+  //     if (!response.ok) throw new Error(data.error || 'Failed to initiate OAuth')
+  //     window.location.href = data.url
+  //   } catch (err) {
+  //     console.error('Error connecting Google:', err)
+  //     setError(err instanceof Error ? err.message : 'Error al conectar Google')
+  //     setConnecting(false)
+  //   }
+  // }
 
-    try {
-      const response = await fetch('/api/google/connect')
-      const data = await response.json()
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to initiate OAuth')
-      }
-
-      // Redirect to Google OAuth
-      window.location.href = data.url
-    } catch (err) {
-      console.error('Error connecting Google:', err)
-      setError(err instanceof Error ? err.message : 'Error al conectar Google')
-      setConnecting(false)
-    }
-  }
-
-  const handleDisconnectGoogle = async () => {
-    if (!confirm('¿Estás seguro de que quieres desconectar Google Drive? Ya no podrás subir documentos directamente.')) {
-      return
-    }
-
-    setDisconnecting(true)
-    setError(null)
-
-    try {
-      const response = await fetch('/api/google/disconnect', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-      })
-
-      if (!response.ok) {
-        const data = await response.json()
-        throw new Error(data.error || 'Failed to disconnect')
-      }
-
-      setGoogleConnected(false)
-      setSuccess(true)
-      setTimeout(() => setSuccess(false), 3000)
-    } catch (err) {
-      console.error('Error disconnecting Google:', err)
-      setError(err instanceof Error ? err.message : 'Error al desconectar Google')
-    } finally {
-      setDisconnecting(false)
-    }
-  }
+  // TEMPORARILY COMMENTED OUT - Pending Google OAuth app approval.
+  // const handleDisconnectGoogle = async () => {
+  //   if (!confirm('¿Estás seguro de que quieres desconectar Google Drive? Ya no podrás subir documentos directamente.')) return
+  //   setDisconnecting(true)
+  //   setError(null)
+  //   try {
+  //     const response = await fetch('/api/google/disconnect', { method: 'POST', headers: { 'Content-Type': 'application/json' } })
+  //     if (!response.ok) { const data = await response.json(); throw new Error(data.error || 'Failed to disconnect') }
+  //     setGoogleConnected(false)
+  //     setSuccess(true)
+  //     setTimeout(() => setSuccess(false), 3000)
+  //   } catch (err) {
+  //     console.error('Error disconnecting Google:', err)
+  //     setError(err instanceof Error ? err.message : 'Error al desconectar Google')
+  //   } finally {
+  //     setDisconnecting(false)
+  //   }
+  // }
 
   const handleCollaboratorsUpdate = async (newCollaborators: Array<{email: string}>) => {
     setCollaboratorsSaving(true)
@@ -601,7 +585,11 @@ export default function SettingsPage() {
               </div>
             </div>
 
-            {/* Google Drive Integration */}
+            {/* TEMPORARILY COMMENTED OUT - Pending Google OAuth app approval.
+                Once Google approves the app, uncomment this section to re-enable
+                the Google Drive integration in the settings page.
+                Related: "Abrir en Google Docs" button in Machotes is also commented out.
+
             <div className="space-y-4 pt-4 border-t">
               <div className="flex items-center justify-between">
                 <div className="space-y-0.5">
@@ -689,6 +677,7 @@ export default function SettingsPage() {
                 </div>
               )}
             </div>
+            */}
 
             <Button type="submit" className="w-full" disabled={saving}>
               {saving ? (
