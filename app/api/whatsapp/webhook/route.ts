@@ -175,7 +175,15 @@ export async function POST(request: NextRequest) {
       console.log('User not eligible (tier):', user.subscription_tier)
       await sendWhatsAppReply(
         from,
-        '⚠️ Esta función está disponible solo para usuarios del plan Max. Actualiza tu suscripción en https://monitorjudicial.com.mx/upgrade'
+        `El asistente de WhatsApp esta disponible solo para usuarios del plan Max.
+
+Con el chatbot puedes:
+- Consultar tus expedientes y clientes
+- Registrar pagos y consultar saldos
+- Agendar, reagendar y cancelar citas
+- Ver tus proximos recordatorios y eventos
+
+Mejora tu plan aqui: https://monitorjudicial.com.mx/upgrade`
       )
       return NextResponse.json({ status: 'tier_not_eligible' })
     }

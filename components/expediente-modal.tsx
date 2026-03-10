@@ -801,7 +801,7 @@ export function ExpedienteModal({ case_, open, onOpenChange, tier }: ExpedienteM
                   Necesitas un plan Elite o Max para poder ver, descargar y subir archivos a tus expedientes.
                 </p>
                 <Button asChild>
-                  <a href="/dashboard/settings?tab=billing">Mejorar plan</a>
+                  <a href="/upgrade">Mejorar plan</a>
                 </Button>
               </Card>
             ) : loadingFiles ? (

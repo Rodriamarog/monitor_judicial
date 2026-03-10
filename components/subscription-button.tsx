@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
-import { CreditCard, Sparkles, Loader2 } from 'lucide-react'
+import { CreditCard, Sparkles, Loader2, ArrowUpCircle } from 'lucide-react'
 
 interface SubscriptionButtonProps {
   tier: string
@@ -14,16 +14,17 @@ export function SubscriptionButton({ tier, hasStripeCustomer }: SubscriptionButt
   const router = useRouter()
   const [isLoading, setIsLoading] = useState(false)
 
-  const handleClick = async () => {
+  const isFreeTier = tier === 'gratis' || tier === 'Gratis'
+  const isMaxTier = tier === 'max' || tier === 'Max'
+
+  const handleManageClick = async () => {
     setIsLoading(true)
 
-    // If user has no subscription (gratis tier), redirect to upgrade page
-    if (tier === 'gratis' || tier === 'Gratis') {
+    if (isFreeTier) {
       router.push('/upgrade')
       return
     }
 
-    // If user has active subscription, open customer portal
     if (hasStripeCustomer) {
       try {
         const response = await fetch('/api/stripe/create-portal-session', {
@@ -31,7 +32,8 @@ export function SubscriptionButton({ tier, hasStripeCustomer }: SubscriptionButt
         })
 
         if (!response.ok) {
-          throw new Error('Failed to create portal session')
+          const data = await response.json()
+          throw new Error(data.message || 'Failed to create portal session')
         }
 
         const { url } = await response.json()
@@ -44,42 +46,59 @@ export function SubscriptionButton({ tier, hasStripeCustomer }: SubscriptionButt
         setIsLoading(false)
       }
     } else {
-      // User has a paid tier in database but no Stripe customer
-      // This shouldn't happen, but redirect to upgrade page as fallback
       router.push('/upgrade')
     }
   }
 
-  const isFreeTier = tier === 'gratis' || tier === 'Gratis'
+  if (isFreeTier) {
+    return (
+      <Button
+        variant="default"
+        size="sm"
+        className="gap-2 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white font-semibold shadow-lg hover:shadow-xl transition-all cursor-pointer"
+        onClick={handleManageClick}
+        disabled={isLoading}
+      >
+        {isLoading ? (
+          <Loader2 className="h-4 w-4 animate-spin" />
+        ) : (
+          <Sparkles className="h-4 w-4" />
+        )}
+        <span className="hidden sm:inline">{isLoading ? 'Cargando...' : 'Actualizar Plan'}</span>
+        <span className="sm:hidden">Upgrade</span>
+      </Button>
+    )
+  }
 
   return (
-    <Button
-      variant={isFreeTier ? 'default' : 'outline'}
-      size="sm"
-      className={isFreeTier
-        ? "gap-2 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white font-semibold shadow-lg hover:shadow-xl transition-all cursor-pointer"
-        : "gap-2 cursor-pointer"
-      }
-      onClick={handleClick}
-      disabled={isLoading}
-    >
-      {isLoading ? (
-        <>
-          <Loader2 className="h-4 w-4 animate-spin" />
-          <span className="hidden sm:inline">Cargando...</span>
-        </>
-      ) : isFreeTier ? (
-        <>
-          <Sparkles className="h-4 w-4" />
-          <span className="hidden sm:inline">Actualizar Plan</span>
-          <span className="sm:hidden">Upgrade</span>
-        </>
-      ) : (
-        <>
-          <CreditCard className="h-4 w-4" />
-          <span className="hidden sm:inline">Mi Suscripción</span>
-        </>
+    <div className="flex items-center gap-2">
+      {!isMaxTier && (
+        <Button
+          variant="default"
+          size="sm"
+          className="gap-2 cursor-pointer"
+          onClick={() => router.push('/upgrade')}
+        >
+          <ArrowUpCircle className="h-4 w-4" />
+          <span className="hidden sm:inline">Mejorar Suscripción</span>
+          <span className="sm:hidden">Mejorar</span>
+        </Button>
       )}
-    </Button>
+      <Button
+        variant="outline"
+        size="sm"
+        className="gap-2 cursor-pointer"
+        onClick={handleManageClick}
+        disabled={isLoading}
+      >
+        {isLoading ? (
+          <Loader2 className="h-4 w-4 animate-spin" />
+        ) : (
+          <CreditCard className="h-4 w-4" />
+        )}
+        <span className="hidden sm:inline">{isLoading ? 'Cargando...' : 'Cancelar Suscripción'}</span>
+        <span className="sm:hidden">Cancelar</span>
+      </Button>
+    </div>
   )
 }
