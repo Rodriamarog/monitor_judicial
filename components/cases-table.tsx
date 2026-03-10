@@ -39,9 +39,10 @@ interface CasesTableProps {
   onUpdate?: (caseId: string, updates: { case_number?: string; juzgado?: string; nombre?: string | null; telefono?: string | null; total_amount_charged?: number; currency?: string; assigned_collaborators?: string[] }) => Promise<void>
   readOnly?: boolean
   availableCollaborators?: string[]
+  tier?: string
 }
 
-export function CasesTable({ cases, onDelete, onUpdate, readOnly = false, availableCollaborators = [] }: CasesTableProps) {
+export function CasesTable({ cases, onDelete, onUpdate, readOnly = false, availableCollaborators = [], tier }: CasesTableProps) {
   const router = useRouter()
   const [searchQuery, setSearchQuery] = useState('')
   const [sortOrder, setSortOrder] = useState<'alerts' | 'asc' | 'desc'>('desc')
@@ -399,6 +400,7 @@ export function CasesTable({ cases, onDelete, onUpdate, readOnly = false, availa
         case_={selectedCaseForModal}
         open={modalOpen}
         onOpenChange={setModalOpen}
+        tier={tier}
       />
     </div>
   )

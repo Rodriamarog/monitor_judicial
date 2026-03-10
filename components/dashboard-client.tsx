@@ -131,7 +131,7 @@ export function DashboardClient({
               )}
             </div>
           ) : (
-            <CasesTable cases={casesWithAlerts} onDelete={onDelete} onUpdate={onUpdate} readOnly={isCollaborator} availableCollaborators={availableCollaborators} />
+            <CasesTable cases={casesWithAlerts} onDelete={onDelete} onUpdate={onUpdate} readOnly={isCollaborator} availableCollaborators={availableCollaborators} tier={tier} />
           )}
         </CardContent>
       </Card>

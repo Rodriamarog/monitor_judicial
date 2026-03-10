@@ -14,8 +14,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { Loader2, FileText, DollarSign, Bell, Calendar, Building2, User, Phone, ChevronDown, ChevronUp, ExternalLink, Plus, Pencil, Trash2, Upload, Download, X, Image, FileSpreadsheet, File } from 'lucide-react'
+import { Loader2, FileText, DollarSign, Bell, Calendar, Building2, User, Phone, ChevronDown, ChevronUp, ExternalLink, Plus, Pencil, Trash2, Upload, Download, X, Image, FileSpreadsheet, File, Lock } from 'lucide-react'
 import { formatTijuanaDate } from '@/lib/date-utils'
+import { hasFeature } from '@/lib/subscription-tiers'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { AddPaymentDialog } from '@/components/add-payment-dialog'
 import { EditPaymentDialog } from '@/components/edit-payment-dialog'
@@ -129,9 +130,10 @@ interface ExpedienteModalProps {
   case_: Case | null
   open: boolean
   onOpenChange: (open: boolean) => void
+  tier?: string
 }
 
-export function ExpedienteModal({ case_, open, onOpenChange }: ExpedienteModalProps) {
+export function ExpedienteModal({ case_, open, onOpenChange, tier }: ExpedienteModalProps) {
   const router = useRouter()
   const [alerts, setAlerts] = useState<Alert[]>([])
   const [loadingAlerts, setLoadingAlerts] = useState(false)
@@ -791,7 +793,18 @@ export function ExpedienteModal({ case_, open, onOpenChange }: ExpedienteModalPr
 
           {/* Files Tab */}
           <TabsContent value="files" className="flex-1 overflow-hidden mt-4">
-            {loadingFiles ? (
+            {!hasFeature(tier, 'hasDocumentDownload') ? (
+              <Card className="h-full flex flex-col items-center justify-center text-center p-8">
+                <Lock className="h-12 w-12 text-muted-foreground mb-4" />
+                <h3 className="text-lg font-semibold mb-2">Archivos no disponibles en tu plan</h3>
+                <p className="text-muted-foreground mb-6 max-w-sm">
+                  Necesitas un plan Elite o Max para poder ver, descargar y subir archivos a tus expedientes.
+                </p>
+                <Button asChild>
+                  <a href="/dashboard/settings?tab=billing">Mejorar plan</a>
+                </Button>
+              </Card>
+            ) : loadingFiles ? (
               <div className="flex items-center justify-center h-full">
                 <Loader2 className="h-8 w-8 animate-spin" />
               </div>
