@@ -46,9 +46,10 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'File not found' }, { status: 404 })
     }
 
-    // Generate signed URL for the file
+    // Generate signed URL for the file - use appropriate bucket based on source
+    const bucketName = file.source === 'tribunal_electronico' ? 'tribunal-documents' : 'case-files'
     const { data: signedUrlData, error: signedUrlError } = await supabase.storage
-      .from('tribunal-documents')
+      .from(bucketName)
       .createSignedUrl(file.file_path, 3600, {
         download: download ? file.file_name : undefined
       })

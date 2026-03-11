@@ -100,7 +100,7 @@ export default async function DashboardPage() {
 
   const caseCount = cases?.length || 0
   const tierConfig = getTierConfig(profile?.subscription_tier)
-  const tier = tierConfig.displayName
+  const tier = tierConfig.id
   const maxCases = tierConfig.maxCases
 
   const handleDelete = async (caseId: string) => {
