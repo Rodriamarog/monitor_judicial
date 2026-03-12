@@ -14,8 +14,8 @@ async function testWhatsApp() {
   console.log('🧪 Testing WhatsApp notification...\n');
 
   const result = await sendWhatsAppAlert({
-    to: 'whatsapp:+16197612314',
-    userName: 'Rodrigo',
+    to: 'whatsapp:+526643428780',
+    userName: 'Test Client',
     bulletinDate: '2025-11-03',
     alerts: [{
       caseNumber: '00001/2025',

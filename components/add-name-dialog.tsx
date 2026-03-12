@@ -46,13 +46,13 @@ export function AddNameDialog({
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      const { data: profile } = await supabase
-        .from('user_profiles')
-        .select('collaborator_emails')
-        .eq('id', user.id)
-        .single();
+      const { data: collaborators } = await supabase
+        .from('collaborators')
+        .select('collaborator_email')
+        .eq('master_user_id', user.id)
+        .eq('status', 'active');
 
-      setUserCollaborators(profile?.collaborator_emails || []);
+      setUserCollaborators(collaborators?.map(c => c.collaborator_email) || []);
     }
 
     fetchCollaborators();

@@ -89,12 +89,12 @@ export default async function DashboardPage() {
     }
   })
 
-  // Get accepted collaborators for the master user (used in edit dialog)
+  // Get active collaborators for the master user (used in edit dialog)
   const { data: collaboratorsData } = await supabase
-    .from('collaborator_invitations')
+    .from('collaborators')
     .select('collaborator_email')
-    .eq('owner_id', masterUserId)
-    .eq('status', 'accepted')
+    .eq('master_user_id', masterUserId)
+    .eq('status', 'active')
 
   const availableCollaborators = collaboratorsData?.map((c) => c.collaborator_email) || []
 

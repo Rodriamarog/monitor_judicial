@@ -149,16 +149,22 @@ export default function TaskEditModal({ task, onClose, onSave, onDelete, onSubta
       if (user) {
         setCurrentUser({ id: user.id, email: user.email || 'Usuario' })
 
-        // Load user profile with collaborators
+        // Load user profile and collaborators
         const { data: profile } = await supabase
           .from('user_profiles')
-          .select('email, collaborator_emails')
+          .select('email')
           .eq('id', user.id)
           .single()
 
+        const { data: collaborators } = await supabase
+          .from('collaborators')
+          .select('collaborator_email')
+          .eq('master_user_id', user.id)
+          .eq('status', 'active')
+
         if (profile) {
           setUserEmail(profile.email || user.email || '')
-          setCollaboratorEmails(profile.collaborator_emails || [])
+          setCollaboratorEmails(collaborators?.map(c => c.collaborator_email) || [])
         }
       }
     }
