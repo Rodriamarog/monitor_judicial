@@ -5,7 +5,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { sendWhatsAppAlert } from '@/lib/whatsapp';
+import { sendWhatsAppAlert, formatToWhatsApp } from '@/lib/whatsapp';
 
 export async function POST(request: NextRequest) {
   const authHeader = request.headers.get('authorization');
@@ -24,11 +24,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const whatsappTo = formatToWhatsApp(to);
+
     // If custom message provided, send it; otherwise send test alert
     if (message) {
       // Simple test message
       const result = await sendWhatsAppAlert({
-        to,
+        to: whatsappTo,
         bulletinDate: new Date().toISOString().split('T')[0],
         alerts: [{
           caseNumber: '00001/2025',
@@ -42,7 +44,7 @@ export async function POST(request: NextRequest) {
     } else {
       // Default test alert
       const result = await sendWhatsAppAlert({
-        to,
+        to: whatsappTo,
         userName: 'Usuario de Prueba',
         bulletinDate: new Date().toISOString().split('T')[0],
         alerts: [
