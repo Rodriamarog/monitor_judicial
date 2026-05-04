@@ -113,29 +113,27 @@ export async function GET(request: NextRequest) {
 
 // POST handler - Incoming WhatsApp messages
 export async function POST(request: NextRequest) {
+  // Parse form data first — needed for both signature validation and message handling
+  const formData = await request.formData()
+  const params = Object.fromEntries(formData) as Record<string, string>
+
+  // Verify Twilio signature
+  const twilioSignature = request.headers.get('x-twilio-signature')
+  if (!twilioSignature) {
+    return NextResponse.json({ error: 'Missing Twilio signature' }, { status: 403 })
+  }
+  const isValid = twilio.validateRequest(authToken!, twilioSignature, request.url, params)
+  if (!isValid) {
+    return NextResponse.json({ error: 'Invalid signature' }, { status: 403 })
+  }
+
+  const from = params['From'] // whatsapp:+52...
   try {
-    // Parse form data from Twilio
-    const formData = await request.formData()
-    const from = formData.get('From') as string // whatsapp:+52...
-    const body = formData.get('Body') as string // Text message
-    const mediaUrl = formData.get('MediaUrl0') as string | null // Audio URL for voice messages
-    const mediaType = formData.get('MediaContentType0') as string | null
+    const body = params['Body'] // Text message
+    const mediaUrl = params['MediaUrl0'] ?? null // Audio URL for voice messages
+    const mediaType = params['MediaContentType0'] ?? null
 
     console.log('Incoming WhatsApp message:', { from, body, mediaUrl, mediaType })
-
-    // Verify Twilio signature (optional but recommended for production)
-    // const twilioSignature = request.headers.get('x-twilio-signature')
-    // if (twilioSignature) {
-    //   const isValid = twilio.validateRequest(
-    //     authToken!,
-    //     twilioSignature,
-    //     request.url,
-    //     Object.fromEntries(formData)
-    //   )
-    //   if (!isValid) {
-    //     return NextResponse.json({ error: 'Invalid signature' }, { status: 403 })
-    //   }
-    // }
 
     // Extract phone number (remove whatsapp: prefix)
     const phone = from.replace('whatsapp:', '')
@@ -292,8 +290,6 @@ Mejora tu plan aqui: https://monitorjudicial.com.mx/upgrade`
 
     // Try to send error message to user
     try {
-      const formData = await request.clone().formData()
-      const from = formData.get('From') as string
       if (from) {
         await sendWhatsAppReply(
           from,
