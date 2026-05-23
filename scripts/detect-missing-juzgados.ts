@@ -93,10 +93,24 @@ async function detectMissingJuzgados() {
     historicalUnique.add(entry.juzgado);
   }
 
-  // Find juzgados that appear in recent but NOT in historical
+  // Fetch all known juzgados from the DB to filter out false positives
+  const { data: knownJuzgados, error: knownError } = await supabase
+    .from('juzgados')
+    .select('name, is_active');
+
+  if (knownError) throw knownError;
+
+  const knownActiveNames = new Set<string>();
+  const knownInactiveNames = new Set<string>();
+  for (const j of knownJuzgados || []) {
+    if (j.is_active) knownActiveNames.add(j.name);
+    else knownInactiveNames.add(j.name);
+  }
+
+  // Find juzgados that appear in recent but NOT in historical AND NOT already in DB
   const newJuzgados: Array<{ name: string; firstSeen: string }> = [];
   for (const juzgado of recentUnique) {
-    if (!historicalUnique.has(juzgado)) {
+    if (!historicalUnique.has(juzgado) && !knownActiveNames.has(juzgado) && !knownInactiveNames.has(juzgado)) {
       // Find first appearance date
       const firstAppearance = (recentJuzgados || [])
         .filter(e => e.juzgado === juzgado)
@@ -109,18 +123,21 @@ async function detectMissingJuzgados() {
     }
   }
 
-  if (missingJuzgados.length === 0 && newJuzgados.length === 0) {
+  // Filter missing juzgados: skip ones already marked inactive in the DB
+  const filteredMissingJuzgados = missingJuzgados.filter(j => !knownInactiveNames.has(j.name));
+
+  if (filteredMissingJuzgados.length === 0 && newJuzgados.length === 0) {
     console.log('✓ No missing or new juzgados detected - all normal');
     return;
   }
 
   // Sort by days missing (most to least)
-  missingJuzgados.sort((a, b) => b.daysMissing - a.daysMissing);
+  filteredMissingJuzgados.sort((a, b) => b.daysMissing - a.daysMissing);
 
   // Display results
-  if (missingJuzgados.length > 0) {
-    console.log(`⚠ Found ${missingJuzgados.length} MISSING juzgados:\n`);
-    missingJuzgados.forEach(j => {
+  if (filteredMissingJuzgados.length > 0) {
+    console.log(`⚠ Found ${filteredMissingJuzgados.length} MISSING juzgados:\n`);
+    filteredMissingJuzgados.forEach(j => {
       console.log(`  - ${j.name}`);
       console.log(`    Last seen: ${j.lastSeen} (${j.daysMissing} days ago)\n`);
     });
@@ -138,8 +155,8 @@ async function detectMissingJuzgados() {
   const emailHtml = `
     <h2>⚠️ Juzgado Changes Alert</h2>
 
-    ${missingJuzgados.length > 0 ? `
-      <h3>❌ Missing Juzgados (${missingJuzgados.length})</h3>
+    ${filteredMissingJuzgados.length > 0 ? `
+      <h3>❌ Missing Juzgados (${filteredMissingJuzgados.length})</h3>
       <p>These juzgados have not appeared in bulletins for 7+ days. They may have been renamed:</p>
       <table border="1" cellpadding="8" style="border-collapse: collapse; margin-bottom: 20px;">
         <tr>
@@ -147,7 +164,7 @@ async function detectMissingJuzgados() {
           <th>Last Seen</th>
           <th>Days Missing</th>
         </tr>
-        ${missingJuzgados.map(j => `
+        ${filteredMissingJuzgados.map(j => `
           <tr>
             <td>${j.name}</td>
             <td>${j.lastSeen}</td>
@@ -176,7 +193,7 @@ async function detectMissingJuzgados() {
 
     <p><strong>Action Required:</strong></p>
     <ol>
-      ${missingJuzgados.length > 0 ? '<li>Check if missing juzgados were renamed to one of the new names</li>' : ''}
+      ${filteredMissingJuzgados.length > 0 ? '<li>Check if missing juzgados were renamed to one of the new names</li>' : ''}
       ${newJuzgados.length > 0 ? '<li>Verify new juzgados are being scraped correctly</li>' : ''}
       <li>Update system if needed</li>
     </ol>
@@ -186,7 +203,7 @@ async function detectMissingJuzgados() {
 
   try {
     const subject = [
-      missingJuzgados.length > 0 ? `${missingJuzgados.length} Missing` : '',
+      filteredMissingJuzgados.length > 0 ? `${filteredMissingJuzgados.length} Missing` : '',
       newJuzgados.length > 0 ? `${newJuzgados.length} New` : ''
     ].filter(Boolean).join(', ') + ' Juzgados Detected';
 
