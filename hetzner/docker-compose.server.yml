@@ -10,7 +10,7 @@ services:
     environment:
       POSTGRES_DB: legal_rag
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-nOqjF5TqRbPsQS09XLp7stkIc7ttRZDB}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_INITDB_ARGS: "-E UTF8 --locale=C"
 
     volumes:
