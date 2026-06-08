@@ -24,6 +24,12 @@ __pycache__/
 *.pyo
 *.egg-info/
 
+# spreadsheet data files
+*.csv
+*.ods
+*.xlsx
+*.xls
+
 # database backups and migration data (large files)
 /backups
 /migration_data

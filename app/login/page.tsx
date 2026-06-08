@@ -6,9 +6,8 @@ import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import { Loader2 } from 'lucide-react'
+import { Loader2, Scale } from 'lucide-react'
 import Link from 'next/link'
 
 export default function LoginPage() {
@@ -30,7 +29,6 @@ export default function LoginPage() {
     })
 
     if (loginError) {
-      // Check if it's an email confirmation error
       if (loginError.message.includes('Email not confirmed')) {
         setError('Por favor confirme su correo electrónico antes de iniciar sesión. Revise su bandeja de entrada.')
       } else {
@@ -44,24 +42,59 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background p-4">
-      <Card className="w-full max-w-md">
-        <CardHeader className="space-y-1">
-          <CardTitle className="text-2xl font-bold">Iniciar Sesión</CardTitle>
-          <CardDescription>
-            Ingrese su email y contraseña para acceder
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleLogin} className="space-y-4">
+    <div className="min-h-screen flex">
+      {/* Left brand panel */}
+      <div
+        className="hidden lg:flex lg:w-1/2 flex-col items-center justify-center gap-8 p-12 relative overflow-hidden"
+        style={{ background: 'linear-gradient(145deg, oklch(0.84 0.17 82) 0%, oklch(0.60 0.19 52) 100%)' }}
+      >
+        {/* App name */}
+        <div className="text-center">
+          <p className="text-2xl font-bold text-white">Monitor Judicial</p>
+          <p className="text-sm text-white/70 mt-1">Poder Judicial de Baja California</p>
+        </div>
+
+        {/* Logo card */}
+        <div className="bg-white rounded-2xl p-8 shadow-xl">
+          <Scale className="h-16 w-16 text-primary" />
+        </div>
+
+        {/* Headline + description */}
+        <div className="text-center max-w-sm">
+          <h2 className="text-3xl font-bold text-white leading-tight mb-4">
+            Bienvenido a Monitor Judicial PJBC
+          </h2>
+          <p className="text-white/75 leading-relaxed">
+            Accede a tu panel y recibe alertas automáticas cuando haya actualizaciones en tus expedientes judiciales.
+          </p>
+        </div>
+      </div>
+
+      {/* Right form panel */}
+      <div className="flex-1 flex flex-col items-center justify-center p-8 lg:p-16 bg-background">
+        {/* Mobile logo */}
+        <Link href="/" className="lg:hidden flex items-center gap-3 mb-10">
+          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary">
+            <Scale className="h-6 w-6 text-primary-foreground" />
+          </div>
+          <span className="text-lg font-bold text-foreground">Monitor Judicial PJBC</span>
+        </Link>
+
+        <div className="w-full max-w-sm">
+          <div className="text-center mb-8">
+            <h1 className="text-3xl font-bold text-foreground mb-2">Iniciar sesión</h1>
+            <p className="text-muted-foreground">Ingrese sus credenciales para acceder</p>
+          </div>
+
+          <form onSubmit={handleLogin} className="space-y-5">
             {error && (
               <Alert variant="destructive">
                 <AlertDescription>{error}</AlertDescription>
               </Alert>
             )}
 
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
+            <div className="space-y-1.5">
+              <Label htmlFor="email">Correo electrónico</Label>
               <Input
                 id="email"
                 type="email"
@@ -72,7 +105,7 @@ export default function LoginPage() {
               />
             </div>
 
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               <div className="flex items-center justify-between">
                 <Label htmlFor="password">Contraseña</Label>
                 <Link href="/reset-password" className="text-xs text-primary hover:underline">
@@ -90,24 +123,24 @@ export default function LoginPage() {
 
             <Button type="submit" className="w-full" disabled={loading}>
               {loading ? (
-                <span className="flex items-center justify-center gap-2">
-                  <Loader2 className="h-5 w-5 animate-spin" />
-                  <span>Ingresando...</span>
+                <span className="flex items-center gap-2">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Ingresando...
                 </span>
               ) : (
-                'Iniciar Sesión'
+                'Iniciar sesión'
               )}
             </Button>
 
             <p className="text-center text-sm text-muted-foreground">
               ¿No tiene cuenta?{' '}
-              <Link href="/signup" className="text-primary hover:underline">
+              <Link href="/signup" className="text-primary hover:underline font-medium">
                 Regístrese aquí
               </Link>
             </p>
           </form>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     </div>
   )
 }
