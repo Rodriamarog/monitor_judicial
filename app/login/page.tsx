@@ -46,8 +46,14 @@ export default function LoginPage() {
       {/* Left brand panel */}
       <div
         className="hidden lg:flex lg:w-1/2 flex-col items-center justify-center gap-8 p-12 relative overflow-hidden"
-        style={{ background: 'linear-gradient(145deg, oklch(0.84 0.17 82) 0%, oklch(0.60 0.19 52) 100%)' }}
+        style={{ background: 'oklch(0.13 0.01 264)' }}
       >
+        {/* Amber glow accent at bottom */}
+        <div
+          className="absolute inset-0 pointer-events-none"
+          style={{ background: 'radial-gradient(ellipse 80% 50% at 50% 110%, oklch(0.769 0.188 70.08 / 0.22) 0%, transparent 70%)' }}
+        />
+
         {/* App name */}
         <div className="text-center">
           <p className="text-2xl font-bold text-white">Monitor Judicial</p>

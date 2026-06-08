@@ -3,10 +3,12 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Plus, Loader2 } from 'lucide-react';
 import { MonitoredNamesTable } from '@/components/monitored-names-table';
 import { AddNameDialog } from '@/components/add-name-dialog';
 import { ReadOnlyBanner } from '@/components/read-only-banner';
+import { BusquedasEstatalesClient } from '@/components/busquedas-estatales-client';
 import { useUserRole } from '@/lib/hooks/use-user-role';
 import { useRouter } from 'next/navigation';
 
@@ -59,86 +61,96 @@ export function NombresClient({
 
   return (
     <div className="flex flex-col h-full gap-4 overflow-hidden">
-      {/* Header Section */}
-      <div className="flex-shrink-0 space-y-4">
-        {/* Read-Only Banner for Collaborators */}
-        {isCollaborator && <ReadOnlyBanner />}
+      {/* Read-Only Banner for Collaborators */}
+      {isCollaborator && <ReadOnlyBanner />}
 
-        {/* Page Header */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold">Monitoreo por Nombre</h1>
+      <Tabs defaultValue="monitoreados" className="flex-1 flex flex-col overflow-hidden">
+        {/* Page Header + Tabs inline */}
+        <div className="flex-shrink-0 flex items-center gap-6">
+          <h1 className="text-3xl font-bold">Monitoreo por Nombre</h1>
+          <TabsList>
+            <TabsTrigger value="monitoreados">Nombres Monitoreados</TabsTrigger>
+            <TabsTrigger value="busqueda">Búsqueda Histórica</TabsTrigger>
+          </TabsList>
+        </div>
+
+        {/* Nombres Monitoreados Tab */}
+        <TabsContent value="monitoreados" className="flex-1 flex flex-col gap-4 overflow-hidden mt-4">
+          <div className="flex-shrink-0 flex items-center justify-between">
             <p className="text-muted-foreground">
               {isCollaborator
                 ? `${nameCount} nombre${nameCount !== 1 ? 's' : ''} asignado${nameCount !== 1 ? 's' : ''}`
                 : `${nameCount} de ${maxNames} nombres monitoreados`}
             </p>
-          </div>
-          {!isCollaborator && (
-            <div className="flex gap-2">
+            {!isCollaborator && (
               <AddNameDialog
                 userId={userId}
                 currentCount={nameCount}
                 maxNames={maxNames}
                 onSuccess={handleSuccess}
               />
-            </div>
-          )}
-        </div>
+            )}
+          </div>
 
-        {/* Compact Stats Card (master only) */}
-        {!isCollaborator && (
-          <Card>
-            <CardContent className="py-2 px-3">
-              <div className="grid grid-cols-3 gap-2 text-center">
-                <div>
-                  <p className="text-xs text-muted-foreground">Monitoreados</p>
-                  <p className="text-lg font-bold">{nameCount}</p>
+          {/* Compact Stats Card (master only) */}
+          {!isCollaborator && (
+            <Card className="flex-shrink-0">
+              <CardContent className="py-2 px-3">
+                <div className="grid grid-cols-3 gap-2 text-center">
+                  <div>
+                    <p className="text-xs text-muted-foreground">Monitoreados</p>
+                    <p className="text-lg font-bold">{nameCount}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Total de Alertas</p>
+                    <p className="text-lg font-bold">{totalAlerts}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Disponibles</p>
+                    <p className="text-lg font-bold">{maxNames - nameCount}</p>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-xs text-muted-foreground">Total de Alertas</p>
-                  <p className="text-lg font-bold">{totalAlerts}</p>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Names Table */}
+          <Card className="flex-1 flex flex-col overflow-hidden">
+            <CardHeader className="flex-shrink-0">
+              <CardTitle>Nombres Monitoreados</CardTitle>
+              <CardDescription>
+                Lista de personas que estás rastreando en los boletines judiciales
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="flex-1 overflow-auto pb-2 pt-2">
+              {!namesWithAlerts || namesWithAlerts.length === 0 ? (
+                <div className="text-center py-12">
+                  <p className="text-muted-foreground mb-4">
+                    {isCollaborator
+                      ? 'No tienes nombres asignados aún'
+                      : 'No tienes nombres monitoreados aún'}
+                  </p>
+                  {!isCollaborator && (
+                    <AddNameDialog
+                      userId={userId}
+                      currentCount={nameCount}
+                      maxNames={maxNames}
+                      onSuccess={handleSuccess}
+                    />
+                  )}
                 </div>
-                <div>
-                  <p className="text-xs text-muted-foreground">Disponibles</p>
-                  <p className="text-lg font-bold">{maxNames - nameCount}</p>
-                </div>
-              </div>
+              ) : (
+                <MonitoredNamesTable names={namesWithAlerts} onDelete={handleDelete} onUpdate={onUpdate} readOnly={isCollaborator} />
+              )}
             </CardContent>
           </Card>
-        )}
-      </div>
+        </TabsContent>
 
-      {/* Names Table - Fills remaining space */}
-      <Card className="flex-1 flex flex-col overflow-hidden">
-        <CardHeader className="flex-shrink-0">
-          <CardTitle>Nombres Monitoreados</CardTitle>
-          <CardDescription>
-            Lista de personas que estás rastreando en los boletines judiciales
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="flex-1 overflow-auto pb-2 pt-2">
-          {!namesWithAlerts || namesWithAlerts.length === 0 ? (
-            <div className="text-center py-12">
-              <p className="text-muted-foreground mb-4">
-                {isCollaborator
-                  ? 'No tienes nombres asignados aún'
-                  : 'No tienes nombres monitoreados aún'}
-              </p>
-              {!isCollaborator && (
-                <AddNameDialog
-                  userId={userId}
-                  currentCount={nameCount}
-                  maxNames={maxNames}
-                  onSuccess={handleSuccess}
-                />
-              )}
-            </div>
-          ) : (
-            <MonitoredNamesTable names={namesWithAlerts} onDelete={handleDelete} onUpdate={onUpdate} readOnly={isCollaborator} />
-          )}
-        </CardContent>
-      </Card>
+        {/* Búsqueda Histórica Tab */}
+        <TabsContent value="busqueda" className="flex-1 overflow-auto mt-4">
+          <BusquedasEstatalesClient userId={userId} />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

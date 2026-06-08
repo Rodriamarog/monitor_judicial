@@ -134,10 +134,8 @@ export function BusquedasEstatalesClient({ userId }: BusquedasEstatalesClientPro
             }
 
             const data = await response.json();
-            setResults(data.results || []);
-            setHasSearched(true);
+            const results = data.results || [];
 
-            // Store search parameters for report
             const params = {
                 fullName,
                 estado,
@@ -145,44 +143,38 @@ export function BusquedasEstatalesClient({ userId }: BusquedasEstatalesClientPro
                 curp: curp || '',
                 rfc: rfc || '',
             };
+
+            setResults(results);
             setSearchParams(params);
-
-            // Save report to history and auto-generate PDF
-            try {
-                // Generate PDF
-                const pdfDocument = (
-                    <AntecedentesPDFDocument
-                        searchParams={params}
-                        results={data.results || []}
-                        getPeriodoLabel={getPeriodoLabel}
-                    />
-                );
-
-                const blob = await pdf(pdfDocument).toBlob();
-
-                // Convert blob to base64 for upload
-                const arrayBuffer = await blob.arrayBuffer();
-                const base64 = Buffer.from(arrayBuffer).toString('base64');
-
-                // Save report with PDF
-                await fetch('/api/investigacion/busquedas-estatales/save-report', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        searchParams: params,
-                        resultsCount: data.results?.length || 0,
-                        pdfBlob: base64,
-                    }),
-                });
-            } catch (saveError) {
-                console.error('Failed to save report:', saveError);
-                // Don't block the user flow if saving fails
-            }
-
-            // Open results dialog
+            setHasSearched(true);
             setShowResultsDialog(true);
+
+            // Save report + PDF in background, don't block the dialog
+            (async () => {
+                try {
+                    const pdfDocument = (
+                        <AntecedentesPDFDocument
+                            searchParams={params}
+                            results={results}
+                            getPeriodoLabel={getPeriodoLabel}
+                        />
+                    );
+                    const blob = await pdf(pdfDocument).toBlob();
+                    const arrayBuffer = await blob.arrayBuffer();
+                    const base64 = Buffer.from(arrayBuffer).toString('base64');
+                    await fetch('/api/investigacion/busquedas-estatales/save-report', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            searchParams: params,
+                            resultsCount: results.length,
+                            pdfBlob: base64,
+                        }),
+                    });
+                } catch (saveError) {
+                    console.error('Failed to save report:', saveError);
+                }
+            })();
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Error desconocido');
             setResults([]);
@@ -253,11 +245,12 @@ export function BusquedasEstatalesClient({ userId }: BusquedasEstatalesClientPro
     return (
         <div className="flex flex-col h-full gap-6 overflow-hidden">
             {/* Header */}
-            <div className="flex-shrink-0">
-                <div className="flex items-center justify-between mb-2">
-                    <div className="flex-1 text-center">
-                        <h1 className="text-2xl font-bold">Antecedentes Legales</h1>
-                    </div>
+            <div className="flex-shrink-0 relative text-center">
+                <h1 className="text-2xl font-bold">Antecedentes Legales</h1>
+                <p className="text-sm text-muted-foreground">
+                    Busca nombres en todos los boletines judiciales del estado
+                </p>
+                <div className="absolute right-0 top-0">
                     <Link href="/dashboard/investigacion/historial">
                         <Button variant="outline" size="sm">
                             <History className="mr-2 h-4 w-4" />
@@ -265,9 +258,6 @@ export function BusquedasEstatalesClient({ userId }: BusquedasEstatalesClientPro
                         </Button>
                     </Link>
                 </div>
-                <p className="text-sm text-muted-foreground text-center">
-                    Busca nombres en todos los boletines judiciales del estado
-                </p>
             </div>
 
             {/* Wider form layout */}
@@ -495,29 +485,26 @@ export function BusquedasEstatalesClient({ userId }: BusquedasEstatalesClientPro
                     </CardContent>
                 </Card>
                 */}
-            </div>
 
-            {/* Results Notification */}
-            {hasSearched && (
-                <Alert className="flex-shrink-0">
-                    <FileText className="h-4 w-4" />
-                    <AlertDescription className="flex items-center justify-between">
-                        <span>
-                            {results.length > 0
-                                ? `Búsqueda completada: ${results.length} ${results.length === 1 ? 'boletín encontrado' : 'boletines encontrados'}`
-                                : 'Búsqueda completada: No se encontraron resultados'
-                            }
-                        </span>
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => setShowResultsDialog(true)}
-                        >
-                            Ver Reporte Completo
-                        </Button>
-                    </AlertDescription>
-                </Alert>
-            )}
+                {/* Results Notification */}
+                {hasSearched && (
+                    <div className="flex justify-center">
+                        <div className="inline-flex items-center gap-4 px-3 py-2 rounded-md border bg-muted/50 text-sm">
+                            <div className="flex items-center gap-2 text-muted-foreground">
+                                <FileText className="h-4 w-4 shrink-0" />
+                                <span>
+                                    {results.length > 0
+                                        ? `${results.length} ${results.length === 1 ? 'boletín encontrado' : 'boletines encontrados'}`
+                                        : 'No se encontraron resultados'}
+                                </span>
+                            </div>
+                            <Button variant="outline" size="sm" onClick={() => setShowResultsDialog(true)}>
+                                Ver Reporte
+                            </Button>
+                        </div>
+                    </div>
+                )}
+            </div>
 
             {/* Results Dialog */}
             <Dialog open={showResultsDialog} onOpenChange={setShowResultsDialog}>
@@ -533,7 +520,7 @@ export function BusquedasEstatalesClient({ userId }: BusquedasEstatalesClientPro
                         {/* Print Header - Only visible when printing */}
                         <div className="hidden print:block mb-6 pb-4 border-b">
                             <h1 className="text-3xl font-bold mb-2">Reporte de Antecedentes Legales</h1>
-                            <p className="text-sm text-gray-600">Generado el {new Date().toLocaleDateString('es-MX', {
+                            <p className="text-sm text-muted-foreground">Generado el {new Date().toLocaleDateString('es-MX', {
                                 year: 'numeric',
                                 month: 'long',
                                 day: 'numeric',
@@ -543,7 +530,7 @@ export function BusquedasEstatalesClient({ userId }: BusquedasEstatalesClientPro
                         </div>
 
                         {/* Search Parameters Summary */}
-                        <div className="mb-6 p-4 bg-gray-50 rounded-lg print:bg-white print:border print:border-gray-300">
+                        <div className="mb-6 p-4 bg-muted rounded-lg print:bg-white print:border print:border-gray-300">
                             <h3 className="font-semibold text-lg mb-3">Parámetros de Búsqueda</h3>
                             <div className="grid grid-cols-2 gap-3 text-sm">
                                 <div>
@@ -574,12 +561,12 @@ export function BusquedasEstatalesClient({ userId }: BusquedasEstatalesClientPro
                         </div>
 
                         {/* Results Summary */}
-                        <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg print:bg-white print:border-green-300">
+                        <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg dark:bg-green-950/30 dark:border-green-900 print:bg-white print:border-green-300">
                             <h3 className="font-semibold text-lg mb-2">Resumen de Resultados</h3>
-                            <p className="text-2xl font-bold text-green-700">
+                            <p className="text-2xl font-bold text-green-700 dark:text-green-400">
                                 {results.length} {results.length === 1 ? 'Boletín Encontrado' : 'Boletines Encontrados'}
                             </p>
-                            <p className="text-sm text-gray-600 mt-1">
+                            <p className="text-sm text-muted-foreground mt-1">
                                 {results.length > 0
                                     ? 'Se encontraron menciones del nombre buscado en los siguientes boletines judiciales:'
                                     : 'No se encontraron menciones del nombre buscado en los boletines judiciales del estado seleccionado.'
@@ -594,15 +581,15 @@ export function BusquedasEstatalesClient({ userId }: BusquedasEstatalesClientPro
                                 <BusquedasResultsTable results={results} />
                             </div>
                         ) : (
-                            <div className="text-center py-8 text-gray-500">
+                            <div className="text-center py-8 text-muted-foreground">
                                 <p>No se encontraron antecedentes legales para los parámetros especificados.</p>
                             </div>
                         )}
 
                         {/* Footer Note */}
-                        <div className="mt-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg text-sm print:bg-white print:border-yellow-300">
+                        <div className="mt-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg text-sm dark:bg-yellow-950/30 dark:border-yellow-900 print:bg-white print:border-yellow-300">
                             <p className="font-medium mb-1">Nota Importante:</p>
-                            <p className="text-gray-700">
+                            <p className="text-muted-foreground">
                                 Este reporte muestra únicamente menciones encontradas en boletines judiciales públicos.
                                 La presencia de un nombre en un boletín no implica responsabilidad legal o condena.
                                 Para información legal precisa, consulte con un profesional del derecho o verifique
