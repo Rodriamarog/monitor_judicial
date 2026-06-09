@@ -8,7 +8,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 
 export const runtime = 'nodejs';
-export const maxDuration = 60; // Increase for validation time
+export const maxDuration = 300; // Validation can take up to 2min for large accounts
 
 /**
  * POST /api/tribunal/credentials
