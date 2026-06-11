@@ -242,9 +242,25 @@ export async function scrapeBulletin(
       throw new Error(`HTTP ${response.status}: ${response.statusText}`);
     }
 
-    // PJBC uses windows-1252 encoding
-    const buffer = response.data;
-    const decoder = new TextDecoder('windows-1252');
+    // Detect encoding from Content-Type header, HTML meta tag, or raw byte patterns.
+    // Some PJBC sources (e.g. Tijuana) declare Windows-1252 in the meta tag but
+    // actually contain UTF-8 bytes — a Microsoft Word HTML export quirk.
+    const buffer = Buffer.from(response.data);
+    const contentType = response.headers['content-type'] || '';
+    const first1024 = buffer.slice(0, 1024).toString('latin1').toLowerCase();
+    const declaredUtf8 = contentType.toLowerCase().includes('utf-8') || first1024.includes('charset=utf-8');
+
+    // Count valid UTF-8 2-byte sequences for the Latin Extended range (C3 80–C3 BF),
+    // which covers all common Spanish accented characters (á é í ó ú ü ñ Á É Í Ó Ú Ü Ñ).
+    // If there are many, the content is UTF-8 regardless of what the meta tag says.
+    let utf8AccentCount = 0;
+    for (let i = 0; i < buffer.length - 1; i++) {
+      if (buffer[i] === 0xC3 && buffer[i + 1] >= 0x80 && buffer[i + 1] <= 0xBF) {
+        utf8AccentCount++;
+      }
+    }
+    const isUtf8 = declaredUtf8 || utf8AccentCount > 5;
+    const decoder = new TextDecoder(isUtf8 ? 'utf-8' : 'windows-1252');
     const html = decoder.decode(buffer);
 
     const entries = parseBulletin(html);
