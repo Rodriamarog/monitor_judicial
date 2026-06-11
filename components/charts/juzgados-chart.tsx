@@ -1,5 +1,6 @@
 'use client'
 
+import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { ChartContainer, ChartConfig } from "@/components/ui/chart"
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts"
@@ -16,6 +17,18 @@ const chartConfig = {
 } satisfies ChartConfig
 
 export function JuzgadosChart({ data }: JuzgadosChartProps) {
+  const [isMobile, setIsMobile] = useState(
+    typeof window !== 'undefined' && window.innerWidth < 768
+  )
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth < 768)
+    window.addEventListener('resize', handleResize)
+    return () => window.removeEventListener('resize', handleResize)
+  }, [])
+
+  const yAxisWidth = isMobile ? 90 : 150
+  const labelMaxLen = isMobile ? 14 : 25
+
   if (!data || data.length === 0) {
     return (
       <Card>
@@ -38,18 +51,17 @@ export function JuzgadosChart({ data }: JuzgadosChartProps) {
       </CardHeader>
       <CardContent>
         <ChartContainer config={chartConfig} className="h-96 w-full">
-          <BarChart data={data} layout="vertical" margin={{ left: 150 }}>
+          <BarChart data={data} layout="vertical" margin={{ left: 0, right: 8, top: 0, bottom: 0 }}>
             <CartesianGrid strokeDasharray="3 3" />
             <XAxis type="number" />
             <YAxis
               dataKey="juzgado"
               type="category"
-              width={150}
+              width={yAxisWidth}
               tick={{ fontSize: 10 }}
               tickFormatter={(value) => {
-                // Truncate long names
-                if (value.length > 25) {
-                  return value.substring(0, 25) + '...'
+                if (value.length > labelMaxLen) {
+                  return value.substring(0, labelMaxLen) + '...'
                 }
                 return value
               }}
