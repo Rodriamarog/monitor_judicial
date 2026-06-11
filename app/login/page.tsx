@@ -114,7 +114,7 @@ export default function LoginPage() {
             <div className="space-y-1.5">
               <div className="flex items-center justify-between">
                 <Label htmlFor="password">Contraseña</Label>
-                <Link href="/reset-password" className="text-xs text-primary hover:underline">
+                <Link href="/reset-password" className="text-xs text-primary hover:underline py-1 px-0.5">
                   ¿Olvidó su contraseña?
                 </Link>
               </div>

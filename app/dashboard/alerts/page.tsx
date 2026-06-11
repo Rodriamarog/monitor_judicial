@@ -438,7 +438,7 @@ export default function AlertsPage() {
           <div className="flex flex-wrap gap-2 mt-4">
             <Button
               variant={isToday() ? "default" : "outline"}
-              size="sm"
+              className="h-9 text-xs px-3"
               onClick={() => {
                 const today = getTodayDate()
                 setDateFrom(today)
@@ -449,7 +449,7 @@ export default function AlertsPage() {
             </Button>
             <Button
               variant={isLast7Days() ? "default" : "outline"}
-              size="sm"
+              className="h-9 text-xs px-3"
               onClick={() => {
                 const today = new Date()
                 const last7Days = new Date(today)
@@ -462,7 +462,7 @@ export default function AlertsPage() {
             </Button>
             <Button
               variant={isLast30Days() ? "default" : "outline"}
-              size="sm"
+              className="h-9 text-xs px-3"
               onClick={() => {
                 const today = new Date()
                 const last30Days = new Date(today)
@@ -475,7 +475,7 @@ export default function AlertsPage() {
             </Button>
             <Button
               variant={isAllDates() ? "default" : "outline"}
-              size="sm"
+              className="h-9 text-xs px-3"
               onClick={() => {
                 setDateFrom('')
                 setDateTo('')

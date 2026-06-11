@@ -6,8 +6,9 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Loader2, Search, FileText, ChevronLeft, ChevronRight, X, BookOpen } from 'lucide-react'
+import { Loader2, Search, FileText, ChevronLeft, ChevronRight, X, BookOpen, Filter } from 'lucide-react'
 import { ScrollArea } from '@/components/ui/scroll-area'
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 
 interface TesisResult {
   id_tesis: number
@@ -77,6 +78,7 @@ export default function BuscadorTesisPage() {
   const [totalCount, setTotalCount] = useState(0)
   const [pageInput, setPageInput] = useState('')
   const [lastSearchParams, setLastSearchParams] = useState('')
+  const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false)
 
   // Load filter options and initial results on mount
   useEffect(() => {
@@ -198,20 +200,8 @@ export default function BuscadorTesisPage() {
     setLastSearchParams('') // Reset search params tracking
   }
 
-  return (
-    <div className="flex gap-6 h-full">
-      {/* Left Side - Search & Filters */}
-      <Card className="w-80 flex-shrink-0 flex flex-col h-full">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <BookOpen className="h-5 w-5" />
-            Buscador de Tesis
-          </CardTitle>
-          <CardDescription>
-            {filters.totalDocuments > 0 ? `${filters.totalDocuments.toLocaleString()} tesis disponibles` : 'Cargando...'}
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="flex-1 overflow-y-auto space-y-4">
+  const renderFiltersContent = () => (
+    <CardContent className="flex-1 overflow-y-auto space-y-4">
           {/* Search Input */}
           <div className="space-y-2">
             <label className="text-sm font-medium">Búsqueda</label>
@@ -325,7 +315,7 @@ export default function BuscadorTesisPage() {
                       onChange={(e) => setYearFrom(e.target.value)}
                       min={filters.yearRange.min_year}
                       max={filters.yearRange.max_year}
-                      className="w-20"
+                      className="w-20 min-w-0"
                     />
                     <Select value={monthFrom} onValueChange={setMonthFrom}>
                       <SelectTrigger className="flex-1">
@@ -361,7 +351,7 @@ export default function BuscadorTesisPage() {
                       onChange={(e) => setYearTo(e.target.value)}
                       min={filters.yearRange.min_year}
                       max={filters.yearRange.max_year}
-                      className="w-20"
+                      className="w-20 min-w-0"
                     />
                     <Select value={monthTo} onValueChange={setMonthTo}>
                       <SelectTrigger className="flex-1">
@@ -413,11 +403,57 @@ export default function BuscadorTesisPage() {
               Limpiar Filtros
             </Button>
           </div>
-        </CardContent>
+    </CardContent>
+  )
+
+  return (
+    <>
+      {/* Mobile filters sheet */}
+      <Sheet open={mobileFiltersOpen} onOpenChange={setMobileFiltersOpen}>
+        <SheetContent side="left" className="w-80 p-0 flex flex-col">
+          <SheetHeader className="p-6 pb-0 flex-shrink-0">
+            <SheetTitle className="flex items-center gap-2">
+              <BookOpen className="h-5 w-5" />
+              Buscador de Tesis
+            </SheetTitle>
+            <p className="text-sm text-muted-foreground">
+              {filters.totalDocuments > 0 ? `${filters.totalDocuments.toLocaleString()} tesis disponibles` : 'Cargando...'}
+            </p>
+          </SheetHeader>
+          {renderFiltersContent()}
+        </SheetContent>
+      </Sheet>
+
+    <div className="flex gap-6 h-full">
+      {/* Left Side - Search & Filters (desktop only) */}
+      <Card className="hidden md:flex w-80 flex-shrink-0 flex-col h-full">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <BookOpen className="h-5 w-5" />
+            Buscador de Tesis
+          </CardTitle>
+          <CardDescription>
+            {filters.totalDocuments > 0 ? `${filters.totalDocuments.toLocaleString()} tesis disponibles` : 'Cargando...'}
+          </CardDescription>
+        </CardHeader>
+        {renderFiltersContent()}
       </Card>
 
       {/* Right Side - Results or Detail View */}
       <Card className="flex-1 flex flex-col h-full">
+        {/* Mobile-only filter button */}
+        <div className="md:hidden p-3 border-b flex-shrink-0">
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-9"
+            onClick={() => setMobileFiltersOpen(true)}
+          >
+            <Filter className="h-4 w-4 mr-2" />
+            Filtros
+          </Button>
+        </div>
+
         {selectedTesis ? (
           /* Detail View */
           <ScrollArea className="flex-1">
@@ -683,5 +719,6 @@ export default function BuscadorTesisPage() {
         )}
       </Card>
     </div>
+    </>
   )
 }

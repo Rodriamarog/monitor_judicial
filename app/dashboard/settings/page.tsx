@@ -449,7 +449,7 @@ export default function SettingsPage() {
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
               <div>
                 <p className="text-sm font-medium">Plan actual</p>
                 <p className="text-2xl font-bold capitalize">{tier}</p>
@@ -737,7 +737,7 @@ export default function SettingsPage() {
                   </AlertDescription>
                 </Alert>
 
-                <div className="flex gap-2 mt-4">
+                <div className="flex flex-col sm:flex-row gap-2 mt-4">
                   <Button
                     variant="outline"
                     className="flex-1"

@@ -303,10 +303,10 @@ export async function runTribunalScraper(
 
     if (documentosLink) {
       log(`[Scraper] Navigating to Documentos page: ${documentosLink.href}`);
-      await page.goto(documentosLink.href, { waitUntil: 'networkidle2' });
+      await page.goto(documentosLink.href, { waitUntil: 'networkidle2', timeout: 90000 });
     } else {
       log('[Scraper] Using default Documentos URL...');
-      await page.goto('https://tribunalelectronico.pjbc.gob.mx/Documentos/ObtenerDocumentos/', { waitUntil: 'networkidle2' });
+      await page.goto('https://tribunalelectronico.pjbc.gob.mx/Documentos/ObtenerDocumentos/', { waitUntil: 'networkidle2', timeout: 90000 });
     }
     log(`[Scraper] Documentos page loaded: ${page.url()}`);
 

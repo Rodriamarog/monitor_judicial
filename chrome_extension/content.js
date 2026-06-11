@@ -115,7 +115,7 @@ function scrapeData() {
             let fecha = '';
 
             if (cols4.length >= 2 && cols2.length >= 2) {
-                nombre = clean(cols4[0].textContent);
+                nombre = clean(row.querySelector('span.list-name-text')?.textContent);
                 expediente = clean(cols2[0].textContent);
                 juzgado = getMappedCourtName(cols4[1].textContent);
                 fecha = clean(cols2[1].textContent);

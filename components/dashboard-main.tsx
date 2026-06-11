@@ -15,7 +15,7 @@ export function DashboardMain({ children }: { children: React.ReactNode }) {
         <main className="flex-1 overflow-hidden">
             <div className={cn(
                 "h-full",
-                !isAIAssistant && "p-8 pt-16 md:pt-8",
+                !isAIAssistant && "p-4 pt-16 md:p-8 md:pt-8",
                 (isMachotes || isHelp || isInvestigacion || isOverview) ? "overflow-y-auto" : "overflow-hidden"
             )}>
                 {children}

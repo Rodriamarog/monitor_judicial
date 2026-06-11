@@ -230,10 +230,10 @@ export function CasesTable({ cases, onDelete, onUpdate, readOnly = false, availa
               </TableHead>
               <TableHead className="w-60">Nombre</TableHead>
               <TableHead className="w-20">Expediente</TableHead>
-              <TableHead className="w-32">Teléfono</TableHead>
-              <TableHead className="w-64">Juzgado</TableHead>
+              <TableHead className="hidden md:table-cell w-32">Teléfono</TableHead>
+              <TableHead className="hidden md:table-cell w-64">Juzgado</TableHead>
               <TableHead className="w-28 text-right">Balance</TableHead>
-              <TableHead className="w-20">
+              <TableHead className="hidden md:table-cell w-20">
                 <Button
                   variant="ghost"
                   size="sm"
@@ -304,8 +304,8 @@ export function CasesTable({ cases, onDelete, onUpdate, readOnly = false, availa
                     </div>
                   </TableCell>
                   <TableCell className="font-mono">{case_.case_number}</TableCell>
-                  <TableCell className="truncate whitespace-nowrap">{case_.telefono || '-'}</TableCell>
-                  <TableCell className="max-w-[14rem]">
+                  <TableCell className="hidden md:table-cell truncate whitespace-nowrap">{case_.telefono || '-'}</TableCell>
+                  <TableCell className="hidden md:table-cell max-w-[14rem]">
                     <div className="truncate" title={case_.juzgado}>{case_.juzgado}</div>
                   </TableCell>
                   <TableCell className="text-right">
@@ -330,14 +330,14 @@ export function CasesTable({ cases, onDelete, onUpdate, readOnly = false, availa
                       <span className="text-xs text-muted-foreground">-</span>
                     )}
                   </TableCell>
-                  <TableCell className="whitespace-nowrap">{formatTijuanaDate(case_.created_at)}</TableCell>
+                  <TableCell className="hidden md:table-cell whitespace-nowrap">{formatTijuanaDate(case_.created_at)}</TableCell>
                   {!readOnly && (
                     <TableCell className="text-right">
                       <div className="flex justify-center gap-1" data-action="true">
                         <Button
                           variant="ghost"
                           size="sm"
-                          className="h-8 w-8 p-0 cursor-pointer"
+                          className="h-10 w-10 p-0 md:h-8 md:w-8 cursor-pointer"
                           onClick={(e) => handleEditClick(case_, e)}
                           title="Editar"
                         >
@@ -346,7 +346,7 @@ export function CasesTable({ cases, onDelete, onUpdate, readOnly = false, availa
                         <Button
                           variant="ghost"
                           size="sm"
-                          className="h-8 w-8 p-0 text-destructive hover:text-destructive cursor-pointer"
+                          className="h-10 w-10 p-0 md:h-8 md:w-8 text-destructive hover:text-destructive cursor-pointer"
                           onClick={() => handleDelete(case_.id)}
                           disabled={deletingCaseId === case_.id}
                           title="Eliminar"

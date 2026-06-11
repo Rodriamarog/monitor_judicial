@@ -132,6 +132,13 @@
   }
 }
 
+/* Scale down the entire rem-based UI on mobile */
+@media (max-width: 767px) {
+  html {
+    font-size: 14px;
+  }
+}
+
 /* React Big Calendar Dark Mode Overrides */
 .dark .rbc-off-range-bg {
   @apply !bg-zinc-900/50;

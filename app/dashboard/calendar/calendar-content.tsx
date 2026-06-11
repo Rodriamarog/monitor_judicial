@@ -80,12 +80,22 @@ export default function CalendarPage() {
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null)
   const [dialogOpen, setDialogOpen] = useState(false)
   const [dialogMode, setDialogMode] = useState<'create' | 'edit'>('create')
-  const [view, setView] = useState<View>('month')
+  const [view, setView] = useState<View>(() =>
+    typeof window !== 'undefined' && window.innerWidth < 768 ? 'agenda' : 'month'
+  )
   const [date, setDate] = useState(new Date())
   const [error, setError] = useState<string | null>(null)
 
   const router = useRouter()
   const supabase = createClient()
+
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth < 768) setView('agenda')
+    }
+    window.addEventListener('resize', handleResize)
+    return () => window.removeEventListener('resize', handleResize)
+  }, [])
 
   // Extract label from event description to determine color
   const getEventLabel = (event: BigCalendarEvent): string | null => {
@@ -269,7 +279,7 @@ export default function CalendarPage() {
   return (
     <div className="h-full flex flex-col">
       {/* Calendar - Full Height */}
-      <div className="flex-1 p-6">
+      <div className="flex-1 p-2 md:p-6">
         <style jsx global>{`
           /* Remove borders from toolbar buttons */
           .rbc-toolbar button {

@@ -872,8 +872,8 @@ export function ExpedienteModal({ case_, open, onOpenChange, tier }: ExpedienteM
                         <TableHeader>
                           <TableRow>
                             <TableHead>Nombre del Archivo</TableHead>
-                            <TableHead>Tamaño</TableHead>
-                            <TableHead>Fecha de Subida</TableHead>
+                            <TableHead className="hidden sm:table-cell">Tamaño</TableHead>
+                            <TableHead className="hidden sm:table-cell">Fecha de Subida</TableHead>
                             <TableHead className="text-right w-28">Acciones</TableHead>
                           </TableRow>
                         </TableHeader>
@@ -899,10 +899,10 @@ export function ExpedienteModal({ case_, open, onOpenChange, tier }: ExpedienteM
 
                                 {/* AI Summary for TE documents */}
                               </TableCell>
-                              <TableCell className="text-sm text-muted-foreground">
+                              <TableCell className="hidden sm:table-cell text-sm text-muted-foreground">
                                 {formatFileSize(file.file_size)}
                               </TableCell>
-                              <TableCell className="text-sm">
+                              <TableCell className="hidden sm:table-cell text-sm">
                                 {formatTijuanaDate(file.uploaded_at)}
                               </TableCell>
                               <TableCell className="text-right">
@@ -910,7 +910,7 @@ export function ExpedienteModal({ case_, open, onOpenChange, tier }: ExpedienteM
                                   <Button
                                     variant="ghost"
                                     size="sm"
-                                    className="h-8 w-8 p-0"
+                                    className="h-10 w-10 p-0 md:h-8 md:w-8"
                                     onClick={(e) => handleFileDownload(file, e)}
                                     title="Descargar"
                                   >
@@ -919,7 +919,7 @@ export function ExpedienteModal({ case_, open, onOpenChange, tier }: ExpedienteM
                                   <Button
                                     variant="ghost"
                                     size="sm"
-                                    className="h-8 w-8 p-0 text-destructive hover:text-destructive"
+                                    className="h-10 w-10 p-0 md:h-8 md:w-8 text-destructive hover:text-destructive"
                                     onClick={(e) => handleFileDeleteClick(file, e)}
                                     title="Eliminar"
                                   >
@@ -939,13 +939,13 @@ export function ExpedienteModal({ case_, open, onOpenChange, tier }: ExpedienteM
           </TabsContent>
 
           {/* Balance Tab */}
-          <TabsContent value="balance" className="flex-1 overflow-hidden mt-4">
+          <TabsContent value="balance" className="flex-1 overflow-y-auto md:overflow-hidden mt-4">
             {loadingPayments ? (
               <div className="flex items-center justify-center h-full">
                 <Loader2 className="h-8 w-8 animate-spin" />
               </div>
             ) : (
-              <div className="grid grid-cols-[300px_1fr] gap-4 h-full">
+              <div className="grid grid-cols-1 md:grid-cols-[300px_1fr] gap-4 md:h-full">
                 {/* Summary Card - Left Side */}
                 <Card className="flex flex-col">
                   <CardHeader className="pb-3">
@@ -1036,7 +1036,7 @@ export function ExpedienteModal({ case_, open, onOpenChange, tier }: ExpedienteM
                                     <Button
                                       variant="ghost"
                                       size="sm"
-                                      className="h-8 w-8 p-0"
+                                      className="h-10 w-10 p-0 md:h-8 md:w-8"
                                       onClick={(e) => handleEditClick(payment, e)}
                                       title="Editar"
                                     >
@@ -1045,7 +1045,7 @@ export function ExpedienteModal({ case_, open, onOpenChange, tier }: ExpedienteM
                                     <Button
                                       variant="ghost"
                                       size="sm"
-                                      className="h-8 w-8 p-0 text-destructive hover:text-destructive"
+                                      className="h-10 w-10 p-0 md:h-8 md:w-8 text-destructive hover:text-destructive"
                                       onClick={(e) => handleDeleteClick(payment, e)}
                                       title="Eliminar"
                                     >

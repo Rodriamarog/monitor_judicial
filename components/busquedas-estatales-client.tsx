@@ -245,19 +245,19 @@ export function BusquedasEstatalesClient({ userId }: BusquedasEstatalesClientPro
     return (
         <div className="flex flex-col h-full gap-6 overflow-hidden">
             {/* Header */}
-            <div className="flex-shrink-0 relative text-center">
-                <h1 className="text-2xl font-bold">Antecedentes Legales</h1>
-                <p className="text-sm text-muted-foreground">
-                    Busca nombres en todos los boletines judiciales del estado
-                </p>
-                <div className="absolute right-0 top-0">
-                    <Link href="/dashboard/investigacion/historial">
-                        <Button variant="outline" size="sm">
-                            <History className="mr-2 h-4 w-4" />
-                            Historial
-                        </Button>
-                    </Link>
+            <div className="flex-shrink-0 flex items-start justify-between gap-4">
+                <div>
+                    <h1 className="text-2xl font-bold">Antecedentes Legales</h1>
+                    <p className="text-sm text-muted-foreground">
+                        Busca nombres en todos los boletines judiciales del estado
+                    </p>
                 </div>
+                <Link href="/dashboard/investigacion/historial" className="flex-shrink-0">
+                    <Button variant="outline" size="sm">
+                        <History className="mr-2 h-4 w-4" />
+                        Historial
+                    </Button>
+                </Link>
             </div>
 
             {/* Wider form layout */}

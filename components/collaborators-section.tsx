@@ -253,14 +253,14 @@ export function CollaboratorsSection({
   return (
     <div className="space-y-6">
       {/* Tier Info */}
-      <div className="flex items-center justify-between text-sm text-muted-foreground">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 text-sm text-muted-foreground">
         <span>
           Tu plan <span className="font-semibold text-foreground">{tierConfig.displayName}</span> permite{' '}
           <span className="font-semibold text-foreground">
             {maxCollaborators} colaborador{maxCollaborators > 1 ? 'es' : ''} adicional{maxCollaborators > 1 ? 'es' : ''}
           </span>
         </span>
-        <span className="font-medium">
+        <span className="font-medium shrink-0">
           {acceptedCount}/{maxCollaborators} activos
         </span>
       </div>
@@ -284,10 +284,10 @@ export function CollaboratorsSection({
               <Card key={invitation.id} className="p-4">
                 <div className="flex items-start justify-between">
                   <div className="space-y-1 flex-1">
-                    <div className="flex items-center gap-2">
-                      <Mail className="h-4 w-4 text-muted-foreground" />
-                      <span className="text-sm font-medium">{invitation.collaborator_email}</span>
-                      {getStatusBadge(invitation.status)}
+                    <div className="flex items-center gap-2 min-w-0">
+                      <Mail className="h-4 w-4 text-muted-foreground shrink-0" />
+                      <span className="text-sm font-medium truncate">{invitation.collaborator_email}</span>
+                      <span className="shrink-0">{getStatusBadge(invitation.status)}</span>
                     </div>
                     <p className="text-xs text-muted-foreground">
                       Aceptado el {new Date(invitation.responded_at!).toLocaleDateString('es-MX')}
@@ -327,10 +327,10 @@ export function CollaboratorsSection({
                   <div className="space-y-3">
                     <div className="flex items-start justify-between">
                       <div className="space-y-1 flex-1">
-                        <div className="flex items-center gap-2">
-                          <Mail className="h-4 w-4 text-muted-foreground" />
-                          <span className="text-sm font-medium">{invitation.collaborator_email}</span>
-                          {getStatusBadge(invitation.status)}
+                        <div className="flex items-center gap-2 min-w-0">
+                          <Mail className="h-4 w-4 text-muted-foreground shrink-0" />
+                          <span className="text-sm font-medium truncate">{invitation.collaborator_email}</span>
+                          <span className="shrink-0">{getStatusBadge(invitation.status)}</span>
                         </div>
                         <p className="text-xs text-muted-foreground">
                           {daysLeft > 0 ? `Expira en ${daysLeft} día${daysLeft > 1 ? 's' : ''}` : 'Expirada'}
