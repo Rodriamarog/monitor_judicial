@@ -138,6 +138,36 @@ services:
     networks:
       - monitor-network
 
+  whatsapp-bot:
+    build:
+      context: ./whatsapp_bot
+      dockerfile: Dockerfile
+    image: whatsapp-bot:latest
+    container_name: whatsapp-bot
+    restart: unless-stopped
+
+    ports:
+      - "127.0.0.1:3003:3003"
+
+    env_file:
+      - /opt/monitor-judicial/whatsapp_bot/.env
+
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3003/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1); }).on('error', () => process.exit(1));"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+    networks:
+      - monitor-network
+
 networks:
   monitor-network:
     external: true
