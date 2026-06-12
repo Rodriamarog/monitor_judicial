@@ -50,7 +50,7 @@ export async function generateDocumentSummary(
     // Call Gemini with PDF
     console.log(`[AI Summary] Generating summary with Gemini...`);
     const gemini = getGeminiClient();
-    const model = gemini.getGenerativeModel({ model: 'gemini-3-flash-preview' });
+    const model = gemini.getGenerativeModel({ model: 'gemini-3.5-flash' });
 
     const prompt = `Analiza este documento legal del Tribunal Electrónico de Baja California.
 
