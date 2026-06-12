@@ -149,9 +149,9 @@ export async function GET(request: NextRequest) {
             const monitoredCase = alert.monitored_cases as any;
             const bulletinEntry = alert.bulletin_entries as any;
             return {
-              caseNumber: monitoredCase.case_number,
-              juzgado: monitoredCase.juzgado,
-              caseName: monitoredCase.nombre,
+              caseNumber: monitoredCase?.case_number ?? alert.matched_value,
+              juzgado: monitoredCase?.juzgado ?? bulletinEntry?.juzgado ?? '',
+              caseName: monitoredCase?.nombre ?? alert.matched_value,
               rawText: bulletinEntry.raw_text,
               bulletinUrl: bulletinEntry.bulletin_url,
             };
